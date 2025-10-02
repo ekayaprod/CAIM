@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CA Identity Manager Preset Generator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .step { display: none; }
+        .step.active { display: block; animation: fadeIn 0.5s ease-in-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    </style>
+</head>
+<body class="bg-slate-100">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="container w-full max-w-3xl mx-auto">
+            <header class="text-center mb-8">
+                <h1 class="text-4xl font-bold text-slate-800">CA Identity Manager Preset Generator</h1>
+                <p class="text-slate-600 mt-2">Generate a powerful on-page tool to build your form-filling presets.</p>
+            </header>
+
+            <main id="app-container" class="bg-white p-8 rounded-2xl shadow-lg">
+                <div id="step1" class="step active">
+                    <h2 class="text-2xl font-semibold text-slate-800 mb-6">Generate Your Builder</h2>
+                    <div class="p-4 bg-blue-50 border border-blue-200 text-blue-800 rounded-lg text-sm">
+                        Click the button below to generate a **Preset Builder** bookmarklet. Drag it to your bookmarks bar. When you're on a CA Identity Manager form, click the bookmarklet to open a powerful builder and create your final form-filler tool.
+                    </div>
+                    <div class="mt-6">
+                        <label for="bookmarkletName" class="block text-sm font-medium text-slate-700">Builder Bookmarklet Name</label>
+                        <input type="text" id="bookmarkletName" value="IDM Preset Builder" class="mt-1 block w-full px-3 py-2 bg-white border border-slate-300 rounded-md shadow-sm">
+                    </div>
+                    <div class="mt-8 flex justify-end">
+                        <button id="generateBtn" class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700">Generate Preset Builder</button>
+                    </div>
+                </div>
+
+                <div id="step2" class="step">
+                    <h2 class="text-2xl font-semibold mb-4 text-center text-slate-700">Your Builder is Ready</h2>
+                    <div class="bg-slate-100 p-6 rounded-lg text-center">
+                        <p class="font-medium text-slate-600">Drag this link to your bookmarks bar:</p>
+                        <div class="my-4 flex justify-center">
+                            <a id="bookmarklet-link" href="#" class="px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700"></a>
+                        </div>
+                    </div>
+                     <div class="mt-6 p-4 bg-green-50 border border-green-200 text-green-800 rounded-md text-left">
+                        <strong>How to Use:</strong>
+                        <ol class="list-decimal list-inside mt-2 text-sm">
+                            <li>Drag the blue button above to your bookmarks bar.</li>
+                            <li>Navigate to a CA Identity Manager form to scan its fields.</li>
+                            <li>Click the bookmarklet to open the Preset Builder.</li>
+                            <li>Follow the steps inside the builder to map fields and define presets.</li>
+                            <li>Generate your final, custom filler bookmarklet from within the builder.</li>
+                        </ol>
+                    </div>
+                    <div class="mt-6 text-center">
+                        <button id="startOverBtn" class="px-6 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-slate-600 hover:bg-slate-700">Back</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+<script>
+const app = {
+    init() {
+        this.generateBtn = document.getElementById('generateBtn');
+        this.startOverBtn = document.getElementById('startOverBtn');
+        this.bookmarkletLink = document.getElementById('bookmarklet-link');
+        this.bookmarkletNameInput = document.getElementById('bookmarkletName');
+        this.step1 = document.getElementById('step1');
+        this.step2 = document.getElementById('step2');
+
+        this.generateBtn.addEventListener('click', () => this.generateBuilder());
+        this.startOverBtn.addEventListener('click', () => this.showStep(1));
+    },
+
+    showStep(num) {
+        this.step1.classList.remove('active');
+        this.step2.classList.remove('active');
+        document.getElementById('step' + num).classList.add('active');
+    },
+
+    generateBuilder() {
+        const name = this.bookmarkletNameInput.value.trim() || 'IDM Preset Builder';
+        
+        const builderScript = `
+            const state = {
+                panelId: 'idm-builder-' + Date.now(),
+                mode: null,
+                currentSource: null,
+                currentDestinations: [],
+                mappings: [],
+                presets: { defaults: {}, locations: {}, roles: {} }
+            };
+
+            // All builder functions (cleanup, setMode, scrapeSource, etc.) go here...
+            // This will be a large block of logic similar to the previous file's SCRIPT section
+            // but wrapped in a self-executing function for the bookmarklet.
+            
+            function buildInitialUI() {
+                // This function will create the main modal for the builder
+                // It will contain sections for mapping, presets, and final generation.
+            }
+
+            // ... etc.
+        `;
+
+        // This is a placeholder for the full, complex builder script
+        const fullBuilderLogic = 'alert("This is the placeholder for the full builder logic. It will open a modal to map fields and create presets.");';
+
+        const bookmarkletCode = 'javascript:(function(){' + encodeURIComponent(fullBuilderLogic) + '})()';
+        
+        this.bookmarkletLink.href = bookmarkletCode;
+        this.bookmarkletLink.textContent = name;
+        this.showStep(2);
+    }
+};
+
+app.init();
+</script>
+</body>
+</html>
+
+

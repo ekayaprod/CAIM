@@ -215,11 +215,9 @@
 
             <div class="step">
                 <h3>🔗 Step 1: Install Discovery Bookmarklet</h3>
-                <!-- REPLACE the previous <a href="javascript:..."> element with this -->
                 <p>Drag this button to your bookmarks bar:</p>
                 <a id="caimBookmarklet" class="btn btn-danger" href="#" title="Drag to bookmarks">🔍 CA IM Discovery Bookmarklet</a>
 
-                <!-- Keep the bookmarklet source here (template) so HTML parsing never treats it as active JS -->
                 <script type="text/template" id="bookmarklet-src">
                 (function(){
                   if(document.getElementById('caim-discovery-wrapper')){ return; }
@@ -230,7 +228,6 @@
                   wrapper.innerHTML = html;
                   d.body.appendChild(wrapper);
 
-                  // small helper UI message
                   const showBkmMessage = (msg, isError) => {
                     const el = d.getElementById('caim-message');
                     if(!el) return;
@@ -287,15 +284,14 @@
                       info += 'None found.\\n';
                     }
 
-                    // also capture potential management anchors/buttons
                     const actionables = [];
                     Array.from(d.querySelectorAll('a, button, input[type="submit"], input[type="button"]')).forEach(el => {
-                      if(el.getAttribute('onclick') || el.dataset.action || el.href && el.href.includes('action') ) {
+                      if(el.getAttribute('onclick') || el.dataset.action || el.href && (el.href.includes('action') || el.innerText.toLowerCase().includes('unlock') || el.innerText.toLowerCase().includes('reset'))) {
                         actionables.push({
                           tag: el.tagName.toLowerCase(),
                           text: (el.innerText || el.value || '').trim().slice(0,60),
-                          href: el.href || '',
-                          onclick: el.getAttribute('onclick') || '',
+                          href: el.href || 'N/A',
+                          onclick: el.getAttribute('onclick') || 'N/A',
                           data: JSON.stringify(el.dataset)
                         });
                       }
@@ -317,11 +313,7 @@
                   const copyDiscoveryResults = () => {
                     const text = window.discoveryData || '';
                     if(!text){ showBkmMessage('No data to copy!', true); return; }
-                    if(navigator.clipboard && navigator.clipboard.writeText){
-                      navigator.clipboard.writeText(text).then(()=>{ showBkmMessage('Results copied!'); }).catch(()=>{ fallbackCopy(text); });
-                    } else {
-                      fallbackCopy(text);
-                    }
+                    navigator.clipboard.writeText(text).then(()=>{ showBkmMessage('Results copied!'); }).catch(()=>{ fallbackCopy(text); });
 
                     function fallbackCopy(t){
                       const ta = d.createElement('textarea');
@@ -417,10 +409,7 @@
                 actions: []
             };
 
-            // split into blocks by Form N:
-            const formBlocks = data.split(/(^|\n)Form\s+\d+:/).filter(Boolean);
-            // The split above may produce interleaved parts; we will search for Action/Method/Fields patterns.
-            const reForm = /Action:\s*(.*)\n\s*Method:\s*(.*)\n([\s\S]*?)(?=(\nForm\s+\d+:|\n$))/g;
+            const reForm = /Action:\s*(.*)\n\s*Method:\s*(.*)\n([\s\S]*?)(?=(\nForm\s+\d+:|\n$|🔬 DEEP SCAN RESULTS))/g;
             let match;
             while ((match = reForm.exec(data)) !== null) {
                 const action = (match[1] || '').trim();
@@ -428,7 +417,6 @@
                 const block = match[3] || '';
                 const form = { action, method, fields: [] };
 
-                // Look for lines like: - type    name="fieldName"  OR - type name='fieldName'
                 const fieldRe = /-\s*(.*?)\s+name\s*=\s*["'](.*?)["']/g;
                 let f;
                 while ((f = fieldRe.exec(block)) !== null) {
@@ -437,18 +425,16 @@
                 info.forms.push(form);
             }
 
-            // Detect potential actions reported in deep scan (anchors/buttons)
             const actionBlockMatch = data.match(/Potential action elements[\s\S]*/);
             if (actionBlockMatch) {
                 const lines = actionBlockMatch[0].split('\n');
                 for (const ln of lines) {
-                    const m = ln.match(/-\s*(\w+)\s+text="([^"]*)" href="([^"]*)" onclick="([^"]*)" data='([^']*)'/);
+                    const m = ln.match(/-\s*(\w+)\s+text="([^"]*)" href="([^"]*)"/);
                     if (m) {
-                        info.actions.push({ tag: m[1], text: m[2], href: m[3], onclick: m[4], data: m[5] });
+                        info.actions.push({ tag: m[1], text: m[2], href: m[3]});
                     }
                 }
             }
-
             return info;
         }
 
@@ -466,24 +452,15 @@
             const searchInfo = parseDiscoveryData(searchData);
             const managementInfo = parseDiscoveryData(managementData);
 
-            // --- Input Data Validation ---
             const validationErrors = [];
-            if (!loginInfo.url || loginInfo.forms.length === 0) {
-                validationErrors.push('Login Page data appears invalid. Please re-run discovery and paste the full results.');
-            }
-            if (!searchInfo.url || searchInfo.forms.length === 0) {
-                validationErrors.push('User Search Page data appears invalid. Please re-run discovery and paste the full results.');
-            }
-            if (!managementInfo.url) { // Management page might not have forms, but should have a URL
-                validationErrors.push('User Management Page data appears invalid. Please re-run discovery and paste the full results.');
-            }
-
+            if (!loginInfo.url || loginInfo.forms.length === 0) validationErrors.push('Login Page data appears invalid.');
+            if (!searchInfo.url || searchInfo.forms.length === 0) validationErrors.push('User Search Page data appears invalid.');
+            if (!managementInfo.url) validationErrors.push('User Management Page data appears invalid.');
             if (validationErrors.length > 0) {
-                showModal(validationErrors.join('\n\n'));
+                showModal(validationErrors.join('\n') + "\nPlease re-run discovery and paste the full results.");
                 return;
             }
 
-            // Intelligent field guessing
             const guessField = (forms, keywords) => {
                 for (const form of forms) {
                     for (const field of form.fields) {
@@ -492,12 +469,26 @@
                         }
                     }
                 }
-                return `UPDATE_FIELD_NAME`;
+                return ``; // Return empty string if not found
             };
+            
+            const guessActionURL = (actions, keywords) => {
+                for (const action of actions) {
+                    for (const keyword of keywords) {
+                        if (action.text.toLowerCase().includes(keyword) && action.href && action.href !== 'N/A') {
+                            return action.href;
+                        }
+                    }
+                }
+                return `UPDATE_URL_FOR_ACTION`;
+            }
 
             const usernameField = guessField(loginInfo.forms, ['user', 'login', 'username', 'principal']);
             const passwordField = guessField(loginInfo.forms, ['pass', 'pwd', 'credential']);
+            const csrfField = guessField(loginInfo.forms, ['csrf', 'token']);
             const searchField = guessField(searchInfo.forms, ['search', 'query', 'filter', 'user']);
+            const unlockActionURL = guessActionURL(managementInfo.actions, ['unlock']);
+            const resetActionURL = guessActionURL(managementInfo.actions, ['reset', 'password']);
             
             let baseUrl = "https://your-caim-server.com";
             try {
@@ -505,106 +496,77 @@
                     const url = new URL(loginInfo.url);
                     baseUrl = `${url.protocol}//${url.hostname}`;
                 }
-            } catch(e) { /* Keep default if URL is invalid */ }
+            } catch(e) { /* Keep default */ }
             
             function psEscape(s) {
               if (!s) return '';
               return s.replace(/`/g, '``').replace(/"/g, '`"');
             }
 
-            const discoveredFieldsToString = (forms) => {
-                let fieldComments = [];
-                forms.forEach(form => {
-                   form.fields.forEach(field => {
-                       const t = (field.type || '').padEnd(10);
-                       const n = psEscape(field.name || '');
-                       fieldComments.push(`        # Type: ${t}, Name: "${n}"`);
-                   });
-                });
-                return fieldComments.length > 0 ? fieldComments.join('\n') : "        # No form fields discovered on this page.";
-            };
-
             const config = `# =============================================================================
 # CA Identity Manager PowerShell Configuration
 # Generated by Discovery Tool on ${new Date().toLocaleString()}
-# REVIEW AND UPDATE ALL "UPDATE_*" VALUES
+# 1. COPY this entire block.
+# 2. PASTE it over the existing configuration block in your PowerShell script.
 # =============================================================================
 
-# NOTE: This file contains comments you can copy to your real script. The hashtable below
-# contains the discovered values used by the sample functions further down.
-
 $Global:CAIMConfig = @{
+    # ===== SERVER INFORMATION (Discovered) =====
     BaseURL               = "${psEscape(baseUrl)}"
-    LoginPageURL          = "${psEscape(loginInfo.url || 'UPDATE_LOGIN_URL')}"
-    UserSearchPageURL     = "${psEscape(searchInfo.url || 'UPDATE_SEARCH_URL')}"
-    UsernameField         = "${psEscape(usernameField)}"
-    PasswordField         = "${psEscape(passwordField)}"
-    SearchRequestURL      = "${psEscape(searchInfo.forms[0]?.action || searchInfo.url || 'UPDATE_SEARCH_ACTION_URL')}"
-    SearchField           = "${psEscape(searchField)}"
-    UnlockUserActionURL   = "UPDATE_URL_FOR_UNLOCK_ACTION"
-    ResetPasswordActionURL= "UPDATE_URL_FOR_RESET_ACTION"
+    
+    # ===== ACTION URLS (Discovered) =====
+    LoginPageURL          = "${psEscape(loginInfo.forms[0]?.action || loginInfo.url)}"
+    SearchRequestURL      = "${psEscape(searchInfo.forms[0]?.action || searchInfo.url)}"
+    # The URLs below are best-guesses from the management page scan. VERIFY THEM.
+    UnlockUserActionURL   = "${psEscape(unlockActionURL)}"
+    ResetPasswordActionURL= "${psEscape(resetActionURL)}"
+
+    # ===== FORM FIELDS (Discovered) =====
+    UsernameField         = "${psEscape(usernameField)}" # TODO: Verify this is correct
+    PasswordField         = "${psEscape(passwordField)}" # TODO: Verify this is correct
+    CsrfTokenField        = "${psEscape(csrfField)}" # IMPORTANT: Set to "" if no CSRF token is used
+    SearchField           = "${psEscape(searchField)}" # TODO: Verify this is correct
+    SearchFormMethod      = "${psEscape(searchInfo.forms[0]?.method || 'POST')}"
+    
+    # ===== USER MANAGEMENT FIELDS (Common Defaults - VERIFY) =====
+    UserIdField           = "userId" # Field name for the user ID on management forms
+    ActionField           = "action" # Field name that specifies the action (e.g., 'unlock')
+    UnlockActionValue     = "unlock" # The value for the action field to unlock a user
+    ResetPasswordActionValue = "resetPassword" # The value for the action field to reset a password
+    NewPasswordField      = "newPassword" # Field for the new password
+    ConfirmPasswordField  = "confirmPassword" # Field for confirming the new password
+
+    # ===== SCRIPT SETTINGS (Defaults) =====
     UserAgent             = "PowerShell-CAIM-Automation/1.0"
     RequestTimeoutSec     = 60
+    # Set to $false if your server uses a self-signed certificate
+    VerifySSLCertificate  = $true 
 }
 
-# --- Discovered fields for reference ---
-# --- Login Page Fields ---
-${discoveredFieldsToString(loginInfo.forms)}
+# --- For reference, here is what the discovery tool found on each page ---
 
-# --- Search Page Fields ---
-${discoveredFieldsToString(searchInfo.forms)}
+<#
+--- LOGIN PAGE ---
+URL: ${loginInfo.url}
+FORMS:
+${loginInfo.forms.map(f => `  - ACTION: ${f.action}\n    METHOD: ${f.method}\n    FIELDS:\n${f.fields.map(field => `      - ${field.type}: ${field.name}`).join('\n')}`).join('\n')}
 
-# --- Management Page Fields ---
-${discoveredFieldsToString(managementInfo.forms)}
+--- SEARCH PAGE ---
+URL: ${searchInfo.url}
+FORMS:
+${searchInfo.forms.map(f => `  - ACTION: ${f.action}\n    METHOD: ${f.method}\n    FIELDS:\n${f.fields.map(field => `      - ${field.type}: ${field.name}`).join('\n')}`).join('\n')}
 
-# -------------------------
-# Example helper functions (minimal skeletons)
-# -------------------------
-function New-CAIMSession {
-    param(
-      [string]$Username,
-      [string]$Password
-    )
-    # Use a session variable to hold cookies and reuse them across calls
-    $form = @{
-        "${psEscape(usernameField)}" = $Username
-        "${psEscape(passwordField)}" = $Password
-    }
-
-    try {
-        $response = Invoke-WebRequest -Uri $Global:CAIMConfig.LoginPageURL -Method Post -Form $form -SessionVariable caimSession -TimeoutSec $Global:CAIMConfig.RequestTimeoutSec -UseBasicParsing
-        Write-Host "Login request sent. Status: $($response.StatusCode)"
-        return $caimSession
-    } catch {
-        Write-Warning "Login failed: $_"
-        return $null
-    }
-}
-
-function CAIM-SearchUser {
-    param(
-      [string]$Query,
-      $Session
-    )
-    $form = @{
-       "${psEscape(searchField)}" = $Query
-    }
-    try {
-        $r = Invoke-WebRequest -Uri $Global:CAIMConfig.SearchRequestURL -Method Post -Form $form -WebSession $Session -TimeoutSec $Global:CAIMConfig.RequestTimeoutSec -UseBasicParsing
-        return $r
-    } catch {
-        Write-Warning "Search failed: $_"
-        return $null
-    }
-}
-
-# End of generated configuration. Update the placeholders and test against a non-production account.
+--- MANAGEMENT PAGE ---
+URL: ${managementInfo.url}
+POTENTIAL ACTIONS:
+${managementInfo.actions.map(a => `  - ${a.tag.toUpperCase()} Text: "${a.text}", Href: "${a.href}"`).join('\n')}
+#>
 `;
 
             const configElement = document.getElementById('powershellConfig');
             configElement.innerHTML = `<pre>${config}</pre>`;
             configElement.style.display = 'block';
-            showModal('PowerShell configuration generated successfully! Please review and update placeholder values.');
+            showModal('PowerShell configuration generated successfully! Please review, verify, and update placeholder values before use.');
         }
 
         function copyConfig() {
@@ -618,7 +580,7 @@ function CAIM-SearchUser {
             const fallbackCopy = (text) => {
                 const textarea = document.createElement('textarea');
                 textarea.value = text;
-                textarea.style.position = 'fixed'; // Prevent page from scrolling
+                textarea.style.position = 'fixed';
                 textarea.style.opacity = '0';
                 document.body.appendChild(textarea);
                 textarea.select();
@@ -656,7 +618,6 @@ function CAIM-SearchUser {
           URL.revokeObjectURL(url);
         }
 
-        // --- Event Listeners ---
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('loginPageData').addEventListener('input', () => updateStatus('loginPageData', 'loginStatus'));
             document.getElementById('searchPageData').addEventListener('input', () => updateStatus('searchPageData', 'searchStatus'));
@@ -674,39 +635,21 @@ function CAIM-SearchUser {
     </script>
     <script>
     document.addEventListener('DOMContentLoaded', function() {
-      // Build bookmarklet href from template
       try {
         const srcEl = document.getElementById('bookmarklet-src');
         const link = document.getElementById('caimBookmarklet');
         if (!srcEl || !link) return;
-
-        // Read template content
         let code = srcEl.textContent || srcEl.innerText || '';
-
-        // Minify: remove comments, newlines, repeated spaces (very basic)
-        code = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''); // remove comments
-        code = code.replace(/\n+/g, ' ');
-        code = code.replace(/\s{2,}/g, ' ');
-        code = code.trim();
-
-        // Wrap into IIFE if not already wrapped
+        code = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, '').replace(/\n+/g, ' ').replace(/\s{2,}/g, ' ').trim();
         if (!/^(\(function|\(\s*async\s*function)/.test(code)) {
           code = '(function(){' + code + '})();';
         }
-
-        // Create bookmarklet string
         const bookmarklet = 'javascript:' + encodeURIComponent(code);
-
-        // Set href; using setAttribute ensures proper markup
         link.setAttribute('href', bookmarklet);
         link.setAttribute('draggable', 'true');
         link.setAttribute('title', 'Drag this link to your bookmarks bar');
-
-        // Also make it possible to click the button on this page (for debug) — it will execute right away.
         link.addEventListener('click', function(e) {
-          // normal click should open as a link only when ctrl/alt pressed; otherwise prevent navigation
           e.preventDefault();
-          // For now, do nothing — user should drag to bookmarks bar and run on CA IM pages.
         }, false);
       } catch (err) {
         console.error('Failed to build bookmarklet link', err);

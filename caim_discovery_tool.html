@@ -5,12 +5,32 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CA IM Discovery Tool</title>
     <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #34495e;
+            --accent-color: #28a745;
+            --accent-hover: #20c997;
+            --info-color: #17a2b8;
+            --warning-color: #ffc107;
+            --purple-color: #6f42c1;
+            --danger-color: #dc3545;
+            --light-bg: #f8f9fa;
+            --text-light: #ecf0f1;
+            --text-dark: #212529;
+            --border-color: #dee2e6;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             margin: 0;
             padding: 20px;
             min-height: 100vh;
+            color: var(--text-dark);
         }
         
         .container {
@@ -23,7 +43,7 @@
         }
         
         .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
             color: white;
             padding: 30px;
             text-align: center;
@@ -33,17 +53,8 @@
             padding: 30px;
         }
         
-        .discovery-panel {
-            background: #f8f9fa;
-            border: 2px solid #28a745;
-            border-radius: 10px;
-            padding: 25px;
-            margin-bottom: 20px;
-            position: relative;
-        }
-        
         .btn {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, var(--accent-color) 0%, var(--accent-hover) 100%);
             color: white;
             padding: 12px 25px;
             border: none;
@@ -53,6 +64,11 @@
             cursor: pointer;
             margin: 5px;
             transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
         }
         
         .btn:hover {
@@ -60,13 +76,15 @@
             box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
         }
         
-        .btn-info { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); }
-        .btn-warning { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #212529; }
-        .btn-copy { background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%); }
+        .btn-info { background: linear-gradient(135deg, var(--info-color) 0%, #138496 100%); }
+        .btn-warning { background: linear-gradient(135deg, var(--warning-color) 0%, #e0a800 100%); color: var(--text-dark); }
+        .btn-copy { background: linear-gradient(135deg, var(--purple-color) 0%, #5a32a3 100%); }
+        .btn-modal-close { background: linear-gradient(135deg, #6c757d 0%, #495057 100%); }
+        .btn-danger { background: linear-gradient(135deg, var(--danger-color) 0%, #c82333 100%); }
         
-        .results {
-            background: #2c3e50;
-            color: #ecf0f1;
+        .results, .config-output {
+            background: var(--primary-color);
+            color: var(--text-light);
             padding: 20px;
             border-radius: 8px;
             font-family: 'Courier New', monospace;
@@ -75,28 +93,12 @@
             overflow-y: auto;
             margin-top: 15px;
             white-space: pre-wrap;
+            word-break: break-all;
         }
         
         .config-output {
             background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 20px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.85rem;
-            margin-top: 15px;
-            white-space: pre-wrap;
-            border: 2px solid #6f42c1;
-        }
-        
-        .section-header {
-            color: #2c3e50;
-            font-size: 1.3rem;
-            font-weight: 600;
-            margin-bottom: 15px;
-            display: flex;
-            align-items: center;
-            gap: 10px;
+            border: 2px solid var(--purple-color);
         }
         
         .instructions {
@@ -109,31 +111,16 @@
         
         .step {
             background: white;
-            border: 1px solid #dee2e6;
+            border: 1px solid var(--border-color);
             border-radius: 8px;
             padding: 20px;
             margin-bottom: 15px;
         }
         
         .step h3 {
-            color: #495057;
+            color: var(--primary-color);
             margin-top: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        
-        .copy-btn {
-            background: #6f42c1;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 0.8rem;
-            position: absolute;
-            top: 10px;
-            right: 10px;
+            font-size: 1.2rem;
         }
         
         .status {
@@ -141,23 +128,68 @@
             border-radius: 20px;
             font-size: 0.85rem;
             font-weight: 600;
-            display: inline-block;
-            margin: 5px 0;
+            display: block; 
+            margin-top: 10px;
+            max-width: fit-content;
         }
         
         .status-ready { background: #d4edda; color: #155724; }
         .status-pending { background: #fff3cd; color: #856404; }
+
+        textarea {
+            width: 100%; 
+            height: 150px; 
+            font-family: monospace; 
+            font-size: 0.9rem; 
+            padding: 10px; 
+            border: 1px solid var(--border-color); 
+            border-radius: 5px;
+        }
         
-        #discoveryBookmarklet {
-            background: #dc3545;
-            color: white;
-            text-decoration: none;
-            padding: 15px 30px;
-            border-radius: 8px;
-            font-weight: 600;
-            display: inline-block;
-            margin: 10px 0;
+        /* Custom Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s linear 0.3s;
+        }
+
+        .modal-overlay.visible {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-box {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            transform: scale(0.9);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-overlay.visible .modal-box {
+            transform: scale(1);
+        }
+
+        .modal-box p {
+            margin: 0 0 20px 0;
             font-size: 1.1rem;
+            color: #495057;
+            white-space: pre-wrap;
         }
     </style>
 </head>
@@ -172,146 +204,252 @@
             <div class="instructions">
                 <h3>📋 How to Use This Discovery Tool</h3>
                 <ol>
-                    <li><strong>Install the Discovery Bookmarklet:</strong> Right-click the red link below and bookmark it</li>
-                    <li><strong>Navigate to your CA IM admin portal</strong> and log in normally</li>
-                    <li><strong>On each relevant page</strong> (login, user search, user management), click the Discovery bookmarklet</li>
-                    <li><strong>Copy the results</strong> and paste them into the results boxes below</li>
-                    <li><strong>Generate your PowerShell config</strong> using the collected information</li>
+                    <li><strong>Install the Discovery Bookmarklet:</strong> Drag the red button below to your browser's bookmarks bar.</li>
+                    <li><strong>Navigate to your CA IM admin portal</strong> and log in.</li>
+                    <li><strong>On each relevant page</strong> (e.g., login, user search, user management), click the Discovery bookmarklet.</li>
+                    <li><strong>Copy the results</strong> from the discovery panel that appears.</li>
+                    <li><strong>Paste the results</strong> into the corresponding text boxes below.</li>
+                    <li><strong>Note on CSP:</strong> If the bookmarklet doesn't run, your portal may have a strict Content Security Policy (CSP). Try pasting the script from this page's source code (inside the `bookmarklet-src` template) directly into your browser's developer console on the target page.</li>
                 </ol>
             </div>
 
             <div class="step">
                 <h3>🔗 Step 1: Install Discovery Bookmarklet</h3>
-                <p>Right-click this link and select "Bookmark this link" or "Add to Bookmarks":</p>
-                <a href="javascript:(function(){if(document.getElementById('caim-discovery')){alert('Discovery tool already open!');return;}var d=document,r=d.createElement('div');r.innerHTML='<div id=\"caim-discovery\" style=\"position:fixed;top:20px;left:20px;width:450px;background:white;border:3px solid %23dc3545;border-radius:10px;padding:20px;z-index:99999;box-shadow:0 10px 30px rgba(0,0,0,0.5);font-family:Arial,sans-serif;font-size:14px;\"><h3 style=\"margin:0 0 15px 0;color:%23dc3545;text-align:center;\">🔍 CA IM Page Discovery</h3><div style=\"max-height:300px;overflow-y:auto;background:%23f8f9fa;padding:15px;border-radius:5px;margin-bottom:15px;\"><div id=\"discovery-results\"></div></div><div style=\"text-align:center;\"><button onclick=\"copyDiscoveryResults()\" style=\"background:%2328a745;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;\">📋 Copy Results</button><button onclick=\"runFullDiscovery()\" style=\"background:%2317a2b8;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;\">🔍 Deep Scan</button><button onclick=\"document.getElementById(\\'caim-discovery\\').remove();delete window.discoveryData;\" style=\"background:%23dc3545;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;\">✖ Close</button></div></div>';d.body.appendChild(r);runDiscovery();function runDiscovery(){var results=d.getElementById('discovery-results');var info='🌐 PAGE INFORMATION\\n';info+='='.repeat(40)+'\\n';info+='Page Title: '+d.title+'\\n';info+='Current URL: '+location.href+'\\n';info+='Domain: '+location.hostname+'\\n';info+='Path: '+location.pathname+'\\n';info+='Protocol: '+location.protocol+'\\n\\n';info+='📝 FORMS ANALYSIS\\n';info+='='.repeat(40)+'\\n';var forms=d.querySelectorAll('form');info+='Total Forms Found: '+forms.length+'\\n\\n';forms.forEach((form,i)=>{info+='Form '+(i+1)+':  \\n';info+='  Action: '+(form.action||'N/A')+'\\n';info+='  Method: '+(form.method||'GET')+'\\n';info+='  ID: '+(form.id||'N/A')+'\\n';info+='  Name: '+(form.name||'N/A')+'\\n';info+='  Class: '+(form.className||'N/A')+'\\n';var inputs=form.querySelectorAll('input');info+='  Input Fields: '+inputs.length+'\\n';inputs.forEach(input=>{info+='    - '+input.type+' field: \"'+(input.name||input.id||'unnamed')+'\" placeholder=\"'+(input.placeholder||'N/A')+'\"\\n';});var selects=form.querySelectorAll('select');if(selects.length>0){info+='  Select Fields: '+selects.length+'\\n';selects.forEach(select=>{info+='    - Select: \"'+(select.name||select.id||'unnamed')+'\"\\n';});}info+='\\n';});info+='🔘 BUTTONS ANALYSIS\\n';info+='='.repeat(40)+'\\n';var buttons=d.querySelectorAll('button,input[type=\"submit\"],input[type=\"button\"]');info+='Total Buttons: '+buttons.length+'\\n';buttons.forEach((btn,i)=>{var text=btn.textContent||btn.value||'N/A';var type=btn.type||btn.tagName;info+='Button '+(i+1)+': \"'+text+'\" ('+type+') ID=\"'+(btn.id||'N/A')+'\" Class=\"'+(btn.className||'N/A')+'\"\\n';});info+='\\n🔗 LINKS ANALYSIS\\n';info+='='.repeat(40)+'\\n';var links=d.querySelectorAll('a[href]');var relevantLinks=Array.from(links).filter(link=>link.href.includes('user')||link.href.includes('admin')||link.href.includes('manage')||link.href.includes('search')||link.textContent.toLowerCase().includes('user')||link.textContent.toLowerCase().includes('manage')||link.textContent.toLowerCase().includes('admin'));info+='Relevant Navigation Links: '+relevantLinks.length+'\\n';relevantLinks.slice(0,10).forEach((link,i)=>{info+='Link '+(i+1)+': \"'+link.textContent.trim()+'\" → '+link.href+'\\n';});info+='\\n📊 TABLES ANALYSIS\\n';info+='='.repeat(40)+'\\n';var tables=d.querySelectorAll('table');info+='Total Tables: '+tables.length+'\\n';tables.forEach((table,i)=>{var headers=table.querySelectorAll('th');var rows=table.querySelectorAll('tr');info+='Table '+(i+1)+': '+rows.length+' rows, '+headers.length+' headers\\n';if(headers.length>0){info+='  Headers: ';Array.from(headers).forEach(h=>info+='\"'+h.textContent.trim()+'\" ');info+='\\n';}});info+='\\n🔍 JAVASCRIPT ANALYSIS\\n';info+='='.repeat(40)+'\\n';var scripts=d.querySelectorAll('script[src]');info+='External Scripts: '+scripts.length+'\\n';Array.from(scripts).slice(0,5).forEach((script,i)=>{info+='Script '+(i+1)+': '+script.src+'\\n';});info+='\\n📋 META INFORMATION\\n';info+='='.repeat(40)+'\\n';var metas=d.querySelectorAll('meta');var relevantMetas=Array.from(metas).filter(meta=>meta.name&&(meta.name.includes('app')||meta.name.includes('version')||meta.name.includes('author')));relevantMetas.forEach(meta=>{info+='Meta: '+meta.name+' = \"'+meta.content+'\"\\n';});var generator=d.querySelector('meta[name=\"generator\"]');if(generator)info+='Generator: '+generator.content+'\\n';info+='\\n🔐 AUTHENTICATION ANALYSIS\\n';info+='='.repeat(40)+'\\n';var authFields=d.querySelectorAll('input[type=\"password\"],input[name*=\"user\"],input[name*=\"login\"],input[id*=\"user\"],input[id*=\"login\"]');info+='Auth-related fields: '+authFields.length+'\\n';authFields.forEach((field,i)=>{info+='Auth Field '+(i+1)+': '+field.type+' \"'+(field.name||field.id)+'\" placeholder=\"'+(field.placeholder||'N/A')+'\"\\n';});results.innerHTML='<pre style=\"font-size:11px;line-height:1.3;margin:0;white-space:pre-wrap;\">'+info+'</pre>';window.discoveryData=info;}function runFullDiscovery(){var results=d.getElementById('discovery-results');var info=window.discoveryData||'';info+='\\n\\n🔬 DEEP SCAN RESULTS\\n';info+='='.repeat(40)+'\\n';info+='Local Storage Keys: ';try{info+=Object.keys(localStorage).join(', ')||'None';}catch(e){info+='Access Denied';}info+='\\n';info+='Session Storage Keys: ';try{info+=Object.keys(sessionStorage).join(', ')||'None';}catch(e){info+='Access Denied';}info+='\\n';info+='Cookies: ';info+=d.cookie?d.cookie.split(';').length+' cookies found':'No cookies';info+='\\n\\n';var iframes=d.querySelectorAll('iframe');info+='iFrames: '+iframes.length+'\\n';iframes.forEach((iframe,i)=>{info+='iFrame '+(i+1)+': '+iframe.src+'\\n';});info+='\\n';var hiddenInputs=d.querySelectorAll('input[type=\"hidden\"]');info+='Hidden Inputs: '+hiddenInputs.length+'\\n';hiddenInputs.slice(0,10).forEach((input,i)=>{info+='Hidden '+(i+1)+': \"'+(input.name||input.id||'unnamed')+'\" = \"'+input.value+'\"\\n';});results.innerHTML='<pre style=\"font-size:11px;line-height:1.3;margin:0;white-space:pre-wrap;\">'+info+'</pre>';window.discoveryData=info;}window.copyDiscoveryResults=function(){var text=window.discoveryData||'No data collected';if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(()=>{alert('Discovery results copied to clipboard!');}).catch(()=>{fallbackCopy(text);});}else{fallbackCopy(text);}};function fallbackCopy(text){var textarea=d.createElement('textarea');textarea.value=text;textarea.style.position='fixed';textarea.style.opacity='0';d.body.appendChild(textarea);textarea.select();try{d.execCommand('copy');alert('Discovery results copied to clipboard!');}catch(e){alert('Failed to copy. Please manually select and copy the text.');}d.body.removeChild(textarea);}})();" id="discoveryBookmarklet">🔍 CA IM Discovery Bookmarklet</a>
-                <div class="status status-ready">Ready to install - right-click and bookmark this link</div>
+                <!-- REPLACE the previous <a href="javascript:..."> element with this -->
+                <p>Drag this button to your bookmarks bar:</p>
+                <a id="caimBookmarklet" class="btn btn-danger" href="#" title="Drag to bookmarks">🔍 CA IM Discovery Bookmarklet</a>
+
+                <!-- Keep the bookmarklet source here (template) so HTML parsing never treats it as active JS -->
+                <script type="text/template" id="bookmarklet-src">
+                (function(){
+                  if(document.getElementById('caim-discovery-wrapper')){ return; }
+                  const d = document;
+                  const wrapper = d.createElement('div');
+                  wrapper.id = 'caim-discovery-wrapper';
+                  const html = '<div id="caim-discovery" style="position:fixed;top:20px;left:20px;width:450px;background:white;border:3px solid #dc3545;border-radius:10px;padding:20px;z-index:99999;box-shadow:0 10px 30px rgba(0,0,0,0.5);font-family:Arial,sans-serif;font-size:14px;"><h3 style="margin:0 0 15px 0;color:#dc3545;text-align:center;">🔍 CA IM Page Discovery</h3><div id="caim-message" style="background:#d4edda;color:#155724;padding:10px;border-radius:5px;margin-bottom:10px;display:none;text-align:center;font-weight:bold;"></div><div style="max-height:300px;overflow-y:auto;background:#f8f9fa;padding:15px;border-radius:5px;margin-bottom:15px;"><pre id="discovery-results" style="font-size:11px;line-height:1.3;margin:0;white-space:pre-wrap;word-break:break-all;"></pre></div><div style="text-align:center;"><button id="bkm-copy" style="background:#28a745;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;">📋 Copy Results</button><button id="bkm-scan" style="background:#17a2b8;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;">🔬 Deep Scan</button><button id="bkm-close" style="background:#6c757d;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;">✖ Close</button></div></div>';
+                  wrapper.innerHTML = html;
+                  d.body.appendChild(wrapper);
+
+                  // small helper UI message
+                  const showBkmMessage = (msg, isError) => {
+                    const el = d.getElementById('caim-message');
+                    if(!el) return;
+                    el.textContent = msg;
+                    el.style.background = isError ? '#f8d7da' : '#d4edda';
+                    el.style.color = isError ? '#721c24' : '#155724';
+                    el.style.display = 'block';
+                    setTimeout(()=>{ el.style.display = 'none'; }, 3500);
+                  };
+
+                  const runDiscovery = () => {
+                    let info = '🌐 PAGE INFORMATION\\n' + '='.repeat(40) + '\\n';
+                    info += 'Page Title: ' + (d.title || '') + '\\n';
+                    info += 'Current URL: ' + (location.href || '') + '\\n\\n';
+                    info += '📝 FORMS ANALYSIS\\n' + '='.repeat(40) + '\\n';
+                    const forms = d.querySelectorAll('form');
+                    info += 'Total Forms: ' + forms.length + '\\n\\n';
+                    if(forms.length === 0){
+                      info += 'No forms found on this page.\\n\\n';
+                    } else {
+                      forms.forEach((form,i) => {
+                        info += 'Form ' + (i+1) + ':\\n';
+                        info += '  Action: ' + (form.action || 'N/A') + '\\n';
+                        info += '  Method: ' + ((form.method || 'GET').toUpperCase()) + '\\n';
+                        const inputs = form.querySelectorAll('input, textarea, select');
+                        info += '  Fields (' + inputs.length + '):\\n';
+                        if(inputs.length > 0){
+                          inputs.forEach(input => {
+                            const type = input.type || input.tagName.toLowerCase();
+                            const name = input.name || input.id || 'unnamed';
+                            info += '    - ' + (type + '          ').slice(0,10) + ' name="' + name + '"\\n';
+                          });
+                        } else {
+                          info += '    No fields found in this form.\\n';
+                        }
+                        info += '\\n';
+                      });
+                    }
+                    d.getElementById('discovery-results').textContent = info;
+                    window.discoveryData = info;
+                  };
+
+                  const runFullDiscovery = () => {
+                    let info = window.discoveryData || '';
+                    info += '\\n\\n🔬 DEEP SCAN RESULTS\\n' + '='.repeat(40) + '\\n';
+                    const hiddenInputs = d.querySelectorAll('input[type="hidden"]');
+                    info += 'Hidden Inputs (' + hiddenInputs.length + '):\\n';
+                    if(hiddenInputs.length > 0){
+                      Array.from(hiddenInputs).slice(0,15).forEach(input => {
+                        const name = input.name || input.id || 'unnamed';
+                        info += '- name="' + name + '" value="' + (input.value || '') + '"\\n';
+                      });
+                    } else {
+                      info += 'None found.\\n';
+                    }
+
+                    // also capture potential management anchors/buttons
+                    const actionables = [];
+                    Array.from(d.querySelectorAll('a, button, input[type="submit"], input[type="button"]')).forEach(el => {
+                      if(el.getAttribute('onclick') || el.dataset.action || el.href && el.href.includes('action') ) {
+                        actionables.push({
+                          tag: el.tagName.toLowerCase(),
+                          text: (el.innerText || el.value || '').trim().slice(0,60),
+                          href: el.href || '',
+                          onclick: el.getAttribute('onclick') || '',
+                          data: JSON.stringify(el.dataset)
+                        });
+                      }
+                    });
+                    info += '\\nPotential action elements (' + actionables.length + '):\\n';
+                    if(actionables.length > 0){
+                      actionables.slice(0,25).forEach(a => {
+                        info += `- ${a.tag} text="${a.text}" href="${a.href}" onclick="${a.onclick}" data='${a.data}'\\n`;
+                      });
+                    } else {
+                      info += 'None detected.\\n';
+                    }
+
+                    d.getElementById('discovery-results').textContent = info;
+                    window.discoveryData = info;
+                    showBkmMessage('Deep Scan Complete!');
+                  };
+
+                  const copyDiscoveryResults = () => {
+                    const text = window.discoveryData || '';
+                    if(!text){ showBkmMessage('No data to copy!', true); return; }
+                    if(navigator.clipboard && navigator.clipboard.writeText){
+                      navigator.clipboard.writeText(text).then(()=>{ showBkmMessage('Results copied!'); }).catch(()=>{ fallbackCopy(text); });
+                    } else {
+                      fallbackCopy(text);
+                    }
+
+                    function fallbackCopy(t){
+                      const ta = d.createElement('textarea');
+                      ta.value = t;
+                      ta.style.position = 'fixed';
+                      ta.style.opacity = '0';
+                      d.body.appendChild(ta);
+                      ta.select();
+                      try { d.execCommand('copy'); showBkmMessage('Results copied!'); } catch(e){ showBkmMessage('Automatic copy failed.', true); }
+                      d.body.removeChild(ta);
+                    }
+                  };
+
+                  d.getElementById('bkm-copy').onclick = copyDiscoveryResults;
+                  d.getElementById('bkm-scan').onclick = runFullDiscovery;
+                  d.getElementById('bkm-close').onclick = ()=>{ wrapper.remove(); };
+
+                  runDiscovery();
+                })();
+                </script>
+                <div class="status status-ready">Ready to install</div>
             </div>
 
             <div class="step">
                 <h3>📄 Step 2: Discover Login Page</h3>
-                <p>Go to your CA IM login page and click the discovery bookmarklet, then paste results here:</p>
-                <textarea id="loginPageData" placeholder="Paste login page discovery results here..." style="width: 100%; height: 150px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                <p>Go to your CA IM login page, click the discovery bookmarklet, then paste results here:</p>
+                <textarea id="loginPageData" placeholder="Paste login page discovery results here..."></textarea>
                 <div class="status status-pending" id="loginStatus">Waiting for data...</div>
             </div>
 
             <div class="step">
                 <h3>🔍 Step 3: Discover User Search Page</h3>
-                <p>Navigate to the page where you search for users, run the bookmarklet, and paste results:</p>
-                <textarea id="searchPageData" placeholder="Paste user search page discovery results here..." style="width: 100%; height: 150px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                <p>Navigate to the user search page, run the bookmarklet, and paste results:</p>
+                <textarea id="searchPageData" placeholder="Paste user search page discovery results here..."></textarea>
                 <div class="status status-pending" id="searchStatus">Waiting for data...</div>
             </div>
 
             <div class="step">
                 <h3>⚙️ Step 4: Discover User Management Page</h3>
-                <p>Go to a user's management page (where you unlock/reset passwords), run the bookmarklet:</p>
-                <textarea id="managementPageData" placeholder="Paste user management page discovery results here..." style="width: 100%; height: 150px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                <p>Go to a user's management page (e.g., where you unlock accounts), run the bookmarklet, and paste results:</p>
+                <textarea id="managementPageData" placeholder="Paste user management page discovery results here..."></textarea>
                 <div class="status status-pending" id="managementStatus">Waiting for data...</div>
             </div>
 
             <div class="step">
-                <h3>🔧 Step 5: Generate PowerShell Configuration</h3>
-                <button class="btn" onclick="generatePowerShellConfig()">Generate Configuration</button>
-                <button class="btn btn-copy" onclick="copyConfig()">Copy Config</button>
-                
+                <h3>🔧 Step 5: Generate & Review Configuration</h3>
+                <button class="btn" onclick="generatePowerShellConfig()">🚀 Generate Configuration</button>
+                <button class="btn btn-copy" onclick="copyConfig()">📋 Copy Config</button>
+                <button class="btn btn-info" onclick="downloadConfig()">💾 Download Config</button>
                 <div id="powershellConfig" class="config-output" style="display: none;"></div>
-            </div>
-
-            <div class="step">
-                <h3>📋 Step 6: Analysis Results</h3>
-                <button class="btn btn-info" onclick="analyzeAllData()">Analyze Collected Data</button>
-                <div id="analysisResults" class="results" style="display: none;"></div>
             </div>
         </div>
     </div>
 
+    <!-- Custom Modal for Notifications -->
+    <div id="customModal" class="modal-overlay">
+        <div class="modal-box">
+            <p id="modalMessage"></p>
+            <button id="modalCloseBtn" class="btn btn-modal-close">Close</button>
+        </div>
+    </div>
+
     <script>
+        // --- Modal Notification Logic ---
+        function showModal(message) {
+            const modal = document.getElementById('customModal');
+            const messageEl = document.getElementById('modalMessage');
+            if (modal && messageEl) {
+                messageEl.textContent = message;
+                modal.classList.add('visible');
+            }
+        }
+
+        // --- Core Application Logic ---
         function updateStatus(textareaId, statusId) {
             const textarea = document.getElementById(textareaId);
             const status = document.getElementById(statusId);
-            
             if (!textarea || !status) return;
             
-            if (textarea.value.trim().length > 100) {
+            if (textarea.value.trim().length > 50) {
                 status.className = 'status status-ready';
-                status.textContent = '✅ Data received - ready for processing';
+                status.textContent = '✅ Data received';
             } else {
                 status.className = 'status status-pending';
                 status.textContent = 'Waiting for data...';
             }
         }
+        
+        function parseDiscoveryData(data) {
+            const info = {
+                url: (data.match(/Current URL:\s*(.*)/)?.[1] || '').trim(),
+                forms: [],
+                actions: []
+            };
 
-        function extractUrlInfo(data, pageType) {
-            const lines = data.split('\n');
-            const info = {};
-            
-            lines.forEach(line => {
-                if (line.includes('Current URL:')) {
-                    info.url = line.split('Current URL:')[1].trim();
-                }
-                if (line.includes('Domain:')) {
-                    info.domain = line.split('Domain:')[1].trim();
-                }
-                if (line.includes('Path:')) {
-                    info.path = line.split('Path:')[1].trim();
-                }
-                if (line.includes('Protocol:')) {
-                    info.protocol = line.split('Protocol:')[1].trim();
-                }
-            });
-            
-            return info;
-        }
+            // split into blocks by Form N:
+            const formBlocks = data.split(/(^|\n)Form\s+\d+:/).filter(Boolean);
+            // The split above may produce interleaved parts; we will search for Action/Method/Fields patterns.
+            const reForm = /Action:\s*(.*)\n\s*Method:\s*(.*)\n([\s\S]*?)(?=(\nForm\s+\d+:|\n$))/g;
+            let match;
+            while ((match = reForm.exec(data)) !== null) {
+                const action = (match[1] || '').trim();
+                const method = (match[2] || 'GET').trim().toUpperCase();
+                const block = match[3] || '';
+                const form = { action, method, fields: [] };
 
-        function extractFormInfo(data) {
-            const lines = data.split('\n');
-            const forms = [];
-            let currentForm = null;
-            let inFormSection = false;
-            
-            lines.forEach(line => {
-                if (line.includes('FORMS ANALYSIS')) {
-                    inFormSection = true;
-                    return;
+                // Look for lines like: - type    name="fieldName"  OR - type name='fieldName'
+                const fieldRe = /-\s*(.*?)\s+name\s*=\s*["'](.*?)["']/g;
+                let f;
+                while ((f = fieldRe.exec(block)) !== null) {
+                    form.fields.push({ type: (f[1] || '').trim(), name: (f[2] || '').trim() });
                 }
-                if (line.includes('BUTTONS ANALYSIS')) {
-                    inFormSection = false;
-                    if (currentForm) {
-                        forms.push(currentForm);
-                        currentForm = null;
-                    }
-                    return;
-                }
-                
-                if (inFormSection) {
-                    // Fixed: Handle variable whitespace in "Form X  :" pattern
-                    if (line.match(/Form\s+\d+\s*:/)) {
-                        if (currentForm) forms.push(currentForm);
-                        currentForm = { inputs: [], selects: [] };
-                    }
-                    
-                    if (currentForm) {
-                        if (line.includes('Action:')) {
-                            currentForm.action = line.split('Action:')[1].trim();
-                        }
-                        if (line.includes('Method:')) {
-                            currentForm.method = line.split('Method:')[1].trim();
-                        }
-                        if (line.includes('ID:')) {
-                            currentForm.id = line.split('ID:')[1].trim();
-                        }
-                        if (line.includes('- ') && line.includes('field:')) {
-                            currentForm.inputs.push(line.trim());
-                        }
-                    }
-                }
-            });
-            
-            // Fixed: Add final form if exists
-            if (currentForm) {
-                forms.push(currentForm);
+                info.forms.push(form);
             }
-            
-            return forms;
+
+            // Detect potential actions reported in deep scan (anchors/buttons)
+            const actionBlockMatch = data.match(/Potential action elements[\s\S]*/);
+            if (actionBlockMatch) {
+                const lines = actionBlockMatch[0].split('\n');
+                for (const ln of lines) {
+                    const m = ln.match(/-\s*(\w+)\s+text="([^"]*)" href="([^"]*)" onclick="([^"]*)" data='([^']*)'/);
+                    if (m) {
+                        info.actions.push({ tag: m[1], text: m[2], href: m[3], onclick: m[4], data: m[5] });
+                    }
+                }
+            }
+
+            return info;
         }
 
         function generatePowerShellConfig() {
@@ -320,320 +458,261 @@
             const managementData = document.getElementById('managementPageData').value;
             
             if (!loginData || !searchData || !managementData) {
-                alert('Please collect data from all three pages before generating the configuration.');
+                showModal('Please collect and paste data from all three pages before generating the configuration.');
                 return;
             }
             
-            const loginInfo = extractUrlInfo(loginData, 'login');
-            const searchInfo = extractUrlInfo(searchData, 'search');
-            const managementInfo = extractUrlInfo(managementData, 'management');
+            const loginInfo = parseDiscoveryData(loginData);
+            const searchInfo = parseDiscoveryData(searchData);
+            const managementInfo = parseDiscoveryData(managementData);
+
+            // --- Input Data Validation ---
+            const validationErrors = [];
+            if (!loginInfo.url || loginInfo.forms.length === 0) {
+                validationErrors.push('Login Page data appears invalid. Please re-run discovery and paste the full results.');
+            }
+            if (!searchInfo.url || searchInfo.forms.length === 0) {
+                validationErrors.push('User Search Page data appears invalid. Please re-run discovery and paste the full results.');
+            }
+            if (!managementInfo.url) { // Management page might not have forms, but should have a URL
+                validationErrors.push('User Management Page data appears invalid. Please re-run discovery and paste the full results.');
+            }
+
+            if (validationErrors.length > 0) {
+                showModal(validationErrors.join('\n\n'));
+                return;
+            }
+
+            // Intelligent field guessing
+            const guessField = (forms, keywords) => {
+                for (const form of forms) {
+                    for (const field of form.fields) {
+                        for (const keyword of keywords) {
+                            if (field.name.toLowerCase().includes(keyword)) return field.name;
+                        }
+                    }
+                }
+                return `UPDATE_FIELD_NAME`;
+            };
+
+            const usernameField = guessField(loginInfo.forms, ['user', 'login', 'username', 'principal']);
+            const passwordField = guessField(loginInfo.forms, ['pass', 'pwd', 'credential']);
+            const searchField = guessField(searchInfo.forms, ['search', 'query', 'filter', 'user']);
             
-            const loginForms = extractFormInfo(loginData);
-            const searchForms = extractFormInfo(searchData);
-            const managementForms = extractFormInfo(managementData);
+            let baseUrl = "https://your-caim-server.com";
+            try {
+                if (loginInfo.url) {
+                    const url = new URL(loginInfo.url);
+                    baseUrl = `${url.protocol}//${url.hostname}`;
+                }
+            } catch(e) { /* Keep default if URL is invalid */ }
             
+            function psEscape(s) {
+              if (!s) return '';
+              return s.replace(/`/g, '``').replace(/"/g, '`"');
+            }
+
+            const discoveredFieldsToString = (forms) => {
+                let fieldComments = [];
+                forms.forEach(form => {
+                   form.fields.forEach(field => {
+                       const t = (field.type || '').padEnd(10);
+                       const n = psEscape(field.name || '');
+                       fieldComments.push(`        # Type: ${t}, Name: "${n}"`);
+                   });
+                });
+                return fieldComments.length > 0 ? fieldComments.join('\n') : "        # No form fields discovered on this page.";
+            };
+
             const config = `# =============================================================================
 # CA Identity Manager PowerShell Configuration
 # Generated by Discovery Tool on ${new Date().toLocaleString()}
+# REVIEW AND UPDATE ALL "UPDATE_*" VALUES
 # =============================================================================
 
-# MAIN CONFIGURATION - UPDATE THESE VALUES BASED ON YOUR DISCOVERY RESULTS
+# NOTE: This file contains comments you can copy to your real script. The hashtable below
+# contains the discovered values used by the sample functions further down.
+
 $Global:CAIMConfig = @{
-    # ===== SERVER INFORMATION =====
-    BaseURL = "${loginInfo.protocol}//${loginInfo.domain}"
-    Domain = "${loginInfo.domain}"
-    Protocol = "${loginInfo.protocol}"
-    
-    # ===== PAGE PATHS (discovered from your CA IM system) =====
-    LoginPath = "${loginInfo.path || '/path/to/login'}"
-    UserSearchPath = "${searchInfo.path || '/path/to/search'}"
-    UserManagementPath = "${managementInfo.path || '/path/to/management'}"
-    
-    # ===== AUTHENTICATION CONFIGURATION =====
-    # Login form details (discovered from your login page)
-    LoginFormAction = "${loginForms[0]?.action || 'auto-detected'}"
-    LoginFormMethod = "${loginForms[0]?.method || 'POST'}"
-    LoginFormId = "${loginForms[0]?.id || 'N/A'}"
-    
-    # Field names for login (CUSTOMIZE THESE based on discovery results)
-    UsernameField = "username"      # Update with actual field name from discovery
-    PasswordField = "password"      # Update with actual field name from discovery
-    CsrfTokenField = "csrf_token"   # Update if CSRF token field exists
-    
-    # ===== SESSION MANAGEMENT =====
-    SessionCookieName = "JSESSIONID"    # Common default, may need updating
-    SessionTimeout = 30                  # Minutes before re-authentication needed
-    
-    # ===== USER SEARCH CONFIGURATION =====
-    SearchFormAction = "${searchForms[0]?.action || 'auto-detected'}"
-    SearchUsernameField = "searchUser"   # Update based on search form discovery
-    SearchSubmitButton = "searchBtn"     # Update based on button discovery
-    
-    # ===== USER MANAGEMENT CONFIGURATION =====
-    ManagementFormAction = "${managementForms[0]?.action || 'auto-detected'}"
-    UnlockAction = "unlock"             # Update based on your system
-    ResetPasswordAction = "resetPwd"    # Update based on your system
-    UserIdField = "userId"              # Update based on management form discovery
-    
-    # ===== API ENDPOINTS (if available) =====
-    ApiEnabled = $false                 # Set to $true if REST APIs are available
-    ApiBaseUrl = ""                     # API base URL if different from web interface
-    ApiAuthEndpoint = "/api/auth"       # API authentication endpoint
-    ApiUsersEndpoint = "/api/users"     # API users endpoint
-    
-    # ===== REQUEST SETTINGS =====
-    UserAgent = "PowerShell-CAIMTool/1.0"
-    RequestTimeout = 30                 # Seconds
-    RetryAttempts = 3                   # Number of retry attempts for failed requests
-    RetryDelay = 2                      # Seconds between retries
-    
-    # ===== LOGGING AND OUTPUT =====
-    LogLevel = "Info"                   # Debug, Info, Warning, Error
-    LogFile = "CAIM_Operations.log"     # Log file name
-    ResultsDirectory = "CAIM_Results"   # Directory for output files
-    
-    # ===== SECURITY SETTINGS =====
-    VerifySSLCertificate = $true        # Set to $false if using self-signed certificates
-    AllowedDomains = @("${loginInfo.domain}")  # Only allow requests to your CA IM domain
-    
-    # ===== DISCOVERED FORM FIELDS =====
-    # Based on your page analysis - REVIEW AND UPDATE THESE
-    DiscoveredLoginFields = @(
-${loginForms.map(form => form.inputs.map(input => `        # ${input}`).join('\n')).join('\n')}
-    )
-    
-    DiscoveredSearchFields = @(
-${searchForms.map(form => form.inputs.map(input => `        # ${input}`).join('\n')).join('\n')}
-    )
-    
-    DiscoveredManagementFields = @(
-${managementForms.map(form => form.inputs.map(input => `        # ${input}`).join('\n')).join('\n')}
-    )
+    BaseURL               = "${psEscape(baseUrl)}"
+    LoginPageURL          = "${psEscape(loginInfo.url || 'UPDATE_LOGIN_URL')}"
+    UserSearchPageURL     = "${psEscape(searchInfo.url || 'UPDATE_SEARCH_URL')}"
+    UsernameField         = "${psEscape(usernameField)}"
+    PasswordField         = "${psEscape(passwordField)}"
+    SearchRequestURL      = "${psEscape(searchInfo.forms[0]?.action || searchInfo.url || 'UPDATE_SEARCH_ACTION_URL')}"
+    SearchField           = "${psEscape(searchField)}"
+    UnlockUserActionURL   = "UPDATE_URL_FOR_UNLOCK_ACTION"
+    ResetPasswordActionURL= "UPDATE_URL_FOR_RESET_ACTION"
+    UserAgent             = "PowerShell-CAIM-Automation/1.0"
+    RequestTimeoutSec     = 60
 }
 
-# =============================================================================
-# VALIDATION FUNCTION - Checks if configuration is complete
-# =============================================================================
-function Test-CAIMConfiguration {
-    Write-Host "🔍 Validating CA IM Configuration..." -ForegroundColor Yellow
-    
-    $issues = @()
-    
-    if ($Global:CAIMConfig.BaseURL -eq "://") {
-        $issues += "BaseURL is not properly configured"
+# --- Discovered fields for reference ---
+# --- Login Page Fields ---
+${discoveredFieldsToString(loginInfo.forms)}
+
+# --- Search Page Fields ---
+${discoveredFieldsToString(searchInfo.forms)}
+
+# --- Management Page Fields ---
+${discoveredFieldsToString(managementInfo.forms)}
+
+# -------------------------
+# Example helper functions (minimal skeletons)
+# -------------------------
+function New-CAIMSession {
+    param(
+      [string]$Username,
+      [string]$Password
+    )
+    # Use a session variable to hold cookies and reuse them across calls
+    $form = @{
+        "${psEscape(usernameField)}" = $Username
+        "${psEscape(passwordField)}" = $Password
     }
-    
-    if ($Global:CAIMConfig.LoginPath -eq "/path/to/login") {
-        $issues += "LoginPath needs to be updated with actual path"
-    }
-    
-    if ($Global:CAIMConfig.UserSearchPath -eq "/path/to/search") {
-        $issues += "UserSearchPath needs to be updated with actual path"
-    }
-    
-    if ($Global:CAIMConfig.UserManagementPath -eq "/path/to/management") {
-        $issues += "UserManagementPath needs to be updated with actual path"
-    }
-    
-    if ($issues.Count -eq 0) {
-        Write-Host "✅ Configuration validation passed!" -ForegroundColor Green
-        return $true
-    } else {
-        Write-Host "❌ Configuration issues found:" -ForegroundColor Red
-        $issues | ForEach-Object { Write-Host "   - $_" -ForegroundColor Red }
-        return $false
+
+    try {
+        $response = Invoke-WebRequest -Uri $Global:CAIMConfig.LoginPageURL -Method Post -Form $form -SessionVariable caimSession -TimeoutSec $Global:CAIMConfig.RequestTimeoutSec -UseBasicParsing
+        Write-Host "Login request sent. Status: $($response.StatusCode)"
+        return $caimSession
+    } catch {
+        Write-Warning "Login failed: $_"
+        return $null
     }
 }
 
-# =============================================================================
-# QUICK SETUP FUNCTION - Helps with initial configuration
-# =============================================================================
-function Initialize-CAIMConfiguration {
-    Write-Host "🚀 CA Identity Manager Configuration Setup" -ForegroundColor Cyan
-    Write-Host "==========================================" -ForegroundColor Cyan
-    
-    Write-Host "Current Configuration:" -ForegroundColor Yellow
-    Write-Host "Base URL: $($Global:CAIMConfig.BaseURL)" -ForegroundColor White
-    Write-Host "Login Path: $($Global:CAIMConfig.LoginPath)" -ForegroundColor White
-    Write-Host "Search Path: $($Global:CAIMConfig.UserSearchPath)" -ForegroundColor White
-    Write-Host "Management Path: $($Global:CAIMConfig.UserManagementPath)" -ForegroundColor White
-    
-    $validate = Test-CAIMConfiguration
-    
-    if (-not $validate) {
-        Write-Host "\\nPlease update the configuration values in the script before proceeding." -ForegroundColor Yellow
-        Write-Host "Refer to your discovery results to find the correct field names and paths." -ForegroundColor Yellow
+function CAIM-SearchUser {
+    param(
+      [string]$Query,
+      $Session
+    )
+    $form = @{
+       "${psEscape(searchField)}" = $Query
+    }
+    try {
+        $r = Invoke-WebRequest -Uri $Global:CAIMConfig.SearchRequestURL -Method Post -Form $form -WebSession $Session -TimeoutSec $Global:CAIMConfig.RequestTimeoutSec -UseBasicParsing
+        return $r
+    } catch {
+        Write-Warning "Search failed: $_"
+        return $null
     }
 }
 
-# Run initial setup when script is loaded
-Write-Host "CA Identity Manager PowerShell Tools Loaded!" -ForegroundColor Green
-Write-Host "Run 'Initialize-CAIMConfiguration' to review your setup." -ForegroundColor Cyan`;
+# End of generated configuration. Update the placeholders and test against a non-production account.
+`;
 
             const configElement = document.getElementById('powershellConfig');
-            if (configElement) {
-                configElement.innerHTML = `<pre>${config}</pre>`;
-                configElement.style.display = 'block';
-            }
+            configElement.innerHTML = `<pre>${config}</pre>`;
+            configElement.style.display = 'block';
+            showModal('PowerShell configuration generated successfully! Please review and update placeholder values.');
         }
 
         function copyConfig() {
             const configElement = document.querySelector('#powershellConfig pre');
-            if (!configElement) {
-                alert('Please generate the configuration first.');
+            if (!configElement || !configElement.textContent) {
+                showModal('Please generate the configuration first.');
                 return;
             }
-            
             const config = configElement.textContent;
-            if (navigator.clipboard && navigator.clipboard.writeText) {
+
+            const fallbackCopy = (text) => {
+                const textarea = document.createElement('textarea');
+                textarea.value = text;
+                textarea.style.position = 'fixed'; // Prevent page from scrolling
+                textarea.style.opacity = '0';
+                document.body.appendChild(textarea);
+                textarea.select();
+                try {
+                    document.execCommand('copy');
+                    showModal('PowerShell configuration copied to clipboard!');
+                } catch (err) {
+                    showModal('Failed to copy configuration automatically. Please copy manually.');
+                }
+                document.body.removeChild(textarea);
+            };
+
+            if (navigator.clipboard?.writeText) {
                 navigator.clipboard.writeText(config).then(() => {
-                    alert('PowerShell configuration copied to clipboard!');
+                    showModal('PowerShell configuration copied to clipboard!');
                 }).catch(() => {
-                    fallbackCopyText(config);
+                    fallbackCopy(config);
                 });
             } else {
-                fallbackCopyText(config);
+                fallbackCopy(config);
             }
         }
-
-        function fallbackCopyText(text) {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.opacity = '0';
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                document.execCommand('copy');
-                alert('Configuration copied to clipboard!');
-            } catch (e) {
-                alert('Failed to copy. Please manually select and copy the text.');
-            }
-            document.body.removeChild(textarea);
+        
+        function downloadConfig(filename='caim-config.ps1') {
+          const pre = document.querySelector('#powershellConfig pre');
+          if(!pre) { showModal('Generate config first.'); return; }
+          const blob = new Blob([pre.textContent], { type: 'text/plain' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          URL.revokeObjectURL(url);
         }
 
-        function analyzeAllData() {
-            const loginData = document.getElementById('loginPageData').value;
-            const searchData = document.getElementById('searchPageData').value;
-            const managementData = document.getElementById('managementPageData').value;
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', function() {
+            document.getElementById('loginPageData').addEventListener('input', () => updateStatus('loginPageData', 'loginStatus'));
+            document.getElementById('searchPageData').addEventListener('input', () => updateStatus('searchPageData', 'searchStatus'));
+            document.getElementById('managementPageData').addEventListener('input', () => updateStatus('managementPageData', 'managementStatus'));
             
-            let analysis = "🔍 COMPREHENSIVE CA IM ANALYSIS\n";
-            analysis += "=".repeat(50) + "\n\n";
-            
-            if (loginData) {
-                analysis += "✅ LOGIN PAGE ANALYSIS:\n";
-                const loginInfo = extractUrlInfo(loginData, 'login');
-                const loginForms = extractFormInfo(loginData);
-                
-                analysis += `Domain: ${loginInfo.domain || 'Not detected'}\n`;
-                analysis += `Login Path: ${loginInfo.path || 'Not detected'}\n`;
-                analysis += `Forms Found: ${loginForms.length}\n`;
-                if (loginForms.length > 0) {
-                    analysis += `Primary Form Action: ${loginForms[0].action || 'Not specified'}\n`;
-                    analysis += `Input Fields: ${loginForms[0].inputs.length}\n`;
-                }
-                analysis += "\n";
-            } else {
-                analysis += "❌ LOGIN PAGE: No data collected\n\n";
-            }
-            
-            if (searchData) {
-                analysis += "✅ SEARCH PAGE ANALYSIS:\n";
-                const searchInfo = extractUrlInfo(searchData, 'search');
-                const searchForms = extractFormInfo(searchData);
-                
-                analysis += `Search Path: ${searchInfo.path || 'Not detected'}\n`;
-                analysis += `Forms Found: ${searchForms.length}\n`;
-                if (searchForms.length > 0) {
-                    analysis += `Search Form Action: ${searchForms[0].action || 'Not specified'}\n`;
-                    analysis += `Input Fields: ${searchForms[0].inputs.length}\n`;
-                }
-                analysis += "\n";
-            } else {
-                analysis += "❌ SEARCH PAGE: No data collected\n\n";
-            }
-            
-            if (managementData) {
-                analysis += "✅ MANAGEMENT PAGE ANALYSIS:\n";
-                const managementInfo = extractUrlInfo(managementData, 'management');
-                const managementForms = extractFormInfo(managementData);
-                
-                analysis += `Management Path: ${managementInfo.path || 'Not detected'}\n`;
-                analysis += `Forms Found: ${managementForms.length}\n`;
-                if (managementForms.length > 0) {
-                    analysis += `Management Form Action: ${managementForms[0].action || 'Not specified'}\n`;
-                    analysis += `Input Fields: ${managementForms[0].inputs.length}\n`;
-                }
-                analysis += "\n";
-            } else {
-                analysis += "❌ MANAGEMENT PAGE: No data collected\n\n";
-            }
-            
-            // Overall recommendations
-            analysis += "🎯 RECOMMENDATIONS:\n";
-            analysis += "=".repeat(30) + "\n";
-            
-            if (!loginData || !searchData || !managementData) {
-                analysis += "❗ Collect data from all three page types for complete configuration\n";
-            }
-            
-            if (loginData && searchData && managementData) {
-                analysis += "✅ All page data collected - ready to generate PowerShell config\n";
-                
-                const allData = [loginData, searchData, managementData].join('\n');
-                
-                if (allData.includes('csrf') || allData.includes('CSRF') || allData.includes('token')) {
-                    analysis += "🔒 CSRF tokens detected - authentication will need token handling\n";
-                }
-                
-                if (allData.includes('JSESSIONID') || allData.includes('session')) {
-                    analysis += "🍪 Session management detected - configure session handling\n";
-                }
-                
-                if (allData.includes('iframe') || allData.includes('iFrame')) {
-                    analysis += "⚠️  iFrames detected - may need special handling for automation\n";
-                }
-                
-                const formCount = (loginData.match(/Form\s+\d+\s*:/g) || []).length + 
-                                 (searchData.match(/Form\s+\d+\s*:/g) || []).length + 
-                                 (managementData.match(/Form\s+\d+\s*:/g) || []).length;
-                
-                analysis += `📊 Total forms discovered: ${formCount}\n`;
-                
-                const buttonCount = (allData.match(/Button \d+:/g) || []).length;
-                analysis += `🔘 Total buttons discovered: ${buttonCount}\n`;
-            }
-            
-            analysis += "\n🔧 NEXT STEPS:\n";
-            analysis += "=".repeat(20) + "\n";
-            analysis += "1. Generate PowerShell configuration using the button above\n";
-            analysis += "2. Review and customize field names in the generated config\n";
-            analysis += "3. Test connection with the PowerShell tools\n";
-            analysis += "4. Customize automation scripts based on your specific workflows\n";
-            
-            const resultsElement = document.getElementById('analysisResults');
-            if (resultsElement) {
-                resultsElement.textContent = analysis;
-                resultsElement.style.display = 'block';
-            }
-        }
-
-        // Initialize event listeners after DOM is ready
-        window.addEventListener('load', function() {
-            const loginPageData = document.getElementById('loginPageData');
-            const searchPageData = document.getElementById('searchPageData');
-            const managementPageData = document.getElementById('managementPageData');
-            
-            if (loginPageData) {
-                loginPageData.addEventListener('input', () => updateStatus('loginPageData', 'loginStatus'));
-            }
-            if (searchPageData) {
-                searchPageData.addEventListener('input', () => updateStatus('searchPageData', 'searchStatus'));
-            }
-            if (managementPageData) {
-                managementPageData.addEventListener('input', () => updateStatus('managementPageData', 'managementStatus'));
+            const modal = document.getElementById('customModal');
+            const modalCloseBtn = document.getElementById('modalCloseBtn');
+            if (modal && modalCloseBtn) {
+                modalCloseBtn.addEventListener('click', () => modal.classList.remove('visible'));
+                modal.addEventListener('click', (e) => {
+                    if (e.target === modal) modal.classList.remove('visible');
+                });
             }
         });
     </script>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      // Build bookmarklet href from template
+      try {
+        const srcEl = document.getElementById('bookmarklet-src');
+        const link = document.getElementById('caimBookmarklet');
+        if (!srcEl || !link) return;
+
+        // Read template content
+        let code = srcEl.textContent || srcEl.innerText || '';
+
+        // Minify: remove comments, newlines, repeated spaces (very basic)
+        code = code.replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, ''); // remove comments
+        code = code.replace(/\n+/g, ' ');
+        code = code.replace(/\s{2,}/g, ' ');
+        code = code.trim();
+
+        // Wrap into IIFE if not already wrapped
+        if (!/^(\(function|\(\s*async\s*function)/.test(code)) {
+          code = '(function(){' + code + '})();';
+        }
+
+        // Create bookmarklet string
+        const bookmarklet = 'javascript:' + encodeURIComponent(code);
+
+        // Set href; using setAttribute ensures proper markup
+        link.setAttribute('href', bookmarklet);
+        link.setAttribute('draggable', 'true');
+        link.setAttribute('title', 'Drag this link to your bookmarks bar');
+
+        // Also make it possible to click the button on this page (for debug) — it will execute right away.
+        link.addEventListener('click', function(e) {
+          // normal click should open as a link only when ctrl/alt pressed; otherwise prevent navigation
+          e.preventDefault();
+          // For now, do nothing — user should drag to bookmarks bar and run on CA IM pages.
+        }, false);
+      } catch (err) {
+        console.error('Failed to build bookmarklet link', err);
+      }
+    });
+    </script>
 </body>
 </html>
+

@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CA IM Discovery Tool</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .discovery-panel {
+            background: #f8f9fa;
+            border: 2px solid #28a745;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 20px;
+            position: relative;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            color: white;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.3);
+        }
+        
+        .btn-info { background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); }
+        .btn-warning { background: linear-gradient(135deg, #ffc107 0%, #e0a800 100%); color: #212529; }
+        .btn-copy { background: linear-gradient(135deg, #6f42c1 0%, #5a32a3 100%); }
+        
+        .results {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9rem;
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 15px;
+            white-space: pre-wrap;
+        }
+        
+        .config-output {
+            background: #1e1e1e;
+            color: #d4d4d4;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 0.85rem;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            border: 2px solid #6f42c1;
+        }
+        
+        .section-header {
+            color: #2c3e50;
+            font-size: 1.3rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .instructions {
+            background: #e8f4fd;
+            border-left: 4px solid #0084ff;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 0 8px 8px 0;
+        }
+        
+        .step {
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .step h3 {
+            color: #495057;
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .copy-btn {
+            background: #6f42c1;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            position: absolute;
+            top: 10px;
+            right: 10px;
+        }
+        
+        .status {
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            display: inline-block;
+            margin: 5px 0;
+        }
+        
+        .status-ready { background: #d4edda; color: #155724; }
+        .status-pending { background: #fff3cd; color: #856404; }
+        
+        #discoveryBookmarklet {
+            background: #dc3545;
+            color: white;
+            text-decoration: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: inline-block;
+            margin: 10px 0;
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔍 CA Identity Manager Discovery Tool</h1>
+            <p>Automatically gather configuration details for PowerShell automation</p>
+        </div>
+        
+        <div class="content">
+            <div class="instructions">
+                <h3>📋 How to Use This Discovery Tool</h3>
+                <ol>
+                    <li><strong>Install the Discovery Bookmarklet:</strong> Right-click the red link below and bookmark it</li>
+                    <li><strong>Navigate to your CA IM admin portal</strong> and log in normally</li>
+                    <li><strong>On each relevant page</strong> (login, user search, user management), click the Discovery bookmarklet</li>
+                    <li><strong>Copy the results</strong> and paste them into the results boxes below</li>
+                    <li><strong>Generate your PowerShell config</strong> using the collected information</li>
+                </ol>
+            </div>
+
+            <div class="step">
+                <h3>🔗 Step 1: Install Discovery Bookmarklet</h3>
+                <p>Right-click this link and select "Bookmark this link" or "Add to Bookmarks":</p>
+                <a href="javascript:(function(){if(document.getElementById('caim-discovery')){alert('Discovery tool already open!');return;}var d=document,r=d.createElement('div');r.innerHTML='<div id=\"caim-discovery\" style=\"position:fixed;top:20px;left:20px;width:450px;background:white;border:3px solid %23dc3545;border-radius:10px;padding:20px;z-index:99999;box-shadow:0 10px 30px rgba(0,0,0,0.5);font-family:Arial,sans-serif;font-size:14px;\"><h3 style=\"margin:0 0 15px 0;color:%23dc3545;text-align:center;\">🔍 CA IM Page Discovery</h3><div style=\"max-height:300px;overflow-y:auto;background:%23f8f9fa;padding:15px;border-radius:5px;margin-bottom:15px;\"><div id=\"discovery-results\"></div></div><div style=\"text-align:center;\"><button onclick=\"copyDiscoveryResults()\" style=\"background:%2328a745;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;\">📋 Copy Results</button><button onclick=\"runFullDiscovery()\" style=\"background:%2317a2b8;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;\">🔍 Deep Scan</button><button onclick=\"document.getElementById(\\'caim-discovery\\').remove();delete window.discoveryData;\" style=\"background:%23dc3545;color:white;border:none;padding:10px 20px;border-radius:5px;cursor:pointer;margin:5px;\">✖ Close</button></div></div>';d.body.appendChild(r);runDiscovery();function runDiscovery(){var results=d.getElementById('discovery-results');var info='🌐 PAGE INFORMATION\\n';info+='='.repeat(40)+'\\n';info+='Page Title: '+d.title+'\\n';info+='Current URL: '+location.href+'\\n';info+='Domain: '+location.hostname+'\\n';info+='Path: '+location.pathname+'\\n';info+='Protocol: '+location.protocol+'\\n\\n';info+='📝 FORMS ANALYSIS\\n';info+='='.repeat(40)+'\\n';var forms=d.querySelectorAll('form');info+='Total Forms Found: '+forms.length+'\\n\\n';forms.forEach((form,i)=>{info+='Form '+(i+1)+':  \\n';info+='  Action: '+(form.action||'N/A')+'\\n';info+='  Method: '+(form.method||'GET')+'\\n';info+='  ID: '+(form.id||'N/A')+'\\n';info+='  Name: '+(form.name||'N/A')+'\\n';info+='  Class: '+(form.className||'N/A')+'\\n';var inputs=form.querySelectorAll('input');info+='  Input Fields: '+inputs.length+'\\n';inputs.forEach(input=>{info+='    - '+input.type+' field: \"'+(input.name||input.id||'unnamed')+'\" placeholder=\"'+(input.placeholder||'N/A')+'\"\\n';});var selects=form.querySelectorAll('select');if(selects.length>0){info+='  Select Fields: '+selects.length+'\\n';selects.forEach(select=>{info+='    - Select: \"'+(select.name||select.id||'unnamed')+'\"\\n';});}info+='\\n';});info+='🔘 BUTTONS ANALYSIS\\n';info+='='.repeat(40)+'\\n';var buttons=d.querySelectorAll('button,input[type=\"submit\"],input[type=\"button\"]');info+='Total Buttons: '+buttons.length+'\\n';buttons.forEach((btn,i)=>{var text=btn.textContent||btn.value||'N/A';var type=btn.type||btn.tagName;info+='Button '+(i+1)+': \"'+text+'\" ('+type+') ID=\"'+(btn.id||'N/A')+'\" Class=\"'+(btn.className||'N/A')+'\"\\n';});info+='\\n🔗 LINKS ANALYSIS\\n';info+='='.repeat(40)+'\\n';var links=d.querySelectorAll('a[href]');var relevantLinks=Array.from(links).filter(link=>link.href.includes('user')||link.href.includes('admin')||link.href.includes('manage')||link.href.includes('search')||link.textContent.toLowerCase().includes('user')||link.textContent.toLowerCase().includes('manage')||link.textContent.toLowerCase().includes('admin'));info+='Relevant Navigation Links: '+relevantLinks.length+'\\n';relevantLinks.slice(0,10).forEach((link,i)=>{info+='Link '+(i+1)+': \"'+link.textContent.trim()+'\" → '+link.href+'\\n';});info+='\\n📊 TABLES ANALYSIS\\n';info+='='.repeat(40)+'\\n';var tables=d.querySelectorAll('table');info+='Total Tables: '+tables.length+'\\n';tables.forEach((table,i)=>{var headers=table.querySelectorAll('th');var rows=table.querySelectorAll('tr');info+='Table '+(i+1)+': '+rows.length+' rows, '+headers.length+' headers\\n';if(headers.length>0){info+='  Headers: ';Array.from(headers).forEach(h=>info+='\"'+h.textContent.trim()+'\" ');info+='\\n';}});info+='\\n🔍 JAVASCRIPT ANALYSIS\\n';info+='='.repeat(40)+'\\n';var scripts=d.querySelectorAll('script[src]');info+='External Scripts: '+scripts.length+'\\n';Array.from(scripts).slice(0,5).forEach((script,i)=>{info+='Script '+(i+1)+': '+script.src+'\\n';});info+='\\n📋 META INFORMATION\\n';info+='='.repeat(40)+'\\n';var metas=d.querySelectorAll('meta');var relevantMetas=Array.from(metas).filter(meta=>meta.name&&(meta.name.includes('app')||meta.name.includes('version')||meta.name.includes('author')));relevantMetas.forEach(meta=>{info+='Meta: '+meta.name+' = \"'+meta.content+'\"\\n';});var generator=d.querySelector('meta[name=\"generator\"]');if(generator)info+='Generator: '+generator.content+'\\n';info+='\\n🔐 AUTHENTICATION ANALYSIS\\n';info+='='.repeat(40)+'\\n';var authFields=d.querySelectorAll('input[type=\"password\"],input[name*=\"user\"],input[name*=\"login\"],input[id*=\"user\"],input[id*=\"login\"]');info+='Auth-related fields: '+authFields.length+'\\n';authFields.forEach((field,i)=>{info+='Auth Field '+(i+1)+': '+field.type+' \"'+(field.name||field.id)+'\" placeholder=\"'+(field.placeholder||'N/A')+'\"\\n';});results.innerHTML='<pre style=\"font-size:11px;line-height:1.3;margin:0;white-space:pre-wrap;\">'+info+'</pre>';window.discoveryData=info;}function runFullDiscovery(){var results=d.getElementById('discovery-results');var info=window.discoveryData||'';info+='\\n\\n🔬 DEEP SCAN RESULTS\\n';info+='='.repeat(40)+'\\n';info+='Local Storage Keys: ';try{info+=Object.keys(localStorage).join(', ')||'None';}catch(e){info+='Access Denied';}info+='\\n';info+='Session Storage Keys: ';try{info+=Object.keys(sessionStorage).join(', ')||'None';}catch(e){info+='Access Denied';}info+='\\n';info+='Cookies: ';info+=d.cookie?d.cookie.split(';').length+' cookies found':'No cookies';info+='\\n\\n';var iframes=d.querySelectorAll('iframe');info+='iFrames: '+iframes.length+'\\n';iframes.forEach((iframe,i)=>{info+='iFrame '+(i+1)+': '+iframe.src+'\\n';});info+='\\n';var hiddenInputs=d.querySelectorAll('input[type=\"hidden\"]');info+='Hidden Inputs: '+hiddenInputs.length+'\\n';hiddenInputs.slice(0,10).forEach((input,i)=>{info+='Hidden '+(i+1)+': \"'+(input.name||input.id||'unnamed')+'\" = \"'+input.value+'\"\\n';});results.innerHTML='<pre style=\"font-size:11px;line-height:1.3;margin:0;white-space:pre-wrap;\">'+info+'</pre>';window.discoveryData=info;}window.copyDiscoveryResults=function(){var text=window.discoveryData||'No data collected';if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(text).then(()=>{alert('Discovery results copied to clipboard!');}).catch(()=>{fallbackCopy(text);});}else{fallbackCopy(text);}};function fallbackCopy(text){var textarea=d.createElement('textarea');textarea.value=text;textarea.style.position='fixed';textarea.style.opacity='0';d.body.appendChild(textarea);textarea.select();try{d.execCommand('copy');alert('Discovery results copied to clipboard!');}catch(e){alert('Failed to copy. Please manually select and copy the text.');}d.body.removeChild(textarea);}})();" id="discoveryBookmarklet">🔍 CA IM Discovery Bookmarklet</a>
+                <div class="status status-ready">Ready to install - right-click and bookmark this link</div>
+            </div>
+
+            <div class="step">
+                <h3>📄 Step 2: Discover Login Page</h3>
+                <p>Go to your CA IM login page and click the discovery bookmarklet, then paste results here:</p>
+                <textarea id="loginPageData" placeholder="Paste login page discovery results here..." style="width: 100%; height: 150px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                <div class="status status-pending" id="loginStatus">Waiting for data...</div>
+            </div>
+
+            <div class="step">
+                <h3>🔍 Step 3: Discover User Search Page</h3>
+                <p>Navigate to the page where you search for users, run the bookmarklet, and paste results:</p>
+                <textarea id="searchPageData" placeholder="Paste user search page discovery results here..." style="width: 100%; height: 150px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                <div class="status status-pending" id="searchStatus">Waiting for data...</div>
+            </div>
+
+            <div class="step">
+                <h3>⚙️ Step 4: Discover User Management Page</h3>
+                <p>Go to a user's management page (where you unlock/reset passwords), run the bookmarklet:</p>
+                <textarea id="managementPageData" placeholder="Paste user management page discovery results here..." style="width: 100%; height: 150px; font-family: monospace; font-size: 0.9rem; padding: 10px; border: 1px solid #ddd; border-radius: 5px;"></textarea>
+                <div class="status status-pending" id="managementStatus">Waiting for data...</div>
+            </div>
+
+            <div class="step">
+                <h3>🔧 Step 5: Generate PowerShell Configuration</h3>
+                <button class="btn" onclick="generatePowerShellConfig()">Generate Configuration</button>
+                <button class="btn btn-copy" onclick="copyConfig()">Copy Config</button>
+                
+                <div id="powershellConfig" class="config-output" style="display: none;"></div>
+            </div>
+
+            <div class="step">
+                <h3>📋 Step 6: Analysis Results</h3>
+                <button class="btn btn-info" onclick="analyzeAllData()">Analyze Collected Data</button>
+                <div id="analysisResults" class="results" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(textareaId, statusId) {
+            const textarea = document.getElementById(textareaId);
+            const status = document.getElementById(statusId);
+            
+            if (!textarea || !status) return;
+            
+            if (textarea.value.trim().length > 100) {
+                status.className = 'status status-ready';
+                status.textContent = '✅ Data received - ready for processing';
+            } else {
+                status.className = 'status status-pending';
+                status.textContent = 'Waiting for data...';
+            }
+        }
+
+        function extractUrlInfo(data, pageType) {
+            const lines = data.split('\n');
+            const info = {};
+            
+            lines.forEach(line => {
+                if (line.includes('Current URL:')) {
+                    info.url = line.split('Current URL:')[1].trim();
+                }
+                if (line.includes('Domain:')) {
+                    info.domain = line.split('Domain:')[1].trim();
+                }
+                if (line.includes('Path:')) {
+                    info.path = line.split('Path:')[1].trim();
+                }
+                if (line.includes('Protocol:')) {
+                    info.protocol = line.split('Protocol:')[1].trim();
+                }
+            });
+            
+            return info;
+        }
+
+        function extractFormInfo(data) {
+            const lines = data.split('\n');
+            const forms = [];
+            let currentForm = null;
+            let inFormSection = false;
+            
+            lines.forEach(line => {
+                if (line.includes('FORMS ANALYSIS')) {
+                    inFormSection = true;
+                    return;
+                }
+                if (line.includes('BUTTONS ANALYSIS')) {
+                    inFormSection = false;
+                    if (currentForm) {
+                        forms.push(currentForm);
+                        currentForm = null;
+                    }
+                    return;
+                }
+                
+                if (inFormSection) {
+                    // Fixed: Handle variable whitespace in "Form X  :" pattern
+                    if (line.match(/Form\s+\d+\s*:/)) {
+                        if (currentForm) forms.push(currentForm);
+                        currentForm = { inputs: [], selects: [] };
+                    }
+                    
+                    if (currentForm) {
+                        if (line.includes('Action:')) {
+                            currentForm.action = line.split('Action:')[1].trim();
+                        }
+                        if (line.includes('Method:')) {
+                            currentForm.method = line.split('Method:')[1].trim();
+                        }
+                        if (line.includes('ID:')) {
+                            currentForm.id = line.split('ID:')[1].trim();
+                        }
+                        if (line.includes('- ') && line.includes('field:')) {
+                            currentForm.inputs.push(line.trim());
+                        }
+                    }
+                }
+            });
+            
+            // Fixed: Add final form if exists
+            if (currentForm) {
+                forms.push(currentForm);
+            }
+            
+            return forms;
+        }
+
+        function generatePowerShellConfig() {
+            const loginData = document.getElementById('loginPageData').value;
+            const searchData = document.getElementById('searchPageData').value;
+            const managementData = document.getElementById('managementPageData').value;
+            
+            if (!loginData || !searchData || !managementData) {
+                alert('Please collect data from all three pages before generating the configuration.');
+                return;
+            }
+            
+            const loginInfo = extractUrlInfo(loginData, 'login');
+            const searchInfo = extractUrlInfo(searchData, 'search');
+            const managementInfo = extractUrlInfo(managementData, 'management');
+            
+            const loginForms = extractFormInfo(loginData);
+            const searchForms = extractFormInfo(searchData);
+            const managementForms = extractFormInfo(managementData);
+            
+            const confi

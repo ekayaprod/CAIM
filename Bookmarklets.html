@@ -1,237 +1,152 @@
-<a href="javascript:(function(){var d=document,e=d.createElement('div');e.innerHTML='<div style=\"position:fixed;top:10px;left:10px;width:500px;background:white;border:2px solid %2327ae60;border-radius:10px;padding:20px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Arial,sans-serif;\"><h3 style=\"margin:0 0 15px 0;color:%2327ae60;\">📊 Data Extractor</h3><button onclick=\"extractTableData()\" style=\"background:%2327ae60;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin:5px;\">Extract Tables</button><button onclick=\"extractUserData()\" style=\"background:%233498db;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin:5px;\">Find User Data</button><button onclick=\"this.parentNode.remove()\" style=\"background:%23e74c3c;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin:5px;\">Close</button><div id=\"extractResults\" style=\"margin-top:15px;max-height:300px;overflow-y:auto;background:%23f8f9fa;padding:10px;border-radius:5px;font-family:monospace;font-size:11px;\"></div></div>';d.body.appendChild(e);window.extractTableData=function(){var tables=d.querySelectorAll('table');var results=d.getElementById('extractResults');if(!results)return;var output='';tables.forEach((table,i)=>{output+=`\\nTable ${i+1}:\\n`;var rows=table.querySelectorAll('tr');rows.forEach((row,j)=>{var cells=row.querySelectorAll('td,th');var rowData=[];cells.forEach(cell=>rowData.push(cell.textContent.trim()));if(rowData.length>0)output+=rowData.join(' | ')+'\\n';});});results.textContent=output||'No tables found';};window.extractUserData=function(){var results=d.getElementById('extractResults');if(!results)return;var userPatterns=[/\\b[a-z]{2,8}\\d{0,4}\\b/gi,/\\b\\w+@\\w+\\.\\w+\\b/gi,/\\b[A-Z][a-z]+ [A-Z][a-z]+\\b/g];var findings=new Set();userPatterns.forEach(pattern=>{var walker=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT,null,false);var node;while(node=walker.nextNode()){var matches=node.textContent.match(pattern);if(matches){matches.forEach(match=>findings.add(match.trim()));}}});var output='Found potential user data:\\n';Array.from(findings).slice(0,50).forEach(item=>output+=item+'\\n');results.textContent=output;};})();" class="bookmarklet-link">Page Data Extractor</a>
-            </div>
-
-            <div class="bookmarklet-section">
-                <h2>⚡ Quick Actions Panel</h2>
-                <p>Creates a floating panel with quick action buttons for common CA IM tasks.</p>
-                <a href="javascript:(function(){if(document.getElementById('caim-panel'))return;var d=document,p=d.createElement('div');p.id='caim-panel';p.innerHTML='<div style=\"position:fixed;top:50%%;left:10px;transform:translateY(-50%%);background:white;border:2px solid %239b59b6;border-radius:15px;padding:20px;z-index:10000;box-shadow:0 10px 30px rgba(0,0,0,0.3);font-family:Arial,sans-serif;width:200px;\"><h4 style=\"margin:0 0 15px 0;color:%238e44ad;text-align:center;\">⚡ Quick Actions</h4><div style=\"display:flex;flex-direction:column;gap:8px;\"><button onclick=\"highlightForms()\" style=\"background:%233498db;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Highlight Forms</button><button onclick=\"showPageInfo()\" style=\"background:%23e67e22;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Page Info</button><button onclick=\"findButtons()\" style=\"background:%2327ae60;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Find Buttons</button><button onclick=\"exportPageData()\" style=\"background:%23f39c12;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Export Data</button><button onclick=\"document.getElementById(\\'caim-panel\\').remove()\" style=\"background:%23e74c3c;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;margin-top:10px;\">Close</button></div></div>';d.body.appendChild(p);window.highlightForms=function(){d.querySelectorAll('form,input,select,textarea').forEach(el=>{el.style.outline='3px solid %23e74c3c';el.style.backgroundColor='rgba(231,76,60,0.1)';});setTimeout(()=>d.querySelectorAll('form,input,select,textarea').forEach(el=>{el.style.outline='';el.style.backgroundColor='';}),5000);};window.showPageInfo=function(){alert(`Page: ${d.title}\\nURL: ${location.href}\\nForms: ${d.forms.length}\\nInputs: ${d.querySelectorAll('input').length}\\nButtons: ${d.querySelectorAll('button,input[type=\"submit\"]').length}`);};window.findButtons=function(){d.querySelectorAll('button,input[type=\"submit\"],input[type=\"button\"]').forEach(btn=>{btn.style.border='3px solid %23f39c12';btn.style.boxShadow='0 0 10px rgba(243,156,18,0.5)';});setTimeout(()=>d.querySelectorAll('button,input[type=\"submit\"],input[type=\"button\"]').forEach(btn=>{btn.style.border='';btn.style.boxShadow='';}),5000);};window.exportPageData=function(){var data=`Page Title: ${d.title}\\nURL: ${location.href}\\nTimestamp: ${new Date()}\\n\\n`;var tables=d.querySelectorAll('table');tables.forEach((table,i)=>{data+=`Table ${i+1}:\\n`;table.querySelectorAll('tr').forEach(row=>{var cells=Array.from(row.querySelectorAll('td,th')).map(cell=>cell.textContent.trim()).join(' | ');if(cells)data+=cells+'\\n';});data+='\\n';});var blob=new Blob([data],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=d.createElement('a');a.href=url;a.download=`caim_export_${new Date().getTime()}.txt`;a.click();};})();" class="bookmarklet-link">Quick Actions Panel</a><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA Identity Manager Bookmarklets</title>
+    <title>CA IM Quick Bookmarklets</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            margin: 0;
-            padding: 20px;
-            min-height: 100vh;
-        }
-        
-        .container {
-            max-width: 1000px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 15px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
-            overflow: hidden;
-        }
-        
-        .header {
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: white;
-            padding: 30px;
-            text-align: center;
-        }
-        
-        .header h1 {
-            font-size: 2.5rem;
-            margin-bottom: 10px;
-            font-weight: 300;
-        }
-        
-        .content {
-            padding: 40px;
-        }
-        
-        .bookmarklet-section {
-            margin-bottom: 40px;
-            padding: 30px;
-            background: #f8f9fa;
-            border-radius: 10px;
-            border-left: 4px solid #667eea;
-        }
-        
-        .bookmarklet-section h2 {
-            color: #2c3e50;
-            margin-bottom: 15px;
-            font-size: 1.5rem;
-        }
-        
-        .bookmarklet-section p {
-            color: #6c757d;
-            margin-bottom: 20px;
-            line-height: 1.6;
-        }
-        
-        .bookmarklet-link {
-            display: inline-block;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 12px 25px;
-            text-decoration: none;
-            border-radius: 25px;
-            font-weight: 600;
-            font-size: 0.95rem;
-            margin: 5px;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-        
-        .bookmarklet-link:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-            text-decoration: none;
-            color: white;
-        }
-        
-        .code-block {
-            background: #2c3e50;
-            color: #ecf0f1;
-            padding: 20px;
-            border-radius: 8px;
-            font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
-            margin: 15px 0;
-            overflow-x: auto;
-            white-space: pre-wrap;
-        }
-        
-        .instructions {
-            background: #e3f2fd;
-            border: 1px solid #2196f3;
-            border-radius: 8px;
-            padding: 20px;
-            margin: 20px 0;
-        }
-        
-        .instructions h3 {
-            color: #0d47a1;
-            margin-bottom: 15px;
-        }
-        
-        .instructions ol {
-            color: #1565c0;
-            margin-left: 20px;
-        }
-        
-        .instructions li {
-            margin-bottom: 8px;
-            line-height: 1.5;
-        }
-        
-        .warning {
-            background: #fff3e0;
-            border: 1px solid #ff9800;
-            border-radius: 8px;
-            padding: 15px;
-            margin: 15px 0;
-            color: #e65100;
-        }
+        body { font-family: 'Inter', sans-serif; }
     </style>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h1>CA Identity Manager Bookmarklets</h1>
-            <p>Browser-based tools for CA IM administration</p>
-        </div>
-        
-        <div class="content">
-            <div class="instructions">
-                <h3>📋 How to Install Bookmarklets</h3>
-                <ol>
-                    <li>Right-click on any bookmarklet link below</li>
+<body class="bg-slate-100 min-h-screen">
+    <div class="container max-w-6xl mx-auto p-6">
+        <header class="mb-8">
+            <a href="caim_suite_index.html" class="inline-flex items-center text-slate-600 hover:text-slate-900 mb-4 transition-colors">
+                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                </svg>
+                Back to Suite
+            </a>
+            <h1 class="text-4xl font-bold text-slate-800">Quick Bookmarklets</h1>
+            <p class="text-slate-600 mt-2">Ready-to-use utilities for CA Identity Manager</p>
+        </header>
+
+        <main class="bg-white p-8 rounded-2xl shadow-lg">
+            <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg mb-8">
+                <h3 class="font-semibold text-blue-900 mb-2">How to Install</h3>
+                <ol class="text-blue-800 text-sm space-y-1 ml-5 list-decimal">
+                    <li>Right-click any bookmarklet link below</li>
                     <li>Select "Add to Bookmarks" or "Bookmark this link"</li>
-                    <li>Navigate to your CA Identity Manager admin portal</li>
-                    <li>Click the bookmarklet from your bookmarks bar to run it</li>
+                    <li>Navigate to your CA Identity Manager page</li>
+                    <li>Click the bookmarklet from your bookmarks bar</li>
                 </ol>
             </div>
 
-            <div class="warning">
-                <strong>⚠️ Important:</strong> These bookmarklets need to be customized for your specific CA IM interface. They provide a starting framework that you'll need to adapt to your system's HTML structure and URLs.
-            </div>
-
-            <div class="bookmarklet-section">
-                <h2>🔍 User Search Helper</h2>
-                <p>Adds a floating search box that can quickly search for users and highlight them on the page.</p>
-                <a href="javascript:(function(){var d=document,s=d.createElement('div');s.innerHTML='<div style=\"position:fixed;top:10px;right:10px;background:white;border:2px solid #667eea;border-radius:10px;padding:15px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Arial,sans-serif;\"><h4 style=\"margin:0 0 10px 0;color:#2c3e50;\">🔍 User Search</h4><input type=\"text\" id=\"userSearchInput\" placeholder=\"Enter username\" style=\"width:200px;padding:8px;border:1px solid #ccc;border-radius:5px;margin-bottom:10px;\"><br><button onclick=\"searchUsers()\" style=\"background:#667eea;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin-right:5px;\">Search</button><button onclick=\"clearHighlights()\" style=\"background:#95a5a6;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;\">Clear</button><button onclick=\"this.parentNode.parentNode.remove()\" style=\"background:#e74c3c;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin-left:5px;\">×</button></div>';d.body.appendChild(s);window.searchUsers=function(){var term=d.getElementById('userSearchInput').value.toLowerCase();if(!term)return;clearHighlights();var walker=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT,null,false);var node;while(node=walker.nextNode()){if(node.textContent.toLowerCase().includes(term)){var span=d.createElement('span');span.style.backgroundColor='#ffeb3b';span.style.padding='2px 4px';span.style.borderRadius='3px';span.className='userSearchHighlight';span.textContent=node.textContent;node.parentNode.replaceChild(span,node);}}};window.clearHighlights=function(){var highlights=d.querySelectorAll('.userSearchHighlight');highlights.forEach(function(el){var text=d.createTextNode(el.textContent);el.parentNode.replaceChild(text,el);});};})();" class="bookmarklet-link">User Search Helper</a>
-            </div>
-
-            <div class="bookmarklet-section">
-                <h2>📋 Bulk Action Form</h2>
-                <p>Creates a form for entering multiple usernames and generates action lists for bulk operations.</p>
-                <a href="javascript:(function(){var d=document,f=d.createElement('div');f.innerHTML='<div style=\"position:fixed;top:50px;left:50px;width:400px;background:white;border:2px solid #667eea;border-radius:10px;padding:20px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Arial,sans-serif;\"><h3 style=\"margin:0 0 15px 0;color:#2c3e50;\">📋 Bulk Actions</h3><textarea id=\"bulkUsers\" placeholder=\"Enter usernames, one per line\" style=\"width:100%;height:100px;padding:8px;border:1px solid #ccc;border-radius:5px;margin-bottom:10px;font-family:monospace;\"></textarea><select id=\"bulkAction\" style=\"width:100%;padding:8px;border:1px solid #ccc;border-radius:5px;margin-bottom:10px;\"><option value=\"unlock\">Unlock Accounts</option><option value=\"reset\">Reset Passwords</option><option value=\"both\">Unlock & Reset</option></select><button onclick=\"generateBulkList()\" style=\"background:#667eea;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;margin-right:5px;\">Generate List</button><button onclick=\"this.parentNode.remove()\" style=\"background:#e74c3c;color:white;border:none;padding:10px 15px;border-radius:5px;cursor:pointer;\">Close</button><div id=\"bulkResults\" style=\"margin-top:15px;max-height:200px;overflow-y:auto;\"></div></div>';d.body.appendChild(f);window.generateBulkList=function(){var users=d.getElementById('bulkUsers').value.split('\\n').filter(u=>u.trim());var action=d.getElementById('bulkAction').value;var results=d.getElementById('bulkResults');if(users.length===0){results.innerHTML='<p style=\"color:red;\">Please enter at least one username.</p>';return;}var html='<h4>Action Plan:</h4><ul>';users.forEach((user,i)=>{user=user.trim();if(user){html+=`<li><strong>${user}</strong>`;if(action==='unlock'||action==='both')html+=' → Unlock';if(action==='reset'||action==='both')html+=' → Reset Password';html+='</li>';}});html+='</ul><p><small>Copy this list and work through each user in CA IM.</small></p>';results.innerHTML=html;};})();" class="bookmarklet-link">Bulk Action Form</a>
-            </div>
-
-            <div class="bookmarklet-section">
-                <h2>🔐 Password Expiry Checker</h2>
-                <p>Scans the current page for password expiry information and highlights users with expiring passwords.</p>
-                <a href="javascript:(function(){var d=document,c=d.createElement('div');c.innerHTML='<div style=\"position:fixed;bottom:10px;right:10px;background:white;border:2px solid #f39c12;border-radius:10px;padding:15px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Arial,sans-serif;max-width:300px;\"><h4 style=\"margin:0 0 10px 0;color:#e67e22;\">🔐 Password Expiry Scan</h4><button onclick=\"scanPasswordExpiry()\" style=\"background:#f39c12;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin-right:5px;\">Scan Page</button><button onclick=\"this.parentNode.remove()\" style=\"background:#e74c3c;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;\">×</button><div id=\"expiryScanResults\" style=\"margin-top:10px;font-size:12px;\"></div></div>';d.body.appendChild(c);window.scanPasswordExpiry=function(){var results=d.getElementById('expiryScanResults');var dateRegex=/\\b(\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4})\\b/g;var today=new Date();var thirtyDaysOut=new Date(today.getTime()+30*24*60*60*1000);var walker=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT,null,false);var node;var findings=[];while(node=walker.nextNode()){var matches=node.textContent.match(dateRegex);if(matches){matches.forEach(match=>{try{var date=new Date(match);if(date>today&&date<=thirtyDaysOut){var span=d.createElement('span');span.style.backgroundColor='#ffeb3b';span.style.border='2px solid #f39c12';span.style.padding='2px 4px';span.style.borderRadius='3px';span.className='expiryHighlight';span.textContent=node.textContent;node.parentNode.replaceChild(span,node);findings.push(`Found expiring date: ${match}`);}}catch(e){}});}}if(findings.length>0){results.innerHTML=`<strong>Found ${findings.length} potential expiry dates</strong><br>${findings.slice(0,5).join('<br>')}`;}else{results.innerHTML='No expiring dates found on this page.';}};})();" class="bookmarklet-link">Password Expiry Checker</a>
-            </div>
-
-            <div class="bookmarklet-section">
-                <h2>📊 Page Data Extractor</h2>
-                <p>Extracts user data from tables and lists on the current page and formats it for export.</p>
-                <a href="javascript:(function(){var d=document,e=d.createElement('div');e.innerHTML='<div style=\"position:fixed;top:10px;left:10px;width:500px;background:white;border:2px solid #27ae60;border-radius:10px;padding:20px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Arial,sans-serif;\"><h3 style=\"margin:0 0 15px 0;color:#27ae60;\">📊 Data Extractor</h3><button onclick=\"extractTableData()\" style=\"background:#27ae60;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin:5px;\">Extract Tables</button><button onclick=\"extractUserData()\" style=\"background:#3498db;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin:5px;\">Find User Data</button><button onclick=\"this.parentNode.remove()\" style=\"background:#e74c3c;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin:5px;\">Close</button><div id=\"extractResults\" style=\"margin-top:15px;max-height:300px;overflow-y:auto;background:#f8f9fa;padding:10px;border-radius:5px;font-family:monospace;font-size:11px;\"></div></div>';d.body.appendChild(e);window.extractTableData=function(){var tables=d.querySelectorAll('table');var results=d.getElementById('extractResults');var output='';tables.forEach((table,i)=>{output+=`\\nTable ${i+1}:\\n`;var rows=table.querySelectorAll('tr');rows.forEach((row,j)=>{var cells=row.querySelectorAll('td,th');var rowData=[];cells.forEach(cell=>rowData.push(cell.textContent.trim()));if(rowData.length>0)output+=rowData.join(' | ')+'\\n';});});results.textContent=output||'No tables found';};window.extractUserData=function(){var results=d.getElementById('extractResults');var userPatterns=[/\b[a-z]{2,8}\d{0,4}\b/gi,/\b\w+@\w+\.\w+\b/gi,/\b[A-Z][a-z]+ [A-Z][a-z]+\b/g];var findings=new Set();userPatterns.forEach(pattern=>{var walker=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT,null,false);var node;while(node=walker.nextNode()){var matches=node.textContent.match(pattern);if(matches){matches.forEach(match=>findings.add(match.trim()));}}});var output='Found potential user data:\n';Array.from(findings).slice(0,50).forEach(item=>output+=item+'\n');results.textContent=output;};})();" class="bookmarklet-link">Page Data Extractor</a>
-            </div>
-
-            <div class="bookmarklet-section">
-                <h2>⚡ Quick Actions Panel</h2>
-                <p>Creates a floating panel with quick action buttons for common CA IM tasks.</p>
-                <a href="javascript:(function(){if(document.getElementById('caim-panel'))return;var d=document,p=d.createElement('div');p.id='caim-panel';p.innerHTML='<div style=\"position:fixed;top:50%;left:10px;transform:translateY(-50%);background:white;border:2px solid #9b59b6;border-radius:15px;padding:20px;z-index:10000;box-shadow:0 10px 30px rgba(0,0,0,0.3);font-family:Arial,sans-serif;width:200px;\"><h4 style=\"margin:0 0 15px 0;color:#8e44ad;text-align:center;\">⚡ Quick Actions</h4><div style=\"display:flex;flex-direction:column;gap:8px;\"><button onclick=\"highlightForms()\" style=\"background:#3498db;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Highlight Forms</button><button onclick=\"showPageInfo()\" style=\"background:#e67e22;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Page Info</button><button onclick=\"findButtons()\" style=\"background:#27ae60;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Find Buttons</button><button onclick=\"exportPageData()\" style=\"background:#f39c12;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Export Data</button><button onclick=\"document.getElementById(\\'caim-panel\\').remove()\" style=\"background:#e74c3c;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;margin-top:10px;\">Close</button></div></div>';d.body.appendChild(p);window.highlightForms=function(){d.querySelectorAll('form,input,select,textarea').forEach(el=>{el.style.outline='3px solid #e74c3c';el.style.backgroundColor='rgba(231,76,60,0.1)';});setTimeout(()=>d.querySelectorAll('form,input,select,textarea').forEach(el=>{el.style.outline='';el.style.backgroundColor='';}),5000);};window.showPageInfo=function(){alert(`Page: ${d.title}\nURL: ${location.href}\nForms: ${d.forms.length}\nInputs: ${d.querySelectorAll('input').length}\nButtons: ${d.querySelectorAll('button,input[type=\"submit\"]').length}`);};window.findButtons=function(){d.querySelectorAll('button,input[type=\"submit\"],input[type=\"button\"]').forEach(btn=>{btn.style.border='3px solid #f39c12';btn.style.boxShadow='0 0 10px rgba(243,156,18,0.5)';});setTimeout(()=>d.querySelectorAll('button,input[type=\"submit\"],input[type=\"button\"]').forEach(btn=>{btn.style.border='';btn.style.boxShadow='';}),5000);};window.exportPageData=function(){var data=`Page Title: ${d.title}\nURL: ${location.href}\nTimestamp: ${new Date()}\n\n`;var tables=d.querySelectorAll('table');tables.forEach((table,i)=>{data+=`Table ${i+1}:\n`;table.querySelectorAll('tr').forEach(row=>{var cells=Array.from(row.querySelectorAll('td,th')).map(cell=>cell.textContent.trim()).join(' | ');if(cells)data+=cells+'\n';});data+='\n';});var blob=new Blob([data],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=d.createElement('a');a.href=url;a.download=`caim_export_${new Date().getTime()}.txt`;a.click();};})();" class="bookmarklet-link">Quick Actions Panel</a>
-            </div>
-
-            <div class="bookmarklet-section">
-                <h2>🔧 Form Auto-Filler</h2>
-                <p>Helps fill out common forms with predefined values and shortcuts for repetitive tasks.</p>
-                <a href="javascript:(function(){var d=document,f=d.createElement('div');f.innerHTML='<div style=\"position:fixed;top:100px;right:50px;background:white;border:2px solid #e67e22;border-radius:10px;padding:20px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:Arial,sans-serif;width:350px;\"><h3 style=\"margin:0 0 15px 0;color:#d35400;\">🔧 Form Auto-Filler</h3><div style=\"margin-bottom:10px;\"><label style=\"display:block;margin-bottom:5px;font-weight:bold;\">Username:</label><input type=\"text\" id=\"fillUsername\" placeholder=\"Enter username\" style=\"width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;\"></div><div style=\"margin-bottom:10px;\"><label style=\"display:block;margin-bottom:5px;font-weight:bold;\">Action:</label><select id=\"fillAction\" style=\"width:100%;padding:6px;border:1px solid #ccc;border-radius:4px;\"><option value=\"unlock\">Unlock Account</option><option value=\"reset\">Reset Password</option><option value=\"enable\">Enable Account</option><option value=\"disable\">Disable Account</option></select></div><div style=\"margin-bottom:15px;\"><button onclick=\"fillCurrentForm()\" style=\"background:#e67e22;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;margin-right:5px;\">Fill Form</button><button onclick=\"findFormFields()\" style=\"background:#3498db;color:white;border:none;padding:8px 15px;border-radius:5px;cursor:pointer;\">Find Fields</button></div><button onclick=\"this.parentNode.remove()\" style=\"background:#e74c3c;color:white;border:none;padding:6px 12px;border-radius:5px;cursor:pointer;font-size:12px;\">Close</button><div id=\"fillResults\" style=\"margin-top:10px;font-size:12px;color:#666;\"></div></div>';d.body.appendChild(f);window.fillCurrentForm=function(){var username=d.getElementById('fillUsername').value;var action=d.getElementById('fillAction').value;var results=d.getElementById('fillResults');if(!username){results.innerHTML='<span style=\"color:red;\">Please enter a username</span>';return;}var filled=0;d.querySelectorAll('input[type=\"text\"],input[type=\"search\"]').forEach(input=>{if(input.name.toLowerCase().includes('user')||input.placeholder.toLowerCase().includes('user')||input.id.toLowerCase().includes('user')){input.value=username;input.style.backgroundColor='#d5f4e6';filled++;}});d.querySelectorAll('select').forEach(select=>{Array.from(select.options).forEach(option=>{if(option.text.toLowerCase().includes(action)||option.value.toLowerCase().includes(action)){select.value=option.value;select.style.backgroundColor='#d5f4e6';filled++;}});});results.innerHTML=`Filled ${filled} fields with username: ${username} and action: ${action}`;setTimeout(()=>d.querySelectorAll('input,select').forEach(el=>el.style.backgroundColor=''),3000);};window.findFormFields=function(){var results=d.getElementById('fillResults');var fields=[];d.querySelectorAll('input,select,textarea').forEach(field=>{var info=`${field.tagName}: ${field.name||field.id||'unnamed'} (${field.type||'select'})`;fields.push(info);field.style.outline='2px solid #3498db';});results.innerHTML=`Found ${fields.length} form fields:<br><small>${fields.slice(0,8).join('<br>')}</small>`;setTimeout(()=>d.querySelectorAll('input,select,textarea').forEach(el=>el.style.outline=''),5000);};})();" class="bookmarklet-link">Form Auto-Filler</a>
-            </div>
-
-            <div class="code-block">
-PowerShell Integration Commands:
-
-# Save users to CSV for PowerShell processing
-$users = @("jsmith", "mjohnson", "bwilliams")
-$users | ForEach-Object { [PSCustomObject]@{Username = $_} } | Export-Csv -Path "C:\temp\bulk_users.csv" -NoTypeInformation
-
-# Load and run the PowerShell tools
-. "C:\path\to\caim_tools.ps1"
-
-# Connect to CA IM
-$cred = Get-Credential
-Connect-CAIM -Username $cred.UserName -Password $cred.Password
-
-# Process bulk actions
-Process-BulkCAIMActions -CsvFilePath "C:\temp\bulk_users.csv" -Action "Both"
-            </div>
-
-            <div class="instructions">
-                <h3>🛠️ Customization Guide</h3>
-                <ol>
-                    <li><strong>Update PowerShell URLs:</strong> Modify the $Global:CAIMConfig in the PowerShell script with your actual CA IM URLs</li>
-                    <li><strong>Test bookmarklets:</strong> Install each bookmarklet and test on your CA IM pages</li>
-                    <li><strong>Inspect your forms:</strong> Use browser dev tools (F12) to find the actual field names and form structures</li>
-                    <li><strong>Customize selectors:</strong> Update the JavaScript selectors to match your CA IM interface</li>
-                    <li><strong>Add authentication:</strong> Modify PowerShell scripts to handle your specific login process</li>
-                </ol>
-            </div>
-
-            <div class="bookmarklet-section">
-                <h2>🚀 Getting Started</h2>
-                <div class="warning">
-                    <strong>Next Steps:</strong>
-                    <ol>
-                        <li>Install the bookmarklets above by right-clicking and bookmarking them</li>
-                        <li>Save the PowerShell script to your computer</li>
-                        <li>Navigate to your CA IM admin portal and test the "Quick Actions Panel" bookmarklet first</li>
-                        <li>Use the "Page Info" and "Find Fields" functions to understand your page structure</li>
-                        <li>Customize the PowerShell script URLs to match your environment</li>
-                    </ol>
+            <!-- User Search Helper -->
+            <div class="mb-8 p-6 border-2 border-slate-200 rounded-xl hover:border-green-400 hover:bg-green-50/30 transition-all">
+                <div class="flex items-start mb-4">
+                    <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-2">User Search Helper</h3>
+                        <p class="text-slate-600 text-sm mb-4">Adds a floating search box to quickly find and highlight usernames on the page.</p>
+                        <a href="javascript:(function(){if(window.caim_search_active)return;window.caim_search_active=true;var d=document,s=d.createElement('div');s.id='caim-search-panel';s.innerHTML='<div style=\"position:fixed;top:10px;right:10px;background:white;border:2px solid %2310b981;border-radius:10px;padding:15px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:sans-serif;min-width:280px;\"><h4 style=\"margin:0 0 10px 0;color:%231e293b;font-size:16px;font-weight:600;\">🔍 User Search</h4><input type=\"text\" id=\"userSearchInput\" placeholder=\"Enter username\" style=\"width:100%%;padding:8px;border:1px solid %23cbd5e1;border-radius:5px;margin-bottom:10px;font-size:14px;\"><div style=\"display:flex;gap:8px;\"><button id=\"searchBtn\" style=\"flex:1;background:%2310b981;color:white;border:none;padding:8px;border-radius:5px;cursor:pointer;font-weight:500;\">Search</button><button id=\"clearBtn\" style=\"flex:1;background:%2394a3b8;color:white;border:none;padding:8px;border-radius:5px;cursor:pointer;font-weight:500;\">Clear</button><button id=\"closeBtn\" style=\"background:%23ef4444;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-weight:500;\">×</button></div></div>';d.body.appendChild(s);function searchUsers(){var term=d.getElementById('userSearchInput').value.toLowerCase();if(!term)return;clearHighlights();var walker=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT,{acceptNode:function(node){if(node.parentElement.closest('script,style,%23caim-search-panel'))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT;}});var node;while(node=walker.nextNode()){if(node.textContent.toLowerCase().includes(term)){var span=d.createElement('span');span.style.backgroundColor='%23fef08a';span.style.padding='2px 4px';span.style.borderRadius='3px';span.className='userSearchHighlight';span.textContent=node.textContent;node.parentNode.replaceChild(span,node);}}};function clearHighlights(){var highlights=d.querySelectorAll('.userSearchHighlight');highlights.forEach(function(el){var text=d.createTextNode(el.textContent);el.parentNode.replaceChild(text,el);});};function closePanel(){d.getElementById('caim-search-panel').remove();window.caim_search_active=false;};d.getElementById('searchBtn').onclick=searchUsers;d.getElementById('clearBtn').onclick=clearHighlights;d.getElementById('closeBtn').onclick=closePanel;d.getElementById('userSearchInput').onkeypress=function(e){if(e.key==='Enter')searchUsers();};})();" class="inline-block px-6 py-2 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors text-sm">
+                            User Search Helper
+                        </a>
+                    </div>
                 </div>
             </div>
-        </div>
+
+            <!-- Bulk Action Form -->
+            <div class="mb-8 p-6 border-2 border-slate-200 rounded-xl hover:border-blue-400 hover:bg-blue-50/30 transition-all">
+                <div class="flex items-start mb-4">
+                    <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-2">Bulk Action Form</h3>
+                        <p class="text-slate-600 text-sm mb-4">Enter multiple usernames and generate an action checklist for batch operations.</p>
+                        <a href="javascript:(function(){if(document.getElementById('caim-bulk-form'))return;var d=document,f=d.createElement('div');f.innerHTML='<div id=\"caim-bulk-form\" style=\"position:fixed;top:50px;left:50px;width:400px;background:white;border:2px solid %233b82f6;border-radius:10px;padding:20px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:sans-serif;\"><h3 style=\"margin:0 0 15px 0;color:%231e293b;font-size:18px;font-weight:600;\">📋 Bulk Actions</h3><textarea id=\"bulkUsers\" placeholder=\"Enter usernames, one per line\" style=\"width:100%%;height:100px;padding:8px;border:1px solid %23cbd5e1;border-radius:5px;margin-bottom:10px;font-family:monospace;font-size:13px;\"></textarea><select id=\"bulkAction\" style=\"width:100%%;padding:8px;border:1px solid %23cbd5e1;border-radius:5px;margin-bottom:10px;font-size:14px;\"><option value=\"unlock\">Unlock Accounts</option><option value=\"reset\">Reset Passwords</option><option value=\"both\">Unlock &amp; Reset</option></select><div style=\"display:flex;gap:8px;\"><button onclick=\"generateBulkList()\" style=\"flex:1;background:%233b82f6;color:white;border:none;padding:10px;border-radius:5px;cursor:pointer;font-weight:500;\">Generate List</button><button onclick=\"document.getElementById(\\'caim-bulk-form\\').remove()\" style=\"flex:1;background:%23ef4444;color:white;border:none;padding:10px;border-radius:5px;cursor:pointer;font-weight:500;\">Close</button></div><div id=\"bulkResults\" style=\"margin-top:15px;max-height:200px;overflow-y:auto;\"></div></div>';d.body.appendChild(f);window.generateBulkList=function(){var users=d.getElementById('bulkUsers').value.split('\\n').filter(u=>u.trim());var action=d.getElementById('bulkAction').value;var results=d.getElementById('bulkResults');if(users.length===0){results.innerHTML='<p style=\"color:%23ef4444;font-size:14px;\">Please enter at least one username.</p>';return;}var html='<h4 style=\"margin:10px 0;font-size:14px;font-weight:600;\">Action Plan:</h4><ul style=\"list-style:none;padding:0;font-size:13px;\">';users.forEach((user,i)=>{user=user.trim();if(user){html+='<li style=\"padding:4px 0;border-bottom:1px solid %23e2e8f0;\"><strong>'+escapeHtml(user)+'</strong>';if(action==='unlock'||action==='both')html+=' → Unlock';if(action==='reset'||action==='both')html+=' → Reset Password';html+='</li>';}});html+='</ul><p style=\"font-size:12px;color:%2364748b;margin-top:10px;\">Process each user in CA IM admin portal.</p>';results.innerHTML=html;};function escapeHtml(text){var div=d.createElement('div');div.textContent=text;return div.innerHTML;}})();" class="inline-block px-6 py-2 bg-blue-600 text-white font-semibold rounded-lg hover:bg-blue-700 transition-colors text-sm">
+                            Bulk Action Form
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Password Expiry Checker -->
+            <div class="mb-8 p-6 border-2 border-slate-200 rounded-xl hover:border-orange-400 hover:bg-orange-50/30 transition-all">
+                <div class="flex items-start mb-4">
+                    <div class="w-12 h-12 bg-orange-500 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-2">Password Expiry Scanner</h3>
+                        <p class="text-slate-600 text-sm mb-4">Scans the current page for password expiry dates and highlights users with expiring passwords.</p>
+                        <a href="javascript:(function(){if(document.getElementById('caim-expiry-panel'))return;var d=document,c=d.createElement('div');c.innerHTML='<div id=\"caim-expiry-panel\" style=\"position:fixed;bottom:10px;right:10px;background:white;border:2px solid %23f97316;border-radius:10px;padding:15px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:sans-serif;max-width:320px;\"><h4 style=\"margin:0 0 10px 0;color:%231e293b;font-size:16px;font-weight:600;\">🔐 Password Expiry Scan</h4><div style=\"display:flex;gap:8px;margin-bottom:10px;\"><button id=\"scanBtn\" style=\"flex:1;background:%23f97316;color:white;border:none;padding:8px;border-radius:5px;cursor:pointer;font-weight:500;\">Scan Page</button><button onclick=\"document.getElementById(\\'caim-expiry-panel\\').remove()\" style=\"background:%23ef4444;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-weight:500;\">×</button></div><div id=\"expiryScanResults\" style=\"font-size:12px;color:%2364748b;\"></div></div>';d.body.appendChild(c);d.getElementById('scanBtn').onclick=function(){var results=d.getElementById('expiryScanResults');var dateRegex=/\\b(\\d{1,2}[\\/\\-]\\d{1,2}[\\/\\-]\\d{2,4})\\b/g;var today=new Date();var thirtyDaysOut=new Date(today.getTime()+30*24*60*60*1000);var walker=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT,{acceptNode:function(node){if(node.parentElement.closest('script,style,%23caim-expiry-panel'))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT;}});var node;var findings=[];while(node=walker.nextNode()){var matches=node.textContent.match(dateRegex);if(matches){matches.forEach(match=>{try{var date=new Date(match);if(date>today&&date<=thirtyDaysOut){var span=d.createElement('span');span.style.backgroundColor='%23fed7aa';span.style.border='2px solid %23f97316';span.style.padding='2px 4px';span.style.borderRadius='3px';span.className='expiryHighlight';span.textContent=node.textContent;if(!node.parentElement.querySelector('.expiryHighlight')){node.parentNode.replaceChild(span,node);findings.push('Found: '+match);}}}catch(e){}});}}if(findings.length>0){results.innerHTML='<strong style=\"color:%23ea580c;\">Found '+findings.length+' expiring dates</strong><br>'+findings.slice(0,5).join('<br>');}else{results.innerHTML='No expiring dates found (30-day window).';}};})();" class="inline-block px-6 py-2 bg-orange-600 text-white font-semibold rounded-lg hover:bg-orange-700 transition-colors text-sm">
+                            Password Expiry Scanner
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Page Data Extractor -->
+            <div class="mb-8 p-6 border-2 border-slate-200 rounded-xl hover:border-purple-400 hover:bg-purple-50/30 transition-all">
+                <div class="flex items-start mb-4">
+                    <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-2">Page Data Extractor</h3>
+                        <p class="text-slate-600 text-sm mb-4">Extract tables and user data from the current page for export and analysis.
+                                    <p class="text-slate-600 text-sm mb-4">Extract tables and user data from the current page for export and analysis.</p>
+                        <a href="javascript:(function(){if(document.getElementById('caim-extractor'))return;var d=document,e=d.createElement('div');e.innerHTML='<div id=\"caim-extractor\" style=\"position:fixed;top:10px;left:10px;width:500px;background:white;border:2px solid %23a855f7;border-radius:10px;padding:20px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:sans-serif;\"><h3 style=\"margin:0 0 15px 0;color:%231e293b;font-size:18px;font-weight:600;\">📊 Data Extractor</h3><div style=\"display:flex;gap:8px;margin-bottom:15px;\"><button onclick=\"extractTableData()\" style=\"flex:1;background:%23a855f7;color:white;border:none;padding:8px;border-radius:5px;cursor:pointer;font-weight:500;\">Extract Tables</button><button onclick=\"extractUserData()\" style=\"flex:1;background:%23818cf8;color:white;border:none;padding:8px;border-radius:5px;cursor:pointer;font-weight:500;\">Find Users</button><button onclick=\"document.getElementById(\\'caim-extractor\\').remove()\" style=\"background:%23ef4444;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-weight:500;\">Close</button></div><div id=\"extractResults\" style=\"max-height:300px;overflow-y:auto;background:%23f8fafc;padding:10px;border-radius:5px;font-family:monospace;font-size:11px;white-space:pre-wrap;\"></div></div>';d.body.appendChild(e);window.extractTableData=function(){var tables=d.querySelectorAll('table');var results=d.getElementById('extractResults');if(!results)return;var output='';tables.forEach((table,i)=>{output+='\\nTable '+(i+1)+':\\n';var rows=table.querySelectorAll('tr');rows.forEach((row,j)=>{var cells=row.querySelectorAll('td,th');var rowData=[];cells.forEach(cell=>rowData.push(cell.textContent.trim()));if(rowData.length>0)output+=rowData.join(' | ')+'\\n';});});results.textContent=output||'No tables found on this page.';};window.extractUserData=function(){var results=d.getElementById('extractResults');if(!results)return;var userPatterns=[/\\b[a-z]{2,8}\\d{0,4}\\b/gi,/\\b\\w+@\\w+\\.\\w+\\b/gi,/\\b[A-Z][a-z]+ [A-Z][a-z]+\\b/g];var findings=new Set();userPatterns.forEach(pattern=>{var walker=d.createTreeWalker(d.body,NodeFilter.SHOW_TEXT,{acceptNode:function(node){if(node.parentElement.closest('script,style,%23caim-extractor'))return NodeFilter.FILTER_REJECT;return NodeFilter.FILTER_ACCEPT;}});var node;while(node=walker.nextNode()){var matches=node.textContent.match(pattern);if(matches){matches.forEach(match=>findings.add(match.trim()));}}});var output='Found potential user data:\\n';Array.from(findings).slice(0,50).forEach(item=>output+=item+'\\n');results.textContent=output;};})();" class="inline-block px-6 py-2 bg-purple-600 text-white font-semibold rounded-lg hover:bg-purple-700 transition-colors text-sm">
+                            Page Data Extractor
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions Panel -->
+            <div class="mb-8 p-6 border-2 border-slate-200 rounded-xl hover:border-indigo-400 hover:bg-indigo-50/30 transition-all">
+                <div class="flex items-start mb-4">
+                    <div class="w-12 h-12 bg-indigo-500 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-2">Quick Actions Panel</h3>
+                        <p class="text-slate-600 text-sm mb-4">Floating panel with shortcuts to highlight forms, show page info, find buttons, and export data.</p>
+                        <a href="javascript:(function(){if(document.getElementById('caim-panel'))return;var d=document,p=d.createElement('div');p.id='caim-panel';p.innerHTML='<div style=\"position:fixed;top:50%%;left:10px;transform:translateY(-50%%);background:white;border:2px solid %236366f1;border-radius:15px;padding:20px;z-index:10000;box-shadow:0 10px 30px rgba(0,0,0,0.3);font-family:sans-serif;width:200px;\"><h4 style=\"margin:0 0 15px 0;color:%231e293b;text-align:center;font-weight:600;\">⚡ Quick Actions</h4><div style=\"display:flex;flex-direction:column;gap:8px;\"><button onclick=\"highlightForms()\" style=\"background:%233b82f6;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;\">Highlight Forms</button><button onclick=\"showPageInfo()\" style=\"background:%23f97316;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;\">Page Info</button><button onclick=\"findButtons()\" style=\"background:%2310b981;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;\">Find Buttons</button><button onclick=\"exportPageData()\" style=\"background:%23f59e0b;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;font-weight:500;\">Export Data</button><button onclick=\"document.getElementById(\\'caim-panel\\').remove()\" style=\"background:%23ef4444;color:white;border:none;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:12px;margin-top:10px;font-weight:500;\">Close</button></div></div>';d.body.appendChild(p);window.highlightForms=function(){d.querySelectorAll('form,input,select,textarea').forEach(el=>{el.style.outline='3px solid %23ef4444';el.style.backgroundColor='rgba(239,68,68,0.1)';});setTimeout(()=>d.querySelectorAll('form,input,select,textarea').forEach(el=>{el.style.outline='';el.style.backgroundColor='';}),5000);};window.showPageInfo=function(){alert('Page: '+d.title+'\\nURL: '+location.href+'\\nForms: '+d.forms.length+'\\nInputs: '+d.querySelectorAll('input').length+'\\nButtons: '+d.querySelectorAll('button,input[type=\"submit\"]').length);};window.findButtons=function(){d.querySelectorAll('button,input[type=\"submit\"],input[type=\"button\"]').forEach(btn=>{btn.style.border='3px solid %23f59e0b';btn.style.boxShadow='0 0 10px rgba(245,158,11,0.5)';});setTimeout(()=>d.querySelectorAll('button,input[type=\"submit\"],input[type=\"button\"]').forEach(btn=>{btn.style.border='';btn.style.boxShadow='';}),5000);};window.exportPageData=function(){var data='Page Title: '+d.title+'\\nURL: '+location.href+'\\nTimestamp: '+new Date()+'\\n\\n';var tables=d.querySelectorAll('table');tables.forEach((table,i)=>{data+='Table '+(i+1)+':\\n';table.querySelectorAll('tr').forEach(row=>{var cells=Array.from(row.querySelectorAll('td,th')).map(cell=>cell.textContent.trim()).join(' | ');if(cells)data+=cells+'\\n';});data+='\\n';});var blob=new Blob([data],{type:'text/plain'});var url=URL.createObjectURL(blob);var a=d.createElement('a');a.href=url;a.download='caim_export_'+new Date().getTime()+'.txt';a.click();};})();" class="inline-block px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors text-sm">
+                            Quick Actions Panel
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Auto-Filler -->
+            <div class="p-6 border-2 border-slate-200 rounded-xl hover:border-yellow-400 hover:bg-yellow-50/30 transition-all">
+                <div class="flex items-start mb-4">
+                    <div class="w-12 h-12 bg-yellow-500 rounded-lg flex items-center justify-center mr-4 flex-shrink-0">
+                        <svg class="w-7 h-7 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1">
+                        <h3 class="text-xl font-semibold text-slate-800 mb-2">Form Auto-Filler</h3>
+                        <p class="text-slate-600 text-sm mb-4">Quick-fill common forms with predefined username and action values.</p>
+                        <a href="javascript:(function(){if(document.getElementById('caim-filler'))return;var d=document,f=d.createElement('div');f.innerHTML='<div id=\"caim-filler\" style=\"position:fixed;top:100px;right:50px;background:white;border:2px solid %23eab308;border-radius:10px;padding:20px;z-index:10000;box-shadow:0 4px 20px rgba(0,0,0,0.3);font-family:sans-serif;width:350px;\"><h3 style=\"margin:0 0 15px 0;color:%231e293b;font-size:18px;font-weight:600;\">🔧 Form Auto-Filler</h3><div style=\"margin-bottom:10px;\"><label style=\"display:block;margin-bottom:5px;font-weight:500;color:%2364748b;\">Username:</label><input type=\"text\" id=\"fillUsername\" placeholder=\"Enter username\" style=\"width:100%%;padding:8px;border:1px solid %23cbd5e1;border-radius:5px;\"></div><div style=\"margin-bottom:15px;\"><label style=\"display:block;margin-bottom:5px;font-weight:500;color:%2364748b;\">Action:</label><select id=\"fillAction\" style=\"width:100%%;padding:8px;border:1px solid %23cbd5e1;border-radius:5px;\"><option value=\"unlock\">Unlock Account</option><option value=\"reset\">Reset Password</option><option value=\"enable\">Enable Account</option><option value=\"disable\">Disable Account</option></select></div><div style=\"display:flex;gap:8px;margin-bottom:15px;\"><button onclick=\"fillCurrentForm()\" style=\"flex:1;background:%23eab308;color:white;border:none;padding:8px;border-radius:5px;cursor:pointer;font-weight:500;\">Fill Form</button><button onclick=\"findFormFields()\" style=\"flex:1;background:%23818cf8;color:white;border:none;padding:8px;border-radius:5px;cursor:pointer;font-weight:500;\">Find Fields</button></div><button onclick=\"document.getElementById(\\'caim-filler\\').remove()\" style=\"width:100%%;background:%23ef4444;color:white;border:none;padding:8px;border-radius:5px;cursor:pointer;font-weight:500;\">Close</button><div id=\"fillResults\" style=\"margin-top:10px;font-size:12px;color:%2364748b;\"></div></div>';d.body.appendChild(f);window.fillCurrentForm=function(){var usernameInput=d.getElementById('fillUsername');var actionSelect=d.getElementById('fillAction');var results=d.getElementById('fillResults');if(!usernameInput||!actionSelect||!results)return;var username=usernameInput.value;var action=actionSelect.value;if(!username){results.innerHTML='<span style=\"color:%23ef4444;\">Please enter a username</span>';return;}var filled=0;d.querySelectorAll('input[type=\"text\"],input[type=\"search\"]').forEach(input=>{var name=(input.name||'').toLowerCase();var placeholder=(input.placeholder||'').toLowerCase();var id=(input.id||'').toLowerCase();if(name.includes('user')||placeholder.includes('user')||id.includes('user')){input.value=username;input.style.backgroundColor='%23d1fae5';filled++;}});d.querySelectorAll('select').forEach(select=>{Array.from(select.options).forEach(option=>{var text=option.text.toLowerCase();var value=option.value.toLowerCase();if(text.includes(action)||value.includes(action)){select.value=option.value;select.style.backgroundColor='%23d1fae5';filled++;}});});function escapeHtml(text){var div=d.createElement('div');div.textContent=text;return div.innerHTML;}results.innerHTML='Filled '+filled+' fields with username: '+escapeHtml(username)+' and action: '+escapeHtml(action);setTimeout(()=>d.querySelectorAll('input,select').forEach(el=>el.style.backgroundColor=''),3000);};window.findFormFields=function(){var results=d.getElementById('fillResults');if(!results)return;var fields=[];d.querySelectorAll('input,select,textarea').forEach(field=>{var info=field.tagName+': '+(field.name||field.id||'unnamed')+' ('+(field.type||'select')+')';fields.push(info);field.style.outline='2px solid %23818cf8';});results.innerHTML='Found '+fields.length+' form fields';setTimeout(()=>d.querySelectorAll('input,select,textarea').forEach(el=>el.style.outline=''),5000);};})();" class="inline-block px-6 py-2 bg-yellow-600 text-white font-semibold rounded-lg hover:bg-yellow-700 transition-colors text-sm">
+                            Form Auto-Filler
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="text-center mt-8 text-slate-500 text-sm">
+            <p>These bookmarklets work entirely in your browser - no data is sent externally</p>
+        </footer>
     </div>
 </body>
 </html>

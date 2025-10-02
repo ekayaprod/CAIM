@@ -595,4 +595,119 @@
                 output += `<div class="info-item">`;
                 output += `<span class="info-label">Email</span>`;
                 output += `<span class="info-value">${userData.email}</span>`;
-                output
+                output += `</div>`;
+                output += `<div class="info-item">`;
+                output += `<span class="info-label">Password Expiry</span>`;
+                output += `<span class="info-value">${userData.passwordExpiry}</span>`;
+                output += `</div>`;
+                output += `<div class="info-item">`;
+                output += `<span class="info-label">Status</span>`;
+                output += `<span class="info-value"><span class="status-badge ${statusClass}">${statusText}</span></span>`;
+                output += `</div>`;
+                output += `</div>`;
+                
+                if (daysUntilExpiry <= threshold) {
+                    output += `<div class="action-buttons">`;
+                    output += `<button class="btn btn-danger btn-small" onclick="simulateAction('${user}', 'reset')">Reset Password</button>`;
+                    output += `<button class="btn btn-secondary btn-small" onclick="generateNotification('${user}')">Send Notification</button>`;
+                    output += `</div>`;
+                }
+                
+                output += `</div>`;
+            });
+
+            // Update statistics
+            document.getElementById('totalUsers').textContent = totalUsers;
+            document.getElementById('expiringSoon').textContent = expiringSoon;
+            document.getElementById('expiredPasswords').textContent = expired;
+
+            document.getElementById('expiryOutput').innerHTML = output;
+            document.getElementById('expiryResults').style.display = 'block';
+        }
+
+        function lookupUser() {
+            const username = document.getElementById('searchUsername').value.trim();
+            
+            if (!username) {
+                alert('Please enter a username.');
+                return;
+            }
+
+            const userData = sampleUsers[username] || {
+                fullName: 'User Not Found',
+                email: 'N/A',
+                department: 'N/A',
+                lastLogin: 'N/A',
+                passwordExpiry: 'N/A',
+                status: 'unknown',
+                accountLocked: false
+            };
+
+            const today = new Date();
+            const expiryDate = userData.passwordExpiry !== 'N/A' ? new Date(userData.passwordExpiry) : null;
+            const daysUntilExpiry = expiryDate ? Math.ceil((expiryDate - today) / (1000 * 60 * 60 * 24)) : 'N/A';
+
+            let output = `<div class="user-card">`;
+            output += `<h4>${userData.fullName} (${username})</h4>`;
+            output += `<div class="user-info">`;
+            output += `<div class="info-item">`;
+            output += `<span class="info-label">Email</span>`;
+            output += `<span class="info-value">${userData.email}</span>`;
+            output += `</div>`;
+            output += `<div class="info-item">`;
+            output += `<span class="info-label">Department</span>`;
+            output += `<span class="info-value">${userData.department}</span>`;
+            output += `</div>`;
+            output += `<div class="info-item">`;
+            output += `<span class="info-label">Last Login</span>`;
+            output += `<span class="info-value">${userData.lastLogin}</span>`;
+            output += `</div>`;
+            output += `<div class="info-item">`;
+            output += `<span class="info-label">Password Expiry</span>`;
+            output += `<span class="info-value">${userData.passwordExpiry}</span>`;
+            output += `</div>`;
+            output += `<div class="info-item">`;
+            output += `<span class="info-label">Days Until Expiry</span>`;
+            output += `<span class="info-value">${daysUntilExpiry}</span>`;
+            output += `</div>`;
+            output += `<div class="info-item">`;
+            output += `<span class="info-label">Account Status</span>`;
+            output += `<span class="info-value"><span class="status-badge ${userData.accountLocked ? 'status-locked' : 'status-active'}">${userData.accountLocked ? 'Locked' : 'Active'}</span></span>`;
+            output += `</div>`;
+            output += `</div>`;
+
+            if (userData.fullName !== 'User Not Found') {
+                output += `<div class="action-buttons">`;
+                if (userData.accountLocked) {
+                    output += `<button class="btn btn-success btn-small" onclick="simulateAction('${username}', 'unlock')">Unlock Account</button>`;
+                }
+                output += `<button class="btn btn-secondary btn-small" onclick="simulateAction('${username}', 'reset')">Reset Password</button>`;
+                output += `<button class="btn btn-secondary btn-small" onclick="generateReport('${username}')">Generate Report</button>`;
+                output += `</div>`;
+            }
+
+            output += `</div>`;
+
+            document.getElementById('lookupOutput').innerHTML = output;
+            document.getElementById('lookupResults').style.display = 'block';
+        }
+
+        function simulateAction(username, action) {
+            const actionText = action === 'unlock' ? 'unlocking' : 'resetting password for';
+            alert(`Simulating ${actionText} ${username}.\n\nIn a real implementation, this would:\n1. Connect to CA Identity Manager API\n2. Execute the ${action} action\n3. Log the result\n4. Update the user status`);
+        }
+
+        function generateNotification(username) {
+            alert(`Generating password expiry notification for ${username}.\n\nThis would typically:\n1. Send an email reminder\n2. Log the notification\n3. Schedule follow-up reminders`);
+        }
+
+        function generateReport(username) {
+            alert(`Generating detailed report for ${username}.\n\nReport would include:\n1. Account history\n2. Login patterns\n3. Role assignments\n4. Recent changes`);
+        }
+
+        // Initialize with some sample data
+        document.getElementById('expiryUserList').value = 'jsmith\nmjohnson\nbwilliams\nsjones';
+        document.getElementById('userList').value = 'mjohnson\nbwilliams';
+    </script>
+</body>
+</html>

@@ -13,6 +13,39 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .preset-card { background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; margin-top: 0.75rem; }
         .preset-field { margin-top: 0.75rem; }
+        /* Custom Modal Styles */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        .modal-backdrop.visible {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal-content {
+            background: white;
+            padding: 2rem;
+            border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 450px;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+        .modal-backdrop.visible .modal-content {
+            transform: scale(1);
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen">
@@ -77,13 +110,45 @@
                 </h2>
 
                 <div class="mb-6">
-                    <label class="block text-sm font-semibold text-slate-700 mb-2">Field Mappings JSON (from Builder Tool)</label>
-                    <textarea id="mappings-json" rows="10" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Paste your field mappings JSON here..."></textarea>
+                    <label for="mappings-json" class="block text-sm font-semibold text-slate-700 mb-2">Field Mappings JSON (from Builder Tool)</label>
+                    <textarea id="mappings-json" rows="8" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Paste your field mappings JSON here..."></textarea>
                 </div>
 
                 <button onclick="app.renderPresetUI()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mb-6">
                     Load Mappings & Build Preset UI
                 </button>
+
+                <div id="bulk-import-section" style="display: none;" class="mt-6 p-6 bg-amber-50 border border-amber-200 rounded-lg">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-3">Bulk Import from Spreadsheet</h3>
+                    <p class="text-sm text-slate-600 mb-4">First, download the template. Then, fill it out and upload the completed CSV file to create multiple presets at once.</p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label for="bulk-preset-type" class="block text-sm font-medium text-slate-700 mb-2">1. Select Preset Type</label>
+                            <select id="bulk-preset-type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                                <option value="locations">Locations</option>
+                                <option value="roles">Roles</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="bulk-name-column" class="block text-sm font-medium text-slate-700 mb-2">2. Name Column Header</label>
+                            <input type="text" id="bulk-name-column" placeholder="e.g., Location, Role, Name" value="Name" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-4 flex-wrap">
+                        <button onclick="app.downloadCSVTemplate()" class="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">
+                            3. Download Template
+                        </button>
+                        <div class="flex-grow">
+                             <label for="bulk-csv-file" class="block text-sm font-medium text-slate-700 mb-2">4. Upload Completed CSV</label>
+                             <input type="file" id="bulk-csv-file" accept=".csv" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm">
+                        </div>
+                        <button onclick="app.importBulkPresets()" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors self-end">
+                            5. Import Presets
+                        </button>
+                    </div>
+                </div>
 
                 <div id="presets-ui-container" style="display: none;">
                     <!-- Defaults Section -->
@@ -161,6 +226,19 @@
             </div>
         </main>
     </div>
+    
+    <!-- Modal Container -->
+    <div id="custom-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold text-slate-800 mb-4">Notification</h3>
+            <p id="modal-message" class="text-slate-600 mb-6">This is a modal message.</p>
+            <div id="modal-buttons" class="flex justify-end gap-3">
+                <button id="modal-cancel" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 transition-colors">Cancel</button>
+                <button id="modal-confirm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">OK</button>
+            </div>
+        </div>
+    </div>
+
 
     <template id="preset-card-template">
         <div class="preset-card">
@@ -182,22 +260,55 @@ const app = {
         mappings: null,
         presets: { defaults: {}, locations: {}, roles: {} }
     },
+    
+    modal: {
+        el: null,
+        message: null,
+        confirmBtn: null,
+        cancelBtn: null,
+        confirmCallback: null,
+        cancelCallback: null
+    },
 
     init() {
+        // Initialize modal elements
+        this.modal.el = document.getElementById('custom-modal');
+        this.modal.message = document.getElementById('modal-message');
+        this.modal.confirmBtn = document.getElementById('modal-confirm');
+        this.modal.cancelBtn = document.getElementById('modal-cancel');
+
+        // Close modal listeners
+        this.modal.el.addEventListener('click', (e) => {
+            if (e.target === this.modal.el) this.hideModal();
+        });
+        this.modal.cancelBtn.addEventListener('click', () => {
+             if (this.modal.cancelCallback) this.modal.cancelCallback();
+             this.hideModal();
+        });
+        this.modal.confirmBtn.addEventListener('click', () => {
+            if (this.modal.confirmCallback) this.modal.confirmCallback();
+            this.hideModal();
+        });
+
         const exampleMappings = [
-            { 
-                sourceId: 'IpamCounties.Options', 
-                sourceOptions: ['00:No County', '01:Adams', '02:Allegheny'], 
-                destinations: [{ id: 'IpamCounties', type: 'duallist', allowMultiple: true, defaultValue: '' }] 
-            },
-            { 
-                sourceId: 'department_list', 
-                sourceOptions: ['IT', 'HR', 'Finance', 'Marketing'], 
-                destinations: [{ id: 'department_field', type: 'select', allowMultiple: false, defaultValue: '' }] 
-            }
+            { sourceId: 'IpamCounties.Options', sourceOptions: ['00:No County', '01:Adams'], destinations: [{ id: 'IpamCounties', type: 'duallist', allowMultiple: true, defaultValue: '' }] },
+            { sourceId: 'department_list', sourceOptions: ['IT', 'HR', 'Finance'], destinations: [{ id: 'department_field', type: 'select', allowMultiple: false, defaultValue: '' }] }
         ];
         document.getElementById('mappings-json').placeholder = 'Paste your field mappings JSON here...\n\nExample format:\n' + JSON.stringify(exampleMappings, null, 2);
         document.getElementById('builder-bookmarklet-link').href = BUILDER_TOOL.generateScript();
+    },
+    
+    showModal(message, confirmCallback = null, showCancel = false) {
+        this.modal.message.textContent = message;
+        this.modal.confirmCallback = confirmCallback;
+        this.modal.cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
+        this.modal.el.classList.add('visible');
+    },
+
+    hideModal() {
+        this.modal.el.classList.remove('visible');
+        this.modal.confirmCallback = null;
+        this.modal.cancelCallback = null;
     },
 
     showStep(stepNum) {
@@ -210,7 +321,7 @@ const app = {
         try {
             const jsonText = document.getElementById('mappings-json').value;
             if (!jsonText.trim()) {
-                alert('Please paste field mappings JSON first.');
+                this.showModal('Please paste field mappings JSON first.');
                 return;
             }
             
@@ -246,34 +357,177 @@ const app = {
             
             document.getElementById('defaults-container').style.display = hasDefaults ? 'block' : 'none';
             document.getElementById('presets-ui-container').style.display = 'block';
+            document.getElementById('bulk-import-section').style.display = 'block';
             
-            alert('Field mappings loaded successfully! You can now add location and role presets.');
+            this.showModal('Field mappings loaded! You can now add presets or use the bulk import tool.');
         } catch (e) {
-            alert('Invalid JSON in Field Mappings: ' + e.message);
+            this.showModal('Invalid JSON in Field Mappings: ' + e.message);
         }
-    },
-
-    updateDefaultValue(destId, value) {
-        this.state.presets.defaults[destId] = value;
     },
     
-    addPreset(type) {
-        if (!this.state.mappings) { 
-            alert('Please load field mappings first.'); 
-            return; 
-        }
-        
-        const name = prompt('Enter name for new ' + type.slice(0, -1) + ':');
-        if (!name) return;
-        
-        if (this.state.presets[type] && this.state.presets[type][name]) {
-            alert('A preset with this name already exists.');
+    downloadCSVTemplate() {
+        if (!this.state.mappings) {
+            this.showModal('Please load field mappings before downloading a template.');
             return;
         }
+
+        const nameColumn = document.getElementById('bulk-name-column').value.trim() || 'Name';
         
-        if (!this.state.presets[type]) this.state.presets[type] = {};
-        this.state.presets[type][name] = {};
+        // Use a Set to ensure unique destination IDs
+        const destIds = new Set();
+        this.state.mappings.forEach(mapping => {
+            mapping.destinations.forEach(dest => destIds.add(dest.id));
+        });
+
+        const headers = [nameColumn, ...Array.from(destIds)];
+        const csvContent = "data:text/csv;charset=utf-8," + headers.map(h => `"${h.replace(/"/g, '""')}"`).join(',');
+
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", "preset_template.csv");
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    },
+
+    importBulkPresets() {
+        if (!this.state.mappings) {
+            this.showModal('Please load field mappings first.');
+            return;
+        }
+
+        const fileInput = document.getElementById('bulk-csv-file');
+        const presetType = document.getElementById('bulk-preset-type').value;
+        const nameColumn = document.getElementById('bulk-name-column').value.trim();
+
+        if (!fileInput.files.length) {
+            this.showModal('Please select a CSV file.');
+            return;
+        }
+        if (!nameColumn) {
+            this.showModal('Please specify which column contains the preset names.');
+            return;
+        }
+
+        const file = fileInput.files[0];
+        const reader = new FileReader();
+
+        reader.onload = (e) => {
+            try {
+                const csvText = e.target.result;
+                const rows = this.parseCSV(csvText);
+                if (rows.length < 2) {
+                    this.showModal('CSV file must have at least a header row and one data row.');
+                    return;
+                }
+
+                const headers = rows[0].map(h => h.trim());
+                const nameColIndex = headers.findIndex(h => h.toLowerCase() === nameColumn.toLowerCase());
+                if (nameColIndex === -1) {
+                    this.showModal(`Column "${nameColumn}" not found in CSV. Available columns: ${headers.join(', ')}`);
+                    return;
+                }
+
+                let importedCount = 0;
+                let skippedCount = 0;
+
+                const processRow = (rowIndex) => {
+                    if (rowIndex >= rows.length) {
+                        this.showModal(`Import complete!\nImported: ${importedCount}\nSkipped: ${skippedCount}`);
+                        fileInput.value = ''; // Clear file input
+                        return;
+                    }
+
+                    const row = rows[rowIndex];
+                    const presetName = row[nameColIndex]?.trim();
+                    if (!presetName) {
+                        skippedCount++;
+                        processRow(rowIndex + 1);
+                        return;
+                    }
+
+                    const processPreset = () => {
+                        if (!this.state.presets[presetType]) this.state.presets[presetType] = {};
+                        
+                        const existingCard = document.getElementById('preset-' + presetType + '-' + presetName.replace(/\s+/g, '-'));
+                        if(existingCard) existingCard.remove();
+                        
+                        this.state.presets[presetType][presetName] = {};
+                        headers.forEach((header, colIndex) => {
+                            if (colIndex === nameColIndex) return;
+                            const headerTrimmed = header.trim();
+                            const cellValue = row[colIndex]?.trim();
+                            if (cellValue && headerTrimmed) {
+                                this.state.presets[presetType][presetName][headerTrimmed] = cellValue;
+                            }
+                        });
+                        this.createPresetCard(presetType, presetName, this.state.presets[presetType][presetName]);
+                        importedCount++;
+                        processRow(rowIndex + 1);
+                    };
+
+                    if (this.state.presets[presetType] && this.state.presets[presetType][presetName]) {
+                        this.showModal(`Preset "${presetName}" already exists. Overwrite?`, processPreset, true);
+                        this.modal.cancelCallback = () => {
+                            skippedCount++;
+                            processRow(rowIndex + 1);
+                        };
+                    } else {
+                        processPreset();
+                    }
+                };
+                
+                processRow(1); // Start processing from the first data row
+
+            } catch (error) {
+                this.showModal('Error parsing CSV: ' + error.message);
+            }
+        };
+        reader.onerror = () => this.showModal('Error reading file.');
+        reader.readAsText(file);
+    },
+
+    parseCSV(text) {
+        const rows = [];
+        let currentRow = [];
+        let currentCell = '';
+        let insideQuotes = false;
+        text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+        for (let i = 0; i < text.length; i++) {
+            const char = text[i];
+            const nextChar = text[i + 1];
+
+            if (char === '"') {
+                if (insideQuotes && nextChar === '"') {
+                    currentCell += '"';
+                    i++;
+                } else {
+                    insideQuotes = !insideQuotes;
+                }
+            } else if (char === ',' && !insideQuotes) {
+                currentRow.push(currentCell.trim());
+                currentCell = '';
+            } else if (char === '\n' && !insideQuotes) {
+                currentRow.push(currentCell.trim());
+                rows.push(currentRow);
+                currentRow = [];
+                currentCell = '';
+            } else {
+                currentCell += char;
+            }
+        }
         
+        if (currentCell || currentRow.length > 0) {
+            currentRow.push(currentCell.trim());
+            rows.push(currentRow);
+        }
+
+        return rows.filter(row => row.length > 0 && row.some(cell => cell));
+    },
+
+    createPresetCard(type, name, values) {
         const template = document.getElementById('preset-card-template');
         const card = template.content.cloneNode(true);
         const cardElement = card.querySelector('.preset-card');
@@ -290,27 +544,32 @@ const app = {
                 
                 const label = document.createElement('label');
                 label.className = 'block text-sm font-medium text-slate-700 mb-1';
-                label.textContent = dest.id + ' (' + (dest.allowMultiple ? 'multi' : 'single') + ')';
+                label.textContent = dest.id + (dest.allowMultiple ? ' (multi)' : ' (single)');
 
-                const isMultiple = dest.allowMultiple;
                 const select = document.createElement('select');
                 select.className = 'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent';
-                select.multiple = isMultiple;
-                if (isMultiple) {
-                    select.style.height = '100px';
-                }
+                select.multiple = dest.allowMultiple;
+                if (dest.allowMultiple) select.style.height = '100px';
                 
                 select.onchange = () => {
-                    const value = isMultiple ? Array.from(select.selectedOptions).map(o => o.value) : select.value;
+                    const value = dest.allowMultiple ? Array.from(select.selectedOptions).map(o => o.value) : select.value;
                     this.updatePresetValue(type, name, dest.id, value);
                 };
-
-                if (!isMultiple) {
-                    select.add(new Option('-- Choose Value --', ''));
-                }
+                
+                if (!dest.allowMultiple) select.add(new Option('-- Choose Value --', ''));
                 
                 if (mapping.sourceOptions && mapping.sourceOptions.length > 0) {
-                    mapping.sourceOptions.forEach(opt => select.add(new Option(opt, opt)));
+                    mapping.sourceOptions.forEach(opt => {
+                        const option = new Option(opt, opt);
+                        const presetValue = values[dest.id];
+                        if (presetValue !== undefined) {
+                            const valuesArray = Array.isArray(presetValue) ? presetValue : presetValue.split(',').map(v => v.trim());
+                            if (valuesArray.includes(opt)) {
+                                option.selected = true;
+                            }
+                        }
+                        select.add(option);
+                    });
                 }
                 
                 fieldWrapper.appendChild(label);
@@ -322,24 +581,52 @@ const app = {
         document.getElementById(type + '-presets').appendChild(card);
     },
 
+    updateDefaultValue(destId, value) {
+        this.state.presets.defaults[destId] = value;
+    },
+    
+    addPreset(type) {
+        if (!this.state.mappings) { 
+            this.showModal('Please load field mappings first.'); 
+            return; 
+        }
+        
+        const name = prompt('Enter name for new ' + type.slice(0, -1) + ':');
+        if (!name || !name.trim()) return;
+        
+        if (this.state.presets[type] && this.state.presets[type][name]) {
+            this.showModal('A preset with this name already exists.');
+            return;
+        }
+        
+        if (!this.state.presets[type]) this.state.presets[type] = {};
+        this.state.presets[type][name] = {};
+        
+        this.createPresetCard(type, name, {});
+    },
+
     updatePresetValue(type, presetName, destId, value) {
         if (!this.state.presets[type][presetName]) this.state.presets[type][presetName] = {};
-        this.state.presets[type][presetName][destId] = value;
+        if( (Array.isArray(value) && value.length === 0) || (!Array.isArray(value) && !value)) {
+            delete this.state.presets[type][presetName][destId];
+        } else {
+            this.state.presets[type][presetName][destId] = value;
+        }
     },
 
     generateFinalBookmarklet() {
        const name = document.getElementById('final-bookmarklet-name').value.trim();
        if (!name) { 
-           alert('Please provide a name for the final bookmarklet.'); 
+           this.showModal('Please provide a name for the final bookmarklet.'); 
            return; 
        }
        
        if (!this.state.mappings) {
-           alert('Please load field mappings first.');
+           this.showModal('Please load field mappings first.');
            return;
        }
        
-       const finalLogic = `const MAPPINGS=${JSON.stringify(this.state.mappings)};const PRESETS=${JSON.stringify(this.state.presets)};function getElement(e){return document.getElementById(e)||document.getElementsByName(e)[0]}function applyPresets(e){MAPPINGS.forEach(function(t){t.destinations&&Array.isArray(t.destinations)&&t.destinations.forEach(function(o){const n=e[o.id];if(void 0!==n&&""!==n){const e=getElement(o.id);if(e){if("duallist"===o.type){const a=getElement(t.sourceId),s=e.closest("tr, div.row, div.form-group");if(!s)return void console.error("Could not find container for",o.id);const r=s.querySelector('input[id*="OptionSelectorAdd"]:not([id*="AddAll"]), button[id*="add"]');if(!a||!r)return void console.error("Could not find source or add button for",o.id);const d=Array.isArray(n)?n:[n];Array.from(a.options).forEach(e=>{e.selected=d.includes(e.text.trim())}),r.click()}else e.value=n;e.dispatchEvent(new Event("input",{bubbles:!0})),e.dispatchEvent(new Event("change",{bubbles:!0}))}}})})}function startApp(){const e="_idm_filler_"+Date.now();if(document.getElementById(e))return;const t=Object.keys(PRESETS.locations||{}).map(e=>'<option value="'+e+'">'+e+"</option>").join(""),o=Object.keys(PRESETS.roles||{}).map(e=>'<option value="'+e+'">'+e+"</option>").join(""),n='<div id="'+e+'" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;color:#333;"><h3 style="margin:0 0 16px;font-size:18px;font-weight:600;color:#1e293b;">Form Filler</h3><div style="margin-bottom:12px;"><label style="display:block;font-size:14px;font-weight:500;margin-bottom:4px;color:#475569;">Location:</label><select id="_idm_loc" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;">'+t+'</select></div><div style="margin-bottom:16px;"><label style="display:block;font-size:14px;font-weight:500;margin-bottom:4px;color:#475569;">Role:</label><select id="_idm_role" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;">'+o+'</select></div><div style="display:flex;gap:8px;"><button id="_idm_fill" style="flex:1;background:#2563eb;color:white;padding:10px;border:none;border-radius:6px;font-weight:500;cursor:pointer;">Fill Form</button><button onclick="document.getElementById(\\''+e+"\\').remove()\" style=\"flex:1;background:#94a3b8;color:white;padding:10px;border:none;border-radius:6px;font-weight:500;cursor:pointer;\">Cancel</button></div></div>";document.body.insertAdjacentHTML("beforeend",n),document.getElementById("_idm_fill").onclick=()=>{const t=document.getElementById("_idm_loc").value,o=document.getElementById("_idm_role").value,n={...PRESETS.defaults||{},...PRESETS.locations[t]||{},...PRESETS.roles[o]||{}};applyPresets(n),document.getElementById(e).remove()}}startApp();`;
+       const finalLogic = `const MAPPINGS=${JSON.stringify(this.state.mappings)};const PRESETS=${JSON.stringify(this.state.presets)};function getElement(e){return document.getElementById(e)||document.getElementsByName(e)[0]}function applyPresets(e){MAPPINGS.forEach(function(t){t.destinations&&Array.isArray(t.destinations)&&t.destinations.forEach(function(o){const n=e[o.id];if(void 0!==n&&""!==n){const e=getElement(o.id);if(e){if("duallist"===o.type){const a=getElement(t.sourceId),s=e.closest("tr, div.row, div.form-group");if(!s)return void console.error("Could not find container for",o.id);const r=s.querySelector('input[id*="OptionSelectorAdd"]:not([id*="AddAll"]), button[id*="add"]');if(!a||!r)return void console.error("Could not find source or add button for",o.id);const d=Array.isArray(n)?n:n.split(",").map(v => v.trim());Array.from(a.options).forEach(e=>{e.selected=d.includes(e.text.trim())}),r.click()}else e.value=n;e.dispatchEvent(new Event("input",{bubbles:!0})),e.dispatchEvent(new Event("change",{bubbles:!0}))}}})})}function startApp(){const e="_idm_filler_"+Date.now();if(document.getElementById(e))return;const t=Object.keys(PRESETS.locations||{}).map(e=>'<option value="'+e+'">'+e+"</option>").join(""),o=Object.keys(PRESETS.roles||{}).map(e=>'<option value="'+e+'">'+e+"</option>").join(""),n='<div id="'+e+'" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;color:#333;"><h3 style="margin:0 0 16px;font-size:18px;font-weight:600;color:#1e293b;">Form Filler</h3><div style="margin-bottom:12px;"><label style="display:block;font-size:14px;font-weight:500;margin-bottom:4px;color:#475569;">Location:</label><select id="_idm_loc" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;"><option value="">-- Select Location --</option>'+t+'</select></div><div style="margin-bottom:16px;"><label style="display:block;font-size:14px;font-weight:500;margin-bottom:4px;color:#475569;">Role:</label><select id="_idm_role" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;"><option value="">-- Select Role --</option>'+o+'</select></div><div style="display:flex;gap:8px;"><button id="_idm_fill" style="flex:1;background:#2563eb;color:white;padding:10px;border:none;border-radius:6px;font-weight:500;cursor:pointer;">Fill Form</button><button onclick="document.getElementById(\\''+e+"\\').remove()\" style=\"flex:1;background:#94a3b8;color:white;padding:10px;border:none;border-radius:6px;font-weight:500;cursor:pointer;\">Cancel</button></div></div>";document.body.insertAdjacentHTML("beforeend",n),document.getElementById("_idm_fill").onclick=()=>{const t=document.getElementById("_idm_loc").value,o=document.getElementById("_idm_role").value,n={...PRESETS.defaults||{},...PRESETS.locations[t]||{},...PRESETS.roles[o]||{}};applyPresets(n),document.getElementById(e).remove()}}startApp();`;
        
        const minified = finalLogic.replace(/\s+/g, ' ');
        const finalScript = 'javascript:(function(){' + encodeURIComponent(minified) + '})()';
@@ -356,7 +643,7 @@ const app = {
     }
 };
 
-app.init();
+document.addEventListener('DOMContentLoaded', () => app.init());
 </script>
 </body>
 </html>

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CA IM Preset Form Filler</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -13,50 +14,24 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         .preset-card { background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; margin-top: 0.75rem; }
         .preset-field { margin-top: 0.75rem; }
-        /* Custom Modal Styles */
         .modal-backdrop {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, 0.5);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 10000;
-            opacity: 0;
-            visibility: hidden;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(0, 0, 0, 0.5); display: flex; justify-content: center;
+            align-items: center; z-index: 10000; opacity: 0; visibility: hidden;
             transition: opacity 0.3s ease, visibility 0.3s ease;
         }
-        .modal-backdrop.visible {
-            opacity: 1;
-            visibility: visible;
-        }
+        .modal-backdrop.visible { opacity: 1; visibility: visible; }
         .modal-content {
-            background: white;
-            padding: 2rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            width: 90%;
-            max-width: 450px;
-            transform: scale(0.95);
-            transition: transform 0.3s ease;
+            background: white; padding: 2rem; border-radius: 0.75rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 450px;
+            transform: scale(0.95); transition: transform 0.3s ease;
         }
-        .modal-backdrop.visible .modal-content {
-            transform: scale(1);
-        }
+        .modal-backdrop.visible .modal-content { transform: scale(1); }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen">
     <div class="container max-w-5xl mx-auto p-6">
         <header class="mb-8">
-            <a href="caim_suite_index.html" class="inline-flex items-center text-slate-600 hover:text-slate-900 mb-4 transition-colors">
-                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
-                </svg>
-                Back to Suite
-            </a>
             <h1 class="text-4xl font-bold text-slate-800">Preset Form Filler</h1>
             <p class="text-slate-600 mt-2">Build intelligent form fillers with location and role presets</p>
         </header>
@@ -68,33 +43,18 @@
                     <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full mr-2">Phase 1</span>
                     Generate Builder Bookmarklet
                 </h2>
-                
                 <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg mb-6">
                     <h3 class="font-semibold text-blue-900 mb-2">How It Works</h3>
                     <p class="text-blue-800 text-sm leading-relaxed">
-                        This creates a <strong>Builder Tool</strong> bookmarklet. Run it on your CA Identity Manager form, click fields to map them as sources (dropdowns) or destinations (target fields), then export your field mappings as JSON.
+                        This tool helps you map your form fields. Run it on your CA IM form, map each source field (like a dropdown) to its destination field. For multi-select fields, you can mark them to "Add All Options" automatically.
                     </p>
                 </div>
-
                 <div class="text-center py-8">
                     <p class="text-slate-600 mb-4">Drag this bookmarklet to your bookmarks bar:</p>
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
                         🔧 CA IM Form Builder
                     </a>
                 </div>
-
-                <div class="mt-8 p-4 bg-slate-50 border border-slate-200 rounded-lg">
-                    <h4 class="font-semibold text-slate-800 mb-2">Next Steps:</h4>
-                    <ol class="text-sm text-slate-600 space-y-1 ml-5 list-decimal">
-                        <li>Bookmark the link above</li>
-                        <li>Navigate to your CA IM form (where you'd fill out user info)</li>
-                        <li>Click the bookmarklet to launch the builder</li>
-                        <li>Map source fields (dropdown lists) and destination fields (target inputs)</li>
-                        <li>Generate and copy the JSON output</li>
-                        <li>Return here and proceed to Phase 2</li>
-                    </ol>
-                </div>
-
                 <div class="mt-8 flex justify-end">
                     <button onclick="app.showStep(2)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
                         Proceed to Phase 2 →
@@ -108,84 +68,58 @@
                     <span class="inline-block bg-green-100 text-green-800 text-sm font-semibold px-3 py-1 rounded-full mr-2">Phase 2</span>
                     Configure Presets
                 </h2>
-
                 <div class="mb-6">
-                    <label for="mappings-json" class="block text-sm font-semibold text-slate-700 mb-2">Field Mappings JSON (from Builder Tool)</label>
-                    <textarea id="mappings-json" rows="8" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent" placeholder="Paste your field mappings JSON here..."></textarea>
+                    <label for="mappings-json" class="block text-sm font-semibold text-slate-700 mb-2">1. Field Mappings JSON (from Builder Tool)</label>
+                    <textarea id="mappings-json" rows="8" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="Paste your field mappings JSON here..."></textarea>
                 </div>
-
                 <button onclick="app.renderPresetUI()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mb-6">
-                    Load Mappings & Build Preset UI
+                    2. Load Mappings
                 </button>
-
                 <div id="bulk-import-section" style="display: none;" class="mt-6 p-6 bg-amber-50 border border-amber-200 rounded-lg">
-                    <h3 class="text-lg font-semibold text-slate-800 mb-3">Bulk Import from Spreadsheet</h3>
-                    <p class="text-sm text-slate-600 mb-4">First, download the template. Then, fill it out and upload the completed CSV file to create multiple presets at once.</p>
-                    
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <h3 class="text-lg font-semibold text-slate-800 mb-3">3. Bulk Import from Spreadsheet</h3>
+                    <p class="text-sm text-slate-600 mb-4">Download the Excel template. For each field, you can either select a value from the dropdown or **copy-paste directly from your matrix** (e.g., just the two-digit county number). Then, upload the completed file.</p>
+                    <div class="flex items-end gap-4 flex-wrap">
+                        <button onclick="app.downloadXlsxTemplate()" class="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">
+                            Download Excel Template
+                        </button>
                         <div>
-                            <label for="bulk-preset-type" class="block text-sm font-medium text-slate-700 mb-2">1. Select Preset Type</label>
-                            <select id="bulk-preset-type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent">
+                            <label for="bulk-preset-type" class="block text-sm font-medium text-slate-700 mb-2">Preset Type</label>
+                            <select id="bulk-preset-type" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm h-[42px]">
                                 <option value="locations">Locations</option>
                                 <option value="roles">Roles</option>
                             </select>
                         </div>
-                        <div>
-                            <label for="bulk-name-column" class="block text-sm font-medium text-slate-700 mb-2">2. Name Column Header</label>
-                            <input type="text" id="bulk-name-column" placeholder="e.g., Location, Role, Name" value="Name" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent">
-                        </div>
-                    </div>
-                    
-                    <div class="flex items-center gap-4 flex-wrap">
-                        <button onclick="app.downloadCSVTemplate()" class="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">
-                            3. Download Template
-                        </button>
                         <div class="flex-grow">
-                             <label for="bulk-csv-file" class="block text-sm font-medium text-slate-700 mb-2">4. Upload Completed CSV</label>
-                             <input type="file" id="bulk-csv-file" accept=".csv" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm">
+                             <label for="bulk-file-upload" class="block text-sm font-medium text-slate-700 mb-2">Upload Completed Excel File</label>
+                             <input type="file" id="bulk-file-upload" accept=".xlsx, .xls, .csv" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm">
                         </div>
-                        <button onclick="app.importBulkPresets()" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors self-end">
-                            5. Import Presets
+                        <button onclick="app.importBulkPresets()" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
+                            Import Presets
                         </button>
                     </div>
                 </div>
-
                 <div id="presets-ui-container" style="display: none;">
-                    <!-- Defaults Section -->
-                    <div id="defaults-container" class="p-6 bg-slate-50 border border-slate-200 rounded-lg mb-6">
-                        <h3 class="text-lg font-semibold text-slate-800 mb-4">Default Values</h3>
-                        <p class="text-sm text-slate-600 mb-4">These values will be applied to every form fill unless overridden by presets.</p>
-                        <div id="defaults-presets"></div>
+                    <div id="defaults-container" class="p-6 bg-slate-50 border border-slate-200 rounded-lg my-6">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-4">Global Default Values</h3>
+                        <p class="text-sm text-slate-600 mb-4">Use this section for fields that are the same for every user (like the text fields you mentioned). These values are applied automatically unless a specific preset overrides them.</p>
+                        <div id="defaults-presets" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                     </div>
-
-                    <!-- Locations and Roles -->
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-800 mb-3">Location Presets</h3>
-                            <p class="text-sm text-slate-600 mb-3">Configure field values for different locations.</p>
                             <div id="locations-presets"></div>
-                            <button onclick="app.addPreset('locations')" class="mt-3 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm">
-                                + Add Location
-                            </button>
+                            <button onclick="app.addPreset('locations')" class="mt-3 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm">+ Add Location</button>
                         </div>
                         <div>
                             <h3 class="text-lg font-semibold text-slate-800 mb-3">Role Presets</h3>
-                            <p class="text-sm text-slate-600 mb-3">Configure field values for different roles.</p>
                             <div id="roles-presets"></div>
-                            <button onclick="app.addPreset('roles')" class="mt-3 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm">
-                                + Add Role
-                            </button>
+                            <button onclick="app.addPreset('roles')" class="mt-3 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm">+ Add Role</button>
                         </div>
                     </div>
                 </div>
-
                 <div class="mt-8 flex justify-between">
-                    <button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
-                        ← Back
-                    </button>
-                    <button onclick="app.showStep(3)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-                        Proceed to Phase 3 →
-                    </button>
+                    <button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">← Back</button>
+                    <button onclick="app.showStep(3)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Proceed to Phase 3 →</button>
                 </div>
             </div>
 
@@ -195,50 +129,34 @@
                     <span class="inline-block bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full mr-2">Phase 3</span>
                     Generate Final Bookmarklet
                 </h2>
-
                 <div class="p-6 bg-green-50 border border-green-200 rounded-lg text-center mb-6">
                     <h3 class="font-semibold text-green-900 mb-3">Ready to Deploy</h3>
-                    <p class="text-green-800 text-sm mb-4">
-                        Generate your final form filler bookmarklet with all configured presets. This tool will be used by end-users to quickly fill forms.
-                    </p>
-                    
-                    <input type="text" id="final-bookmarklet-name" placeholder="Enter bookmarklet name (e.g., 'HR Onboarding')" class="w-full max-w-md mx-auto px-4 py-2 border border-slate-300 rounded-lg mb-4 text-center focus:ring-2 focus:ring-green-500 focus:border-transparent">
-                    
-                    <button onclick="app.generateFinalBookmarklet()" class="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 transition-colors shadow-md">
+                    <p class="text-green-800 text-sm mb-4">Generate your final form filler bookmarklet with all configured presets.</p>
+                    <input type="text" id="final-bookmarklet-name" placeholder="Enter bookmarklet name (e.g., 'HR Onboarding')" class="w-full max-w-md mx-auto px-4 py-2 border border-slate-300 rounded-lg mb-4 text-center">
+                    <button onclick="app.generateFinalBookmarklet()" class="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 shadow-md">
                         Generate Final Bookmarklet
                     </button>
                 </div>
-
                 <div id="final-output" style="display: none;" class="p-6 bg-blue-50 border border-blue-200 rounded-lg text-center">
                     <p class="font-semibold text-blue-900 mb-4">✅ Success! Drag this link to your bookmarks bar:</p>
                     <div id="final-bookmarklet-link-container" class="mb-4"></div>
-                    <p class="text-sm text-blue-800">Your end-users can now use this bookmarklet to quickly fill forms with location and role presets.</p>
                 </div>
-
                 <div class="mt-8 flex justify-between">
-                    <button onclick="app.showStep(2)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">
-                        ← Back
-                    </button>
-                    <button onclick="app.showStep(1)" class="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 transition-colors">
-                        Start Over
-                    </button>
+                    <button onclick="app.showStep(2)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">← Back</button>
+                    <button onclick="app.showStep(1)" class="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">Start Over</button>
                 </div>
             </div>
         </main>
     </div>
     
-    <!-- Modal Container -->
     <div id="custom-modal" class="modal-backdrop">
         <div class="modal-content">
-            <h3 id="modal-title" class="text-xl font-bold text-slate-800 mb-4">Notification</h3>
             <p id="modal-message" class="text-slate-600 mb-6">This is a modal message.</p>
             <div id="modal-buttons" class="flex justify-end gap-3">
-                <button id="modal-cancel" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-lg hover:bg-slate-300 transition-colors">Cancel</button>
-                <button id="modal-confirm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">OK</button>
+                <button id="modal-confirm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">OK</button>
             </div>
         </div>
     </div>
-
 
     <template id="preset-card-template">
         <div class="preset-card">
@@ -250,106 +168,216 @@
 <script>
 const BUILDER_TOOL = {
     generateScript: () => {
-        const builderLogic = `const state={panelId:"idm-builder-"+Date.now(),mode:null,currentSource:null,currentDestinations:[],mappings:[]};function cleanup(){const e=document.getElementById(state.panelId);e&&e.remove(),document.body.style.cursor="default",document.removeEventListener("click",clickHandler,!0)}function setMode(e){state.mode=e,document.body.style.cursor="crosshair",document.getElementById(state.panelId+"-mode-display").textContent="Current Mode: "+e}function scrapeSource(e){const t={sourceId:e.id||e.name,sourceOptions:[],sourceValue:null};"SELECT"===e.tagName?t.sourceOptions=Array.from(e.options).map(e=>e.text.trim()).filter(Boolean):t.sourceValue=e.value||"",state.currentSource=t,updateUI()}function scrapeDestination(e){const t={id:e.id||e.name,type:"text",allowMultiple:!!e.multiple,defaultValue:e.value||""};if("SELECT"===e.tagName){const o=e.closest("td, div"),n=o?o.parentElement:e.parentElement;n&&n.querySelector('input[id*="OptionSelectorAdd"], button[id*="add"]')?t.type="duallist":t.type="select"}state.currentDestinations.find(o=>o.id===t.id)||state.currentDestinations.push(t),updateUI()}function commitMapping(){if(!state.currentSource||0===state.currentDestinations.length)return void alert("Please select a source and at least one destination.");const e={...state.currentSource,destinations:state.currentDestinations};state.mappings.push(e),state.currentSource=null,state.currentDestinations=[],state.mode=null,document.body.style.cursor="default",updateUI()}function generateJSON(){const e=JSON.stringify(state.mappings,null,2),t=document.getElementById(state.panelId+"-json-output");t.value=e,t.style.display="block",t.select(),alert("JSON generated. Copy it from the text area.")}function updateUI(){const e=document.getElementById(state.panelId+"-current-source"),t=document.getElementById(state.panelId+"-current-dests"),o=document.getElementById(state.panelId+"-mappings-list");e.innerHTML=state.currentSource?"<strong>Source:</strong> "+state.currentSource.sourceId:"<em>No source selected</em>",t.innerHTML=state.currentDestinations.length>0?"<strong>Destinations:</strong> "+state.currentDestinations.map(function(e){return e.id+" ("+(e.allowMultiple?"multi":"single")+")"}).join(", "):"<em>No destinations selected</em>",o.innerHTML=state.mappings.map(function(e,t){var o=e.destinations?e.destinations.map(function(e){return e.id}).join(", "):"";return'<div style="border-top: 1px solid #eee; padding: 5px 0;"><strong>Mapping '+(t+1)+":</strong> "+e.sourceId+" &rarr; ["+o+"]</div>"}).join(""),document.getElementById(state.panelId+"-mode-display").textContent="Current Mode: "+(state.mode||"none")}function clickHandler(e){if(e.target.closest("#"+state.panelId))return;e.preventDefault(),e.stopPropagation();const t=e.target.closest("input:not([type=hidden]), select, textarea, button");t&&state.mode&&("source"===state.mode?scrapeSource(t):"destination"===state.mode&&scrapeDestination(t),state.mode=null,document.body.style.cursor="default",updateUI())}function buildUI(){if(document.getElementById(state.panelId))return;const e='<div id="'+state.panelId+'" style="position:fixed; top:10px; right:10px; width:400px; background:white; border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,.2); z-index:999999; font-family:sans-serif; color: #333;"><h3 style="margin:0; padding:15px; background:#333; color:white; border-radius:8px 8px 0 0; font-size:16px;">Identity Manager Form Builder</h3><div style="padding:15px; display:flex; flex-direction:column; gap:10px;"><div style="display:flex; gap:10px;"><button id="'+state.panelId+'-source-btn" style="flex:1;">1. Map Source</button><button id="'+state.panelId+'-dest-btn" style="flex:1;">2. Map Destination(s)</button></div><div id="'+state.panelId+'-mode-display" style="text-align:center; font-style:italic; font-size:12px;">Current Mode: none</div><div style="border: 1px solid #eee; padding: 10px; border-radius: 4px;"><div id="'+state.panelId+'-current-source"><em>No source selected</em></div><div id="'+state.panelId+'-current-dests"><em>No destinations selected</em></div></div><button id="'+state.panelId+'-commit-btn" style="background-color: #28a745; color: white;">3. Commit Mapping</button><hr style="border:none; border-top:1px solid #eee;"><h4>Committed Mappings:</h4><div id="'+state.panelId+'-mappings-list" style="max-height:150px; overflow-y:auto; background:#f9f9f9; padding:5px;"></div><button id="'+state.panelId+'-generate-btn" style="background-color: #007bff; color: white;">4. Generate Mappings JSON</button><textarea id="'+state.panelId+'-json-output" style="display:none; height:100px;"></textarea><button id="'+state.panelId+'-close-btn">Close</button></div></div>';document.body.insertAdjacentHTML("beforeend",e),document.getElementById(state.panelId+"-source-btn").onclick=function(){setMode("source")},document.getElementById(state.panelId+"-dest-btn").onclick=function(){setMode("destination")},document.getElementById(state.panelId+"-commit-btn").onclick=commitMapping,document.getElementById(state.panelId+"-generate-btn").onclick=generateJSON,document.getElementById(state.panelId+"-close-btn").onclick=cleanup,document.addEventListener("click",clickHandler,!0)}buildUI();`;
+        const builderLogic = ''
+            + 'const state = {'
+            + '    panelId: "idm-builder-" + Date.now(),'
+            + '    mode: null,'
+            + '    currentSource: null,'
+            + '    currentDestination: null,'
+            + '    mappings: []'
+            + '};'
+            + ''
+            + 'function cleanup() {'
+            + '    const panel = document.getElementById(state.panelId);'
+            + '    if (panel) panel.remove();'
+            + '    document.body.style.cursor = "default";'
+            + '    document.removeEventListener("click", clickHandler, true);'
+            + '}'
+            + ''
+            + 'function setMode(mode) {'
+            + '    state.mode = mode;'
+            + '    document.body.style.cursor = "crosshair";'
+            + '    document.getElementById(state.panelId + "-mode-display").textContent = "Current Mode: " + mode;'
+            + '}'
+            + '            '
+            + 'function toggleAddAll(destId) {'
+            + '    if(state.currentDestination && state.currentDestination.id === destId) {'
+            + '        state.currentDestination.addAll = !state.currentDestination.addAll;'
+            + '        updateUI();'
+            + '    }'
+            + '}'
+            + 'window.toggleAddAll = toggleAddAll;'
+            + ''
+            + 'function scrapeSource(el) {'
+            + '    const source = {'
+            + '        sourceId: el.id || el.name,'
+            + '        sourceOptions: []'
+            + '    };'
+            + '    if (el.tagName === \'SELECT\') {'
+            + '        source.sourceOptions = Array.from(el.options).map(opt => opt.text.trim()).filter(Boolean);'
+            + '    }'
+            + '    state.currentSource = source;'
+            + '    updateUI();'
+            + '}'
+            + ''
+            + 'function scrapeDestination(el) {'
+            + '    const dest = {'
+            + '        id: el.id || el.name,'
+            + '        type: \'text\','
+            + '        defaultValue: el.value || \'\','
+            + '        addAll: false'
+            + '    };'
+            + '    if (el.tagName === \'SELECT\') {'
+            + '        const container = el.closest(\'td, div\');'
+            + '        const parent = container ? container.parentElement : el.parentElement;'
+            + '        if (parent && parent.querySelector(\'input[id*="OptionSelectorAdd"], button[id*="add"]\')) {'
+            + '            dest.type = \'duallist\';'
+            + '        } else {'
+            + '            dest.type = \'select\';'
+            + '        }'
+            + '    }'
+            + '    state.currentDestination = dest;'
+            + '    updateUI();'
+            + '}'
+            + ''
+            + 'function commitMapping() {'
+            + '    if (!state.currentSource || !state.currentDestination) {'
+            + '        alert("Please select one source and one destination.");'
+            + '        return;'
+            + '    }'
+            + '    const mapping = {'
+            + '        ...state.currentSource,'
+            + '        destinations: [state.currentDestination]'
+            + '    };'
+            + '    state.mappings.push(mapping);'
+            + '    state.currentSource = null;'
+            + '    state.currentDestination = null;'
+            + '    state.mode = null;'
+            + '    document.body.style.cursor = "default";'
+            + '    updateUI();'
+            + '}'
+            + ''
+            + 'function generateJSON() {'
+            + '    const json = JSON.stringify(state.mappings, null, 2);'
+            + '    const textarea = document.getElementById(state.panelId + "-json-output");'
+            + '    textarea.value = json;'
+            + '    textarea.style.display = "block";'
+            + '    textarea.select();'
+            + '    alert("JSON generated. Copy it from the text area.");'
+            + '}'
+            + ''
+            + 'function updateUI() {'
+            + '    const sourceEl = document.getElementById(state.panelId + "-current-source");'
+            + '    const destEl = document.getElementById(state.panelId + "-current-dest");'
+            + '    const mappingsEl = document.getElementById(state.panelId + "-mappings-list");'
+            + ''
+            + '    sourceEl.innerHTML = state.currentSource ? `<strong>Source:</strong> ${state.currentSource.sourceId}` : \'<em>No source selected</em>\';'
+            + '    if(state.currentDestination) {'
+            + '        let addAllCheckbox = \'\';'
+            + '        if(state.currentDestination.type === \'duallist\') {'
+            + '             addAllCheckbox = `<label style="margin-left: 10px; font-size: 12px;"><input type="checkbox" onchange="toggleAddAll(\'${state.currentDestination.id}\')" ${state.currentDestination.addAll ? \'checked\' : \'\'}> Add All Options</label>`;'
+            + '        }'
+            + '        destEl.innerHTML = `<strong>Destination:</strong> ${state.currentDestination.id} ${addAllCheckbox}`;'
+            + '    } else {'
+            + '        destEl.innerHTML = \'<em>No destination selected</em>\';'
+            + '    }'
+            + ''
+            + '    mappingsEl.innerHTML = state.mappings.map((m, i) => {'
+            + '        const dest = m.destinations[0];'
+            + '        const addAllText = dest.addAll ? \' (Add All)\' : \'\';'
+            + '        return `<div style="border-top: 1px solid #eee; padding: 5px 0;"><strong>Mapping ${i + 1}:</strong> ${m.sourceId} &rarr; ${dest.id}${addAllText}</div>`;'
+            + '    }).join(\'\');'
+            + '    document.getElementById(state.panelId + "-mode-display").textContent = "Current Mode: " + (state.mode || "none");'
+            + '}'
+            + ''
+            + 'function clickHandler(event) {'
+            + '    if (event.target.closest("#" + state.panelId)) return;'
+            + '    event.preventDefault();'
+            + '    event.stopPropagation();'
+            + '    const targetEl = event.target.closest("input:not([type=hidden]), select, textarea, button");'
+            + '    if (targetEl && state.mode) {'
+            + '        if (state.mode === \'source\') scrapeSource(targetEl);'
+            + '        if (state.mode === \'destination\') scrapeDestination(targetEl);'
+            + '        state.mode = null;'
+            + '        document.body.style.cursor = "default";'
+            + '        updateUI();'
+            + '    }'
+            + '}'
+            + ''
+            + 'function buildUI() {'
+            + '    if (document.getElementById(state.panelId)) return;'
+            + '    const uiHTML = `'
+            + '        <div id="${state.panelId}" style="position:fixed; top:10px; right:10px; width:400px; background:white; border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,.2); z-index:999999; font-family:sans-serif; color: #333;">'
+            + '            <h3 style="margin:0; padding:15px; background:#333; color:white; border-radius:8px 8px 0 0; font-size:16px;">Identity Manager Form Builder</h3>'
+            + '            <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">'
+            + '                <div style="display:flex; gap:10px;">'
+            + '                    <button id="${state.panelId}-source-btn" style="flex:1;">1. Map Source</button>'
+            + '                    <button id="${state.panelId}-dest-btn" style="flex:1;">2. Map Destination</button>'
+            + '                </div>'
+            + '                <div id="${state.panelId}-mode-display" style="text-align:center; font-style:italic; font-size:12px;">Current Mode: none</div>'
+            + '                <div style="border: 1px solid #eee; padding: 10px; border-radius: 4px;">'
+            + '                    <div id="${state.panelId}-current-source"><em>No source selected</em></div>'
+            + '                    <div id="${state.panelId}-current-dest"><em>No destination selected</em></div>'
+            + '                </div>'
+            + '                <button id="${state.panelId}-commit-btn" style="background-color: #28a745; color: white;">3. Commit Mapping</button>'
+            + '                <hr style="border:none; border-top:1px solid #eee;">'
+            + '                <h4>Committed Mappings:</h4>'
+            + '                <div id="${state.panelId}-mappings-list" style="max-height:150px; overflow-y:auto; background:#f9f9f9; padding:5px;"></div>'
+            + '                <button id="${state.panelId}-generate-btn" style="background-color: #007bff; color: white;">4. Generate Mappings JSON</button>'
+            + '                <textarea id="${state.panelId}-json-output" style="display:none; height:100px;"></textarea>'
+            + '                <button id="${state.panelId}-close-btn">Close</button>'
+            + '            </div>'
+            + '        </div>`;'
+            + '    document.body.insertAdjacentHTML("beforeend", uiHTML);'
+            + '    document.getElementById(state.panelId + "-source-btn").onclick = () => setMode(\'source\');'
+            + '    document.getElementById(state.panelId + "-dest-btn").onclick = () => setMode(\'destination\');'
+            + '    document.getElementById(state.panelId + "-commit-btn").onclick = commitMapping;'
+            + '    document.getElementById(state.panelId + "-generate-btn").onclick = generateJSON;'
+            + '    document.getElementById(state.panelId + "-close-btn").onclick = cleanup;'
+            + '    document.addEventListener("click", clickHandler, true);'
+            + '}'
+            + 'buildUI();';
         return 'javascript:(function(){' + encodeURIComponent(builderLogic) + '})()';
     }
 };
 
 const app = {
-    state: {
-        mappings: null,
-        presets: { defaults: {}, locations: {}, roles: {} }
-    },
-    
-    modal: {
-        el: null,
-        message: null,
-        confirmBtn: null,
-        cancelBtn: null,
-        confirmCallback: null,
-        cancelCallback: null
-    },
+    state: { mappings: null, presets: { defaults: {}, locations: {}, roles: {} } },
+    modal: { el: null, message: null, confirmBtn: null },
 
     init() {
-        // Initialize modal elements
         this.modal.el = document.getElementById('custom-modal');
         this.modal.message = document.getElementById('modal-message');
         this.modal.confirmBtn = document.getElementById('modal-confirm');
-        this.modal.cancelBtn = document.getElementById('modal-cancel');
-
-        // Close modal listeners
-        this.modal.el.addEventListener('click', (e) => {
-            if (e.target === this.modal.el) this.hideModal();
-        });
-        this.modal.cancelBtn.addEventListener('click', () => {
-             if (this.modal.cancelCallback) this.modal.cancelCallback();
-             this.hideModal();
-        });
-        this.modal.confirmBtn.addEventListener('click', () => {
-            if (this.modal.confirmCallback) this.modal.confirmCallback();
-            this.hideModal();
-        });
-
-        const exampleMappings = [
-            { sourceId: 'IpamCounties.Options', sourceOptions: ['00:No County', '01:Adams'], destinations: [{ id: 'IpamCounties', type: 'duallist', allowMultiple: true, defaultValue: '' }] },
-            { sourceId: 'department_list', sourceOptions: ['IT', 'HR', 'Finance'], destinations: [{ id: 'department_field', type: 'select', allowMultiple: false, defaultValue: '' }] }
-        ];
-        document.getElementById('mappings-json').placeholder = 'Paste your field mappings JSON here...\n\nExample format:\n' + JSON.stringify(exampleMappings, null, 2);
+        this.modal.el.addEventListener('click', (e) => { if (e.target === this.modal.el) this.hideModal(); });
+        this.modal.confirmBtn.addEventListener('click', () => this.hideModal());
         document.getElementById('builder-bookmarklet-link').href = BUILDER_TOOL.generateScript();
     },
     
-    showModal(message, confirmCallback = null, showCancel = false) {
+    showModal(message) {
         this.modal.message.textContent = message;
-        this.modal.confirmCallback = confirmCallback;
-        this.modal.cancelBtn.style.display = showCancel ? 'inline-block' : 'none';
         this.modal.el.classList.add('visible');
     },
 
-    hideModal() {
-        this.modal.el.classList.remove('visible');
-        this.modal.confirmCallback = null;
-        this.modal.cancelCallback = null;
-    },
-
+    hideModal() { this.modal.el.classList.remove('visible'); },
     showStep(stepNum) {
         document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
         document.getElementById('step' + stepNum).classList.add('active');
-        window.scrollTo({ top: 0, behavior: 'smooth' });
     },
 
     renderPresetUI() {
         try {
             const jsonText = document.getElementById('mappings-json').value;
-            if (!jsonText.trim()) {
-                this.showModal('Please paste field mappings JSON first.');
-                return;
-            }
+            if (!jsonText.trim()) return this.showModal('Please paste field mappings JSON first.');
             
             this.state.mappings = JSON.parse(jsonText);
-            if (!this.state.mappings || !Array.isArray(this.state.mappings)) {
-                throw new Error("Mappings data is not a valid array.");
-            }
+            if (!Array.isArray(this.state.mappings)) throw new Error("Mappings data is not a valid array.");
             
             this.state.presets = { defaults: {}, locations: {}, roles: {} };
-            document.getElementById('locations-presets').innerHTML = '';
-            document.getElementById('roles-presets').innerHTML = '';
+            ['locations-presets', 'roles-presets', 'defaults-presets'].forEach(id => document.getElementById(id).innerHTML = '');
             
             const defaultsContainer = document.getElementById('defaults-presets');
-            defaultsContainer.innerHTML = '';
             let hasDefaults = false;
-
             this.state.mappings.forEach(mapping => {
                 if (!mapping.destinations || !Array.isArray(mapping.destinations)) return;
                 mapping.destinations.forEach(dest => {
-                    if (dest.type === 'text' && dest.defaultValue) {
+                    if (dest.type === 'text') {
                         hasDefaults = true;
                         this.state.presets.defaults[dest.id] = dest.defaultValue;
                         const fieldDiv = document.createElement('div');
                         fieldDiv.className = 'preset-field';
-                        fieldDiv.innerHTML = `
-                            <label class="block text-sm font-medium text-slate-700 mb-1">${dest.id}</label>
-                            <input type="text" value="${dest.defaultValue}" onchange="app.updateDefaultValue('${dest.id}', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                        `;
+                        fieldDiv.innerHTML = `<label class="block text-sm font-medium text-slate-700 mb-1">${dest.id}</label>
+                            <input type="text" value="${dest.defaultValue}" onchange="app.updateDefaultValue('${dest.id}', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"> `;
                         defaultsContainer.appendChild(fieldDiv);
                     }
                 });
@@ -358,285 +386,175 @@ const app = {
             document.getElementById('defaults-container').style.display = hasDefaults ? 'block' : 'none';
             document.getElementById('presets-ui-container').style.display = 'block';
             document.getElementById('bulk-import-section').style.display = 'block';
-            
-            this.showModal('Field mappings loaded! You can now add presets or use the bulk import tool.');
+            this.showModal('Field mappings loaded! You can now download the Excel template or add presets manually.');
         } catch (e) {
             this.showModal('Invalid JSON in Field Mappings: ' + e.message);
         }
     },
     
-    downloadCSVTemplate() {
-        if (!this.state.mappings) {
-            this.showModal('Please load field mappings before downloading a template.');
-            return;
-        }
+    downloadXlsxTemplate() {
+        if (!this.state.mappings) return this.showModal('Please load mappings first.');
 
-        const nameColumn = document.getElementById('bulk-name-column').value.trim() || 'Name';
+        const wb = XLSX.utils.book_new();
+        const mainSheetName = 'Presets';
         
-        // Use a Set to ensure unique destination IDs
-        const destIds = new Set();
-        this.state.mappings.forEach(mapping => {
-            mapping.destinations.forEach(dest => destIds.add(dest.id));
+        const headers = ['Name'];
+        const dropdownMappings = new Map();
+
+        this.state.mappings.forEach(m => {
+            const dest = m.destinations[0];
+            if (dest.addAll || dest.type === 'text') return;
+            headers.push(dest.id);
+            if (m.sourceOptions && m.sourceOptions.length > 0) {
+                dropdownMappings.set(dest.id, m.sourceOptions);
+            }
+        });
+        
+        const ws = XLSX.utils.aoa_to_sheet([headers]);
+        ws['!dataValidation'] = [];
+        
+        let colIndex = 1;
+        dropdownMappings.forEach((options, header) => {
+            const listSheetName = `list_${header.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 25)}`;
+            const listWs = XLSX.utils.aoa_to_sheet(options.map(o => [o]));
+            XLSX.utils.book_append_sheet(wb, listWs, listSheetName);
+            wb.Sheets[listSheetName].Hidden = 1;
+
+            const range = XLSX.utils.encode_range({s: {c: colIndex, r: 1}, e: {c: colIndex, r: 1000}});
+            ws['!dataValidation'].push({ 
+                sqref: range, 
+                validation: { 
+                    type: "list", allowBlank: true, showDropDown: true, 
+                    formula1: `'${listSheetName}'!$A$1:$A$${options.length}`,
+                    showErrorMessage: true, errorStyle: 'warning', errorTitle: 'Pasted value not in list',
+                    error: 'This is a warning. The value will be accepted, and the tool will try to find a partial match on the form.'
+                }
+            });
+            colIndex++;
         });
 
-        const headers = [nameColumn, ...Array.from(destIds)];
-        const csvContent = "data:text/csv;charset=utf-8," + headers.map(h => `"${h.replace(/"/g, '""')}"`).join(',');
-
-        const encodedUri = encodeURI(csvContent);
-        const link = document.createElement("a");
-        link.setAttribute("href", encodedUri);
-        link.setAttribute("download", "preset_template.csv");
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        XLSX.utils.book_append_sheet(wb, ws, mainSheetName);
+        XLSX.writeFile(wb, "preset_template.xlsx");
     },
 
     importBulkPresets() {
-        if (!this.state.mappings) {
-            this.showModal('Please load field mappings first.');
-            return;
-        }
-
-        const fileInput = document.getElementById('bulk-csv-file');
+        if (!this.state.mappings) return this.showModal('Load mappings first.');
+        const fileInput = document.getElementById('bulk-file-upload');
+        if (!fileInput.files.length) return this.showModal('Please select a file.');
+        
         const presetType = document.getElementById('bulk-preset-type').value;
-        const nameColumn = document.getElementById('bulk-name-column').value.trim();
 
-        if (!fileInput.files.length) {
-            this.showModal('Please select a CSV file.');
-            return;
-        }
-        if (!nameColumn) {
-            this.showModal('Please specify which column contains the preset names.');
-            return;
-        }
-
-        const file = fileInput.files[0];
         const reader = new FileReader();
-
         reader.onload = (e) => {
             try {
-                const csvText = e.target.result;
-                const rows = this.parseCSV(csvText);
-                if (rows.length < 2) {
-                    this.showModal('CSV file must have at least a header row and one data row.');
-                    return;
-                }
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                const json = XLSX.utils.sheet_to_json(worksheet, {defval:""});
 
-                const headers = rows[0].map(h => h.trim());
-                const nameColIndex = headers.findIndex(h => h.toLowerCase() === nameColumn.toLowerCase());
-                if (nameColIndex === -1) {
-                    this.showModal(`Column "${nameColumn}" not found in CSV. Available columns: ${headers.join(', ')}`);
-                    return;
-                }
+                if (json.length === 0) return this.showModal('Spreadsheet is empty.');
+
+                document.getElementById(presetType + '-presets').innerHTML = '';
+                this.state.presets[presetType] = {};
 
                 let importedCount = 0;
-                let skippedCount = 0;
-
-                const processRow = (rowIndex) => {
-                    if (rowIndex >= rows.length) {
-                        this.showModal(`Import complete!\nImported: ${importedCount}\nSkipped: ${skippedCount}`);
-                        fileInput.value = ''; // Clear file input
-                        return;
-                    }
-
-                    const row = rows[rowIndex];
-                    const presetName = row[nameColIndex]?.trim();
-                    if (!presetName) {
-                        skippedCount++;
-                        processRow(rowIndex + 1);
-                        return;
-                    }
-
-                    const processPreset = () => {
-                        if (!this.state.presets[presetType]) this.state.presets[presetType] = {};
-                        
-                        const existingCard = document.getElementById('preset-' + presetType + '-' + presetName.replace(/\s+/g, '-'));
-                        if(existingCard) existingCard.remove();
-                        
+                json.forEach(row => {
+                    const presetName = row.Name || row.name;
+                    if (!presetName) return;
+                    
+                    if (!this.state.presets[presetType][presetName]) {
                         this.state.presets[presetType][presetName] = {};
-                        headers.forEach((header, colIndex) => {
-                            if (colIndex === nameColIndex) return;
-                            const headerTrimmed = header.trim();
-                            const cellValue = row[colIndex]?.trim();
-                            if (cellValue && headerTrimmed) {
-                                this.state.presets[presetType][presetName][headerTrimmed] = cellValue;
-                            }
-                        });
-                        this.createPresetCard(presetType, presetName, this.state.presets[presetType][presetName]);
-                        importedCount++;
-                        processRow(rowIndex + 1);
-                    };
-
-                    if (this.state.presets[presetType] && this.state.presets[presetType][presetName]) {
-                        this.showModal(`Preset "${presetName}" already exists. Overwrite?`, processPreset, true);
-                        this.modal.cancelCallback = () => {
-                            skippedCount++;
-                            processRow(rowIndex + 1);
-                        };
-                    } else {
-                        processPreset();
                     }
-                };
-                
-                processRow(1); // Start processing from the first data row
-
-            } catch (error) {
-                this.showModal('Error parsing CSV: ' + error.message);
-            }
-        };
-        reader.onerror = () => this.showModal('Error reading file.');
-        reader.readAsText(file);
-    },
-
-    parseCSV(text) {
-        const rows = [];
-        let currentRow = [];
-        let currentCell = '';
-        let insideQuotes = false;
-        text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-
-        for (let i = 0; i < text.length; i++) {
-            const char = text[i];
-            const nextChar = text[i + 1];
-
-            if (char === '"') {
-                if (insideQuotes && nextChar === '"') {
-                    currentCell += '"';
-                    i++;
-                } else {
-                    insideQuotes = !insideQuotes;
-                }
-            } else if (char === ',' && !insideQuotes) {
-                currentRow.push(currentCell.trim());
-                currentCell = '';
-            } else if (char === '\n' && !insideQuotes) {
-                currentRow.push(currentCell.trim());
-                rows.push(currentRow);
-                currentRow = [];
-                currentCell = '';
-            } else {
-                currentCell += char;
-            }
-        }
-        
-        if (currentCell || currentRow.length > 0) {
-            currentRow.push(currentCell.trim());
-            rows.push(currentRow);
-        }
-
-        return rows.filter(row => row.length > 0 && row.some(cell => cell));
-    },
-
-    createPresetCard(type, name, values) {
-        const template = document.getElementById('preset-card-template');
-        const card = template.content.cloneNode(true);
-        const cardElement = card.querySelector('.preset-card');
-        const fieldsContainer = card.querySelector('[data-fields-container]');
-
-        card.querySelector('[data-name]').textContent = name;
-        cardElement.id = 'preset-' + type + '-' + name.replace(/\s+/g, '-');
-
-        this.state.mappings.forEach(mapping => {
-            if (!mapping.destinations || !Array.isArray(mapping.destinations)) return;
-            mapping.destinations.forEach(dest => {
-                const fieldWrapper = document.createElement('div');
-                fieldWrapper.className = 'preset-field';
-                
-                const label = document.createElement('label');
-                label.className = 'block text-sm font-medium text-slate-700 mb-1';
-                label.textContent = dest.id + (dest.allowMultiple ? ' (multi)' : ' (single)');
-
-                const select = document.createElement('select');
-                select.className = 'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent';
-                select.multiple = dest.allowMultiple;
-                if (dest.allowMultiple) select.style.height = '100px';
-                
-                select.onchange = () => {
-                    const value = dest.allowMultiple ? Array.from(select.selectedOptions).map(o => o.value) : select.value;
-                    this.updatePresetValue(type, name, dest.id, value);
-                };
-                
-                if (!dest.allowMultiple) select.add(new Option('-- Choose Value --', ''));
-                
-                if (mapping.sourceOptions && mapping.sourceOptions.length > 0) {
-                    mapping.sourceOptions.forEach(opt => {
-                        const option = new Option(opt, opt);
-                        const presetValue = values[dest.id];
-                        if (presetValue !== undefined) {
-                            const valuesArray = Array.isArray(presetValue) ? presetValue : presetValue.split(',').map(v => v.trim());
-                            if (valuesArray.includes(opt)) {
-                                option.selected = true;
-                            }
+                    
+                    for (const key in row) {
+                        if (key.toLowerCase() !== 'name') {
+                            this.state.presets[presetType][presetName][key] = row[key];
                         }
-                        select.add(option);
-                    });
-                }
-                
-                fieldWrapper.appendChild(label);
-                fieldWrapper.appendChild(select);
-                fieldsContainer.appendChild(fieldWrapper);
-            });
-        });
-        
-        document.getElementById(type + '-presets').appendChild(card);
-    },
+                    }
+                    this.createPresetCard(presetType, presetName, this.state.presets[presetType][presetName]);
+                    importedCount++;
+                });
+                this.showModal(`Successfully imported ${importedCount} ${presetType}.`);
 
-    updateDefaultValue(destId, value) {
-        this.state.presets.defaults[destId] = value;
+            } catch (error) { this.showModal('Error reading file: ' + error.message); }
+        };
+        reader.readAsArrayBuffer(fileInput.files[0]);
     },
     
-    addPreset(type) {
-        if (!this.state.mappings) { 
-            this.showModal('Please load field mappings first.'); 
-            return; 
-        }
+    createPresetCard(type, name, values) {
+        const existingCard = document.getElementById('preset-' + type + '-' + name.replace(/\s+/g, '-'));
+        if(existingCard) existingCard.remove();
         
+        const template = document.getElementById('preset-card-template').content.cloneNode(true);
+        const cardElement = template.querySelector('.preset-card');
+        cardElement.id = 'preset-' + type + '-' + name.replace(/\s+/g, '-');
+        template.querySelector('[data-name]').textContent = name;
+        const fieldsContainer = template.querySelector('[data-fields-container]');
+
+        this.state.mappings.forEach(m => {
+            const dest = m.destinations[0];
+            if (dest.type === 'text') return;
+            
+            const fieldWrapper = document.createElement('div');
+            fieldWrapper.className = 'preset-field';
+            let fieldHTML = `<label class="block text-sm font-medium text-slate-700 mb-1">${dest.id}</label>`;
+
+            if (dest.addAll) {
+                fieldHTML += `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">All source options will be applied.</div>`;
+            } else {
+                const select = document.createElement('select');
+                select.className = 'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm';
+                select.onchange = () => this.updatePresetValue(type, name, dest.id, select.value);
+                select.add(new Option('-- Choose Value --', ''));
+                m.sourceOptions.forEach(opt => {
+                    const option = new Option(opt, opt);
+                    if (values[dest.id] == opt) option.selected = true;
+                    select.add(option);
+                });
+                fieldWrapper.innerHTML = fieldHTML;
+                fieldWrapper.appendChild(select);
+            }
+             if (!fieldWrapper.querySelector('select')) fieldWrapper.innerHTML = fieldHTML;
+
+            fieldsContainer.appendChild(fieldWrapper);
+        });
+        document.getElementById(type + '-presets').appendChild(template);
+    },
+
+    updateDefaultValue(destId, value) { this.state.presets.defaults[destId] = value; },
+    addPreset(type) {
+        if (!this.state.mappings) return this.showModal('Load mappings first.');
         const name = prompt('Enter name for new ' + type.slice(0, -1) + ':');
         if (!name || !name.trim()) return;
-        
-        if (this.state.presets[type] && this.state.presets[type][name]) {
-            this.showModal('A preset with this name already exists.');
-            return;
-        }
+        if (this.state.presets[type]?.[name]) return this.showModal('Preset name already exists.');
         
         if (!this.state.presets[type]) this.state.presets[type] = {};
         this.state.presets[type][name] = {};
-        
         this.createPresetCard(type, name, {});
     },
 
     updatePresetValue(type, presetName, destId, value) {
         if (!this.state.presets[type][presetName]) this.state.presets[type][presetName] = {};
-        if( (Array.isArray(value) && value.length === 0) || (!Array.isArray(value) && !value)) {
-            delete this.state.presets[type][presetName][destId];
-        } else {
-            this.state.presets[type][presetName][destId] = value;
-        }
+        if (!value) delete this.state.presets[type][presetName][destId];
+        else this.state.presets[type][presetName][destId] = value;
     },
 
     generateFinalBookmarklet() {
        const name = document.getElementById('final-bookmarklet-name').value.trim();
-       if (!name) { 
-           this.showModal('Please provide a name for the final bookmarklet.'); 
-           return; 
-       }
+       if (!name) return this.showModal('Please provide a name for the bookmarklet.');
+       if (!this.state.mappings) return this.showModal('Load mappings first.');
        
-       if (!this.state.mappings) {
-           this.showModal('Please load field mappings first.');
-           return;
-       }
+       const finalLogic = 'const M=' + JSON.stringify(this.state.mappings) + ';const P=' + JSON.stringify(this.state.presets) + ';function getEl(e){return document.getElementById(e)||document.getElementsByName(e)[0]}function apply(vals){M.forEach(m=>{const d=m.destinations[0];if(!d)return;const v=vals[d.id];if(typeof v==="undefined")return;const el=getEl(d.id);if(!el)return;const findFullOpt=(sel,val)=>{const opts=Array.from(sel.options);const tVal=String(val).trim();let f=opts.find(o=>o.text.trim()===tVal);if(f)return f.text.trim();f=opts.find(o=>o.text.trim().startsWith(tVal));if(f)return f.text.trim();return val;};if(d.type==="duallist"){const srcEl=getEl(m.sourceId);const addBtn=el.closest("td,div")?.parentElement?.querySelector("input[id*=\\"OptionSelectorAdd\\"],button[id*=\\"add\\"]");if(!srcEl||!addBtn)return;let valsToProc=d.addAll?m.sourceOptions:(Array.isArray(v)?v:String(v).split(",").map(s=>s.trim()));const resolved=valsToProc.map(val=>findFullOpt(srcEl,val));Array.from(srcEl.options).forEach(opt=>{opt.selected=resolved.includes(opt.text.trim())});addBtn.click()}else if(d.type==="select"){el.value=findFullOpt(el,v)}else{el.value=v};["input","change"].forEach(ev=>el.dispatchEvent(new Event(ev,{bubbles:!0})))})}function start(){const id="_filler_"+Date.now();if(document.getElementById(id))return;const L=Object.keys(P.locations||{}).map(e=>"<option value=\\""+e+"\\">"+e+"</option>").join("");const R=Object.keys(P.roles||{}).map(e=>"<option value=\\""+e+"\\">"+e+"</option>").join("");const H="<div id=\\""+id+"\\" style=\\"position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;\\"><h3 style=\\"margin:0 0 16px;\\">Form Filler</h3><div><label>Location:</label><select id=\\"_loc\\"><option value=\\"\\">-- Select --</option>"+L+"</select></div><div><label>Role:</label><select id=\\"_role\\"><option value=\\"\\">-- Select --</option>"+R+"</select></div><button id=\\"_fill\\">Fill</button><button onclick=\\"document.getElementById(\'"+id+"\').remove()\\">Cancel</button></div>";document.body.insertAdjacentHTML("beforeend",H);document.getElementById("_fill").onclick=()=>{const l=document.getElementById("_loc").value;const r=document.getElementById("_role").value;const V={...P.defaults||{},...P.locations[l]||{},...P.roles[r]||{}};apply(V);document.getElementById(id).remove()}}start();';
        
-       const finalLogic = `const MAPPINGS=${JSON.stringify(this.state.mappings)};const PRESETS=${JSON.stringify(this.state.presets)};function getElement(e){return document.getElementById(e)||document.getElementsByName(e)[0]}function applyPresets(e){MAPPINGS.forEach(function(t){t.destinations&&Array.isArray(t.destinations)&&t.destinations.forEach(function(o){const n=e[o.id];if(void 0!==n&&""!==n){const e=getElement(o.id);if(e){if("duallist"===o.type){const a=getElement(t.sourceId),s=e.closest("tr, div.row, div.form-group");if(!s)return void console.error("Could not find container for",o.id);const r=s.querySelector('input[id*="OptionSelectorAdd"]:not([id*="AddAll"]), button[id*="add"]');if(!a||!r)return void console.error("Could not find source or add button for",o.id);const d=Array.isArray(n)?n:n.split(",").map(v => v.trim());Array.from(a.options).forEach(e=>{e.selected=d.includes(e.text.trim())}),r.click()}else e.value=n;e.dispatchEvent(new Event("input",{bubbles:!0})),e.dispatchEvent(new Event("change",{bubbles:!0}))}}})})}function startApp(){const e="_idm_filler_"+Date.now();if(document.getElementById(e))return;const t=Object.keys(PRESETS.locations||{}).map(e=>'<option value="'+e+'">'+e+"</option>").join(""),o=Object.keys(PRESETS.roles||{}).map(e=>'<option value="'+e+'">'+e+"</option>").join(""),n='<div id="'+e+'" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;color:#333;"><h3 style="margin:0 0 16px;font-size:18px;font-weight:600;color:#1e293b;">Form Filler</h3><div style="margin-bottom:12px;"><label style="display:block;font-size:14px;font-weight:500;margin-bottom:4px;color:#475569;">Location:</label><select id="_idm_loc" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;"><option value="">-- Select Location --</option>'+t+'</select></div><div style="margin-bottom:16px;"><label style="display:block;font-size:14px;font-weight:500;margin-bottom:4px;color:#475569;">Role:</label><select id="_idm_role" style="width:100%;padding:8px 12px;border:1px solid #cbd5e1;border-radius:6px;font-size:14px;"><option value="">-- Select Role --</option>'+o+'</select></div><div style="display:flex;gap:8px;"><button id="_idm_fill" style="flex:1;background:#2563eb;color:white;padding:10px;border:none;border-radius:6px;font-weight:500;cursor:pointer;">Fill Form</button><button onclick="document.getElementById(\\''+e+"\\').remove()\" style=\"flex:1;background:#94a3b8;color:white;padding:10px;border:none;border-radius:6px;font-weight:500;cursor:pointer;\">Cancel</button></div></div>";document.body.insertAdjacentHTML("beforeend",n),document.getElementById("_idm_fill").onclick=()=>{const t=document.getElementById("_idm_loc").value,o=document.getElementById("_idm_role").value,n={...PRESETS.defaults||{},...PRESETS.locations[t]||{},...PRESETS.roles[o]||{}};applyPresets(n),document.getElementById(e).remove()}}startApp();`;
-       
-       const minified = finalLogic.replace(/\s+/g, ' ');
-       const finalScript = 'javascript:(function(){' + encodeURIComponent(minified) + '})()';
+       const finalScript = 'javascript:(function(){' + encodeURIComponent(finalLogic.replace(/\s+/g, ' ').trim()) + '})()';
        
        const container = document.getElementById('final-bookmarklet-link-container');
-       container.innerHTML = '<a href="' + finalScript.replace(/"/g, '&quot;') + '" class="inline-block px-8 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition-colors">' + this.escapeHtml(name) + '</a>';
+       container.innerHTML = '<a href="' + finalScript.replace(/"/g, '&quot;') + '" class="inline-block px-8 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">' + this.escapeHtml(name) + '</a>';
        document.getElementById('final-output').style.display = 'block';
     },
     
-    escapeHtml(text) {
+    escapeHtml: (text) => {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
@@ -647,3 +565,4 @@ document.addEventListener('DOMContentLoaded', () => app.init());
 </script>
 </body>
 </html>
+

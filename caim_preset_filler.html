@@ -99,9 +99,9 @@
                     </div>
                 </div>
                 <div id="presets-ui-container" style="display: none;">
-                    <div id="defaults-container" class="p-6 bg-slate-50 border border-slate-200 rounded-lg my-6">
+                    <div id="defaults-container" class="p-6 bg-slate-50 border border-slate-200 rounded-lg my-6" style="display: none;">
                         <h3 class="text-lg font-semibold text-slate-800 mb-4">Global Default Values</h3>
-                        <p class="text-sm text-slate-600 mb-4">Use this section for fields that are the same for every user (like the text fields you mentioned). These values are applied automatically unless a specific preset overrides them.</p>
+                        <p class="text-sm text-slate-600 mb-4">These values were found to be the same across all imported roles and have been set as global defaults.</p>
                         <div id="defaults-presets" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -261,7 +261,7 @@ const BUILDER_TOOL = {
             + '    const destEl = document.getElementById(state.panelId + "-current-dest");'
             + '    const mappingsEl = document.getElementById(state.panelId + "-mappings-list");'
             + ''
-            + '    sourceEl.innerHTML = state.currentSource ? `<strong>Source:</strong> ${state.currentSource.sourceId}` : \'<em>No source selected</em>\';'
+            + '    sourceEl.innerHTML = `<strong>Source:</strong> ${state.currentSource.sourceId}` : \'<em>No source selected</em>\';'
             + '    if(state.currentDestination) {'
             + '        let addAllCheckbox = \'\';'
             + '        if(state.currentDestination.type === \'duallist\') {'
@@ -364,26 +364,8 @@ const app = {
             if (!Array.isArray(this.state.mappings)) throw new Error("Mappings data is not a valid array.");
             
             this.state.presets = { defaults: {}, locations: {}, roles: {} };
-            ['locations-presets', 'roles-presets', 'defaults-presets'].forEach(id => document.getElementById(id).innerHTML = '');
+            this.rerenderAllPresetUIs();
             
-            const defaultsContainer = document.getElementById('defaults-presets');
-            let hasDefaults = false;
-            this.state.mappings.forEach(mapping => {
-                if (!mapping.destinations || !Array.isArray(mapping.destinations)) return;
-                mapping.destinations.forEach(dest => {
-                    if (dest.type === 'text') {
-                        hasDefaults = true;
-                        this.state.presets.defaults[dest.id] = dest.defaultValue;
-                        const fieldDiv = document.createElement('div');
-                        fieldDiv.className = 'preset-field';
-                        fieldDiv.innerHTML = `<label class="block text-sm font-medium text-slate-700 mb-1">${dest.id}</label>
-                            <input type="text" value="${dest.defaultValue}" onchange="app.updateDefaultValue('${dest.id}', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"> `;
-                        defaultsContainer.appendChild(fieldDiv);
-                    }
-                });
-            });
-            
-            document.getElementById('defaults-container').style.display = hasDefaults ? 'block' : 'none';
             document.getElementById('presets-ui-container').style.display = 'block';
             document.getElementById('bulk-import-section').style.display = 'block';
             this.showModal('Field mappings loaded! You can now download the Excel template or add presets manually.');
@@ -403,7 +385,7 @@ const app = {
 
         this.state.mappings.forEach(m => {
             const dest = m.destinations[0];
-            if (dest.addAll || dest.type === 'text') return;
+            if (dest.addAll) return; // Exclude only 'addAll' fields
             headers.push(dest.id);
             if (m.sourceOptions && m.sourceOptions.length > 0) {
                 dropdownMappings.set(dest.id, m.sourceOptions);
@@ -414,22 +396,24 @@ const app = {
         ws['!dataValidation'] = [];
         
         let colIndex = 1;
-        dropdownMappings.forEach((options, header) => {
-            const listSheetName = `list_${header.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 25)}`;
-            const listWs = XLSX.utils.aoa_to_sheet(options.map(o => [o]));
-            XLSX.utils.book_append_sheet(wb, listWs, listSheetName);
-            // wb.Sheets[listSheetName].Hidden = 1; // This is incorrect and was causing the bug.
+        headers.slice(1).forEach(header => {
+            if (dropdownMappings.has(header)) {
+                const options = dropdownMappings.get(header);
+                const listSheetName = `list_${header.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 25)}`;
+                const listWs = XLSX.utils.aoa_to_sheet(options.map(o => [o]));
+                XLSX.utils.book_append_sheet(wb, listWs, listSheetName);
 
-            const range = XLSX.utils.encode_range({s: {c: colIndex, r: 1}, e: {c: colIndex, r: 1000}});
-            ws['!dataValidation'].push({ 
-                sqref: range, 
-                validation: { 
-                    type: "list", allowBlank: true, showDropDown: true, 
-                    formula1: `'${listSheetName}'!$A$1:$A$${options.length}`,
-                    showErrorMessage: true, errorStyle: 'warning', errorTitle: 'Pasted value not in list',
-                    error: 'This is a warning. The value will be accepted, and the tool will try to find a partial match on the form.'
-                }
-            });
+                const range = XLSX.utils.encode_range({s: {c: colIndex, r: 1}, e: {c: colIndex, r: 1000}});
+                ws['!dataValidation'].push({ 
+                    sqref: range, 
+                    validation: { 
+                        type: "list", allowBlank: true, showDropDown: true, 
+                        formula1: `'${listSheetName}'!$A$1:$A$${options.length}`,
+                        showErrorMessage: true, errorStyle: 'warning', errorTitle: 'Pasted value not in list',
+                        error: 'This is a warning. The value will be accepted, and the tool will try to find a partial match on the form.'
+                    }
+                });
+            }
             colIndex++;
         });
 
@@ -454,32 +438,101 @@ const app = {
                 const json = XLSX.utils.sheet_to_json(worksheet, {defval:""});
 
                 if (json.length === 0) return this.showModal('Spreadsheet is empty.');
-
-                document.getElementById(presetType + '-presets').innerHTML = '';
+                
                 this.state.presets[presetType] = {};
-
-                let importedCount = 0;
                 json.forEach(row => {
                     const presetName = row.Name || row.name;
                     if (!presetName) return;
                     
-                    if (!this.state.presets[presetType][presetName]) {
-                        this.state.presets[presetType][presetName] = {};
-                    }
-                    
+                    this.state.presets[presetType][presetName] = {};
                     for (const key in row) {
                         if (key.toLowerCase() !== 'name') {
                             this.state.presets[presetType][presetName][key] = row[key];
                         }
                     }
-                    this.createPresetCard(presetType, presetName, this.state.presets[presetType][presetName]);
-                    importedCount++;
                 });
-                this.showModal(`Successfully imported ${importedCount} ${presetType}.`);
+                
+                if (presetType === 'roles') {
+                    this.analyzeAndExtractGlobals();
+                }
+                
+                this.rerenderAllPresetUIs();
+                this.showModal(`Successfully imported ${json.length} ${presetType}.`);
+                fileInput.value = '';
 
             } catch (error) { this.showModal('Error reading file: ' + error.message); }
         };
         reader.readAsArrayBuffer(fileInput.files[0]);
+    },
+
+    analyzeAndExtractGlobals() {
+        const roles = this.state.presets.roles;
+        const roleNames = Object.keys(roles);
+
+        if (roleNames.length < 2) return; 
+
+        const firstRole = roles[roleNames[0]];
+        const potentialGlobals = {};
+
+        for (const fieldId in firstRole) {
+            const value = firstRole[fieldId];
+            if (value === "" || typeof value === 'undefined') continue;
+
+            let isGlobal = true;
+            for (let i = 1; i < roleNames.length; i++) {
+                const otherRole = roles[roleNames[i]];
+                if (!otherRole.hasOwnProperty(fieldId) || String(otherRole[fieldId]) !== String(value)) {
+                    isGlobal = false;
+                    break;
+                }
+            }
+            if (isGlobal) {
+                potentialGlobals[fieldId] = value;
+            }
+        }
+
+        for (const fieldId in potentialGlobals) {
+            this.state.presets.defaults[fieldId] = potentialGlobals[fieldId];
+            roleNames.forEach(roleName => {
+                delete this.state.presets.roles[roleName][fieldId];
+            });
+        }
+    },
+
+    rerenderAllPresetUIs() {
+        ['locations-presets', 'roles-presets', 'defaults-presets'].forEach(id => document.getElementById(id).innerHTML = '');
+
+        const defaultsContainer = document.getElementById('defaults-presets');
+        let hasDefaults = false;
+        for (const destId in this.state.presets.defaults) {
+            hasDefaults = true;
+            const value = this.state.presets.defaults[destId];
+            const fieldDiv = document.createElement('div');
+            fieldDiv.className = 'preset-field';
+            
+            let destType = 'text';
+            this.state.mappings.forEach(m => {
+                if (m.destinations.some(d => d.id === destId)) {
+                    destType = m.destinations.find(d => d.id === destId).type;
+                }
+            });
+
+            fieldDiv.innerHTML = `<label class="block text-sm font-medium text-slate-700 mb-1">${destId}</label>`;
+            if (destType === 'text') {
+                fieldDiv.innerHTML += `<input type="text" value="${this.escapeHtml(value)}" onchange="app.updateDefaultValue('${destId}', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">`;
+            } else {
+                 fieldDiv.innerHTML += `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">${this.escapeHtml(value)}</div>`;
+            }
+            defaultsContainer.appendChild(fieldDiv);
+        }
+        document.getElementById('defaults-container').style.display = hasDefaults ? 'block' : 'none';
+
+        for (const presetName in this.state.presets.locations) {
+            this.createPresetCard('locations', presetName, this.state.presets.locations[presetName]);
+        }
+        for (const presetName in this.state.presets.roles) {
+            this.createPresetCard('roles', presetName, this.state.presets.roles[presetName]);
+        }
     },
     
     createPresetCard(type, name, values) {
@@ -494,7 +547,8 @@ const app = {
 
         this.state.mappings.forEach(m => {
             const dest = m.destinations[0];
-            if (dest.type === 'text') return;
+            // Only render fields that are NOT global defaults
+            if (this.state.presets.defaults.hasOwnProperty(dest.id)) return;
             
             const fieldWrapper = document.createElement('div');
             fieldWrapper.className = 'preset-field';
@@ -502,6 +556,9 @@ const app = {
 
             if (dest.addAll) {
                 fieldHTML += `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">All source options will be applied.</div>`;
+                fieldWrapper.innerHTML = fieldHTML;
+            } else if (dest.type === 'text') {
+                 fieldWrapper.innerHTML = fieldHTML + `<input type="text" value="${this.escapeHtml(values[dest.id] || '')}" onchange="app.updatePresetValue('${type}', '${name}', '${dest.id}', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">`;
             } else {
                 const select = document.createElement('select');
                 select.className = 'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm';
@@ -515,8 +572,6 @@ const app = {
                 fieldWrapper.innerHTML = fieldHTML;
                 fieldWrapper.appendChild(select);
             }
-             if (!fieldWrapper.querySelector('select')) fieldWrapper.innerHTML = fieldHTML;
-
             fieldsContainer.appendChild(fieldWrapper);
         });
         document.getElementById(type + '-presets').appendChild(template);
@@ -570,7 +625,7 @@ const app = {
                for (const fieldId in preset) {
                    const val = String(preset[fieldId]);
                    const [code] = val.split(':');
-                   if (code && !isNaN(code)) {
+                   if (code && !isNaN(code) && lookup[fieldId] && lookup[fieldId][code.trim()]) {
                        compressedPreset[fieldId] = code.trim();
                    } else {
                        compressedPreset[fieldId] = val;

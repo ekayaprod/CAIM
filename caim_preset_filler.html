@@ -418,7 +418,7 @@ const app = {
             const listSheetName = `list_${header.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 25)}`;
             const listWs = XLSX.utils.aoa_to_sheet(options.map(o => [o]));
             XLSX.utils.book_append_sheet(wb, listWs, listSheetName);
-            wb.Sheets[listSheetName].Hidden = 1;
+            // wb.Sheets[listSheetName].Hidden = 1; // This is incorrect and was causing the bug.
 
             const range = XLSX.utils.encode_range({s: {c: colIndex, r: 1}, e: {c: colIndex, r: 1000}});
             ws['!dataValidation'].push({ 
@@ -509,7 +509,7 @@ const app = {
                 select.add(new Option('-- Choose Value --', ''));
                 m.sourceOptions.forEach(opt => {
                     const option = new Option(opt, opt);
-                    if (values[dest.id] == opt) option.selected = true;
+                    if (values[dest.id] == opt) option.selected = true; 
                     select.add(option);
                 });
                 fieldWrapper.innerHTML = fieldHTML;
@@ -544,8 +544,44 @@ const app = {
        const name = document.getElementById('final-bookmarklet-name').value.trim();
        if (!name) return this.showModal('Please provide a name for the bookmarklet.');
        if (!this.state.mappings) return this.showModal('Load mappings first.');
+
+       // --- COMPRESSION LOGIC START ---
+       const lookup = {};
+       const compressedMappings = this.state.mappings.map(m => {
+           const dest = m.destinations[0];
+           lookup[dest.id] = {};
+           m.sourceOptions.forEach(opt => {
+               const [code] = opt.split(':');
+               if (code && !isNaN(code)) {
+                   lookup[dest.id][code.trim()] = opt;
+               } else {
+                   lookup[dest.id][opt] = opt;
+               }
+           });
+           return { s: m.sourceId, d: dest.id, t: dest.type, a: dest.addAll };
+       });
+
+       const compressedPresets = { defaults: this.state.presets.defaults };
+       ['locations', 'roles'].forEach(type => {
+           compressedPresets[type] = {};
+           for (const presetName in this.state.presets[type]) {
+               const preset = this.state.presets[type][presetName];
+               const compressedPreset = {};
+               for (const fieldId in preset) {
+                   const val = String(preset[fieldId]);
+                   const [code] = val.split(':');
+                   if (code && !isNaN(code)) {
+                       compressedPreset[fieldId] = code.trim();
+                   } else {
+                       compressedPreset[fieldId] = val;
+                   }
+               }
+               compressedPresets[type][presetName] = compressedPreset;
+           }
+       });
+       // --- COMPRESSION LOGIC END ---
        
-       const finalLogic = 'const M=' + JSON.stringify(this.state.mappings) + ';const P=' + JSON.stringify(this.state.presets) + ';function getEl(e){return document.getElementById(e)||document.getElementsByName(e)[0]}function apply(vals){M.forEach(m=>{const d=m.destinations[0];if(!d)return;const v=vals[d.id];if(typeof v==="undefined")return;const el=getEl(d.id);if(!el)return;const findFullOpt=(sel,val)=>{const opts=Array.from(sel.options);const tVal=String(val).trim();let f=opts.find(o=>o.text.trim()===tVal);if(f)return f.text.trim();f=opts.find(o=>o.text.trim().startsWith(tVal));if(f)return f.text.trim();return val;};if(d.type==="duallist"){const srcEl=getEl(m.sourceId);const addBtn=el.closest("td,div")?.parentElement?.querySelector("input[id*=\\"OptionSelectorAdd\\"],button[id*=\\"add\\"]");if(!srcEl||!addBtn)return;let valsToProc=d.addAll?m.sourceOptions:(Array.isArray(v)?v:String(v).split(",").map(s=>s.trim()));const resolved=valsToProc.map(val=>findFullOpt(srcEl,val));Array.from(srcEl.options).forEach(opt=>{opt.selected=resolved.includes(opt.text.trim())});addBtn.click()}else if(d.type==="select"){el.value=findFullOpt(el,v)}else{el.value=v};["input","change"].forEach(ev=>el.dispatchEvent(new Event(ev,{bubbles:!0})))})}function start(){const id="_filler_"+Date.now();if(document.getElementById(id))return;const L=Object.keys(P.locations||{}).map(e=>"<option value=\\""+e+"\\">"+e+"</option>").join("");const R=Object.keys(P.roles||{}).map(e=>"<option value=\\""+e+"\\">"+e+"</option>").join("");const H="<div id=\\""+id+"\\" style=\\"position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;\\"><h3 style=\\"margin:0 0 16px;\\">Form Filler</h3><div><label>Location:</label><select id=\\"_loc\\"><option value=\\"\\">-- Select --</option>"+L+"</select></div><div><label>Role:</label><select id=\\"_role\\"><option value=\\"\\">-- Select --</option>"+R+"</select></div><button id=\\"_fill\\">Fill</button><button onclick=\\"document.getElementById(\'"+id+"\').remove()\\">Cancel</button></div>";document.body.insertAdjacentHTML("beforeend",H);document.getElementById("_fill").onclick=()=>{const l=document.getElementById("_loc").value;const r=document.getElementById("_role").value;const V={...P.defaults||{},...P.locations[l]||{},...P.roles[r]||{}};apply(V);document.getElementById(id).remove()}}start();';
+       const finalLogic = 'const L=' + JSON.stringify(lookup) + ';const M=' + JSON.stringify(compressedMappings) + ';const P=' + JSON.stringify(compressedPresets) + ';function getEl(e){return document.getElementById(e)||document.getElementsByName(e)[0]}function apply(vals){M.forEach(m=>{const v=vals[m.d];if(typeof v==="undefined")return;const el=getEl(m.d);if(!el)return;const findFullOpt=(sel,val)=>{const tVal=String(val).trim();if(L[m.d]&&L[m.d][tVal])return L[m.d][tVal];const opts=Array.from(sel.options);let f=opts.find(o=>o.text.trim()===tVal);if(f)return f.text.trim();f=opts.find(o=>o.text.trim().startsWith(tVal));if(f)return f.text.trim();return val;};if(m.t==="duallist"){const srcEl=getEl(m.s);const addBtn=el.closest("td,div")?.parentElement?.querySelector("input[id*=\\"OptionSelectorAdd\\"],button[id*=\\"add\\"]");if(!srcEl||!addBtn)return;let valsToProc=m.a?Object.values(L[m.d]):(Array.isArray(v)?v:String(v).split(",").map(s=>s.trim()));const resolved=valsToProc.map(val=>findFullOpt(srcEl,val));Array.from(srcEl.options).forEach(opt=>{opt.selected=resolved.includes(opt.text.trim())});addBtn.click()}else if(m.t==="select"){el.value=findFullOpt(el,v)}else{el.value=v};["input","change"].forEach(ev=>el.dispatchEvent(new Event(ev,{bubbles:!0})))})}function start(){const id="_filler_"+Date.now();if(document.getElementById(id))return;const locHTML=Object.keys(P.locations||{}).map(e=>"<option value=\\""+e+"\\">"+e+"</option>").join("");const roleHTML=Object.keys(P.roles||{}).map(e=>"<option value=\\""+e+"\\">"+e+"</option>").join("");const H="<div id=\\""+id+"\\" style=\\"position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;\\"><h3 style=\\"margin:0 0 16px;\\">Form Filler</h3><div><label>Location:</label><select id=\\"_loc\\"><option value=\\"\\">-- Select --</option>"+locHTML+"</select></div><div><label>Role:</label><select id=\\"_role\\"><option value=\\"\\">-- Select --</option>"+roleHTML+"</select></div><button id=\\"_fill\\">Fill</button><button onclick=\\"document.getElementById(\'"+id+"\').remove()\\">Cancel</button></div>";document.body.insertAdjacentHTML("beforeend",H);document.getElementById("_fill").onclick=()=>{const l=document.getElementById("_loc").value;const r=document.getElementById("_role").value;const V={...P.defaults||{},...P.locations[l]||{},...P.roles[r]||{}};apply(V);document.getElementById(id).remove()}}start();';
        
        const finalScript = 'javascript:(function(){' + encodeURIComponent(finalLogic.replace(/\s+/g, ' ').trim()) + '})()';
        

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler v4.6</title>
+    <title>CA IM Preset Form Filler v4.7</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -330,7 +330,11 @@ const app = {
 
     downloadXlsxTemplate() {
         if (!this.state.mappings) return this.showError('Load mappings first.');
-        this._generateExcelFile({ filename: 'Preset_Template.xlsx', sheets: [{ name: 'Presets', data: [{}], headers: ['Name', ...this.state.mappings.map(this._fieldId)] }] });
+        const headers = ['Name', ...this.state.mappings.map(this._fieldId)];
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet([headers]);
+        XLSX.utils.book_append_sheet(wb, ws, 'Presets');
+        XLSX.writeFile(wb, 'Preset_Template.xlsx');
     },
 
     exportPresetsToExcel() {

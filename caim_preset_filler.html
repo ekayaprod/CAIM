@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler</title>
+    <title>CA IM Preset Form Filler v4.4</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -23,7 +23,7 @@
         .modal-backdrop.visible { opacity: 1; visibility: visible; }
         .modal-content {
             background: white; padding: 2rem; border-radius: 0.75rem;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 450px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1); width: 90%; max-width: 500px;
             transform: scale(0.95); transition: transform 0.3s ease;
         }
         .modal-backdrop.visible .modal-content { transform: scale(1); }
@@ -34,6 +34,9 @@
         <header class="mb-8">
             <h1 class="text-4xl font-bold text-slate-800">Preset Form Filler</h1>
             <p class="text-slate-600 mt-2">Build intelligent form fillers with location and role presets</p>
+            <nav class="mt-4">
+                <button onclick="app.showStep(4)" class="text-blue-600 hover:underline">Help & Documentation</button>
+            </nav>
         </header>
 
         <main class="bg-white p-8 rounded-2xl shadow-lg">
@@ -41,18 +44,18 @@
             <div id="step1" class="step active">
                 <h2 class="text-2xl font-semibold text-slate-800 mb-6 border-b pb-4">
                     <span class="inline-block bg-blue-100 text-blue-800 text-sm font-semibold px-3 py-1 rounded-full mr-2">Phase 1</span>
-                    Generate Builder Bookmarklet
+                    Generate Field Mapping Tool
                 </h2>
                 <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg mb-6">
                     <h3 class="font-semibold text-blue-900 mb-2">How It Works</h3>
                     <p class="text-blue-800 text-sm leading-relaxed">
-                        This tool helps you map your form fields. Run it on your CA IM form, map each source field (like a dropdown) to its destination field. For multi-select fields, you can mark them to "Add All Options" automatically.
+                        This tool helps you map your form fields. Run it on your CA IM form, then click on a source field (like a dropdown) and a destination field to create a mapping. The builder automatically detects the format of each field.
                     </p>
                 </div>
                 <div class="text-center py-8">
                     <p class="text-slate-600 mb-4">Drag this bookmarklet to your bookmarks bar:</p>
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        🔧 CA IM Form Builder
+                        🔧 Field Mapper Tool v4.4
                     </a>
                 </div>
                 <div class="mt-8 flex justify-end">
@@ -72,588 +75,538 @@
                     <label for="mappings-json" class="block text-sm font-semibold text-slate-700 mb-2">1. Field Mappings JSON (from Builder Tool)</label>
                     <textarea id="mappings-json" rows="8" class="w-full px-3 py-2 border border-slate-300 rounded-lg font-mono text-sm" placeholder="Paste your field mappings JSON here..."></textarea>
                 </div>
-                <button onclick="app.renderPresetUI()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors mb-6">
-                    2. Load Mappings
-                </button>
+                 <div class="mt-6 flex gap-3 flex-wrap">
+                    <button onclick="app.renderPresetUI()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">2. Load Mappings</button>
+                    <button onclick="app.manageLocalStorage('save')" class="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-lg hover:bg-indigo-200 text-sm">💾 Save Progress</button>
+                    <button onclick="app.manageLocalStorage('load')" class="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-lg hover:bg-indigo-200 text-sm">📂 Load Saved</button>
+                    <button onclick="app.manageLocalStorage('clear')" class="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 text-sm">🗑️ Clear Saved</button>
+                </div>
                 <div id="bulk-import-section" style="display: none;" class="mt-6 p-6 bg-amber-50 border border-amber-200 rounded-lg">
-                    <h3 class="text-lg font-semibold text-slate-800 mb-3">3. Bulk Import from Spreadsheet</h3>
-                    <p class="text-sm text-slate-600 mb-4">Download the Excel template. For each field, you can either select a value from the dropdown or **copy-paste directly from your matrix** (e.g., just the two-digit county number). Then, upload the completed file.</p>
+                    <h3 class="text-lg font-semibold text-slate-800 mb-3">3. Bulk Import/Export</h3>
+                    <p class="text-sm text-slate-600 mb-4">For bulk updates, use "Additive" import mode. This is the most efficient way to manage many presets.</p>
                     <div class="flex items-end gap-4 flex-wrap">
-                        <button onclick="app.downloadXlsxTemplate()" class="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">
-                            Download Excel Template
-                        </button>
-                        <div>
-                            <label for="bulk-preset-type" class="block text-sm font-medium text-slate-700 mb-2">Preset Type</label>
-                            <select id="bulk-preset-type" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm h-[42px]">
-                                <option value="locations">Locations</option>
-                                <option value="roles">Roles</option>
-                            </select>
-                        </div>
+                        <button onclick="app.downloadXlsxTemplate()" class="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">Download Template</button>
                         <div class="flex-grow">
                              <label for="bulk-file-upload" class="block text-sm font-medium text-slate-700 mb-2">Upload Completed Excel File</label>
                              <input type="file" id="bulk-file-upload" accept=".xlsx, .xls, .csv" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm">
                         </div>
-                        <button onclick="app.importBulkPresets()" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">
-                            Import Presets
-                        </button>
+                        <button onclick="app.handleImportClick()" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">Import...</button>
+                        <button onclick="app.exportPresetsToExcel()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Export Presets</button>
                     </div>
                 </div>
                 <div id="presets-ui-container" style="display: none;">
                     <div id="defaults-container" class="p-6 bg-slate-50 border border-slate-200 rounded-lg my-6" style="display: none;">
                         <h3 class="text-lg font-semibold text-slate-800 mb-4">Global Default Values</h3>
-                        <p class="text-sm text-slate-600 mb-4">These values were found to be the same across all imported roles and have been set as global defaults.</p>
                         <div id="defaults-presets" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div>
                             <h3 class="text-lg font-semibold text-slate-800 mb-3">Location Presets</h3>
                             <div id="locations-presets"></div>
-                            <button onclick="app.addPreset('locations')" class="mt-3 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm">+ Add Location</button>
+                            <div class="mt-3 flex gap-2 flex-wrap">
+                                <button onclick="app.addPreset('locations')" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm">+ Add</button>
+                            </div>
                         </div>
                         <div>
                             <h3 class="text-lg font-semibold text-slate-800 mb-3">Role Presets</h3>
                             <div id="roles-presets"></div>
-                            <button onclick="app.addPreset('roles')" class="mt-3 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors text-sm">+ Add Role</button>
+                            <div class="mt-3 flex gap-2 flex-wrap">
+                                <button onclick="app.addPreset('roles')" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm">+ Add</button>
+                            </div>
                         </div>
                     </div>
                 </div>
                 <div class="mt-8 flex justify-between">
                     <button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">← Back</button>
-                    <button onclick="app.showStep(3)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Proceed to Phase 3 →</button>
+                    <button onclick="app.showStep(3)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Generate Bookmarklets →</button>
                 </div>
             </div>
-
+            
             <!-- Step 3: Generate Final Bookmarklet -->
             <div id="step3" class="step">
                 <h2 class="text-2xl font-semibold text-slate-800 mb-6 border-b pb-4">
                     <span class="inline-block bg-purple-100 text-purple-800 text-sm font-semibold px-3 py-1 rounded-full mr-2">Phase 3</span>
-                    Generate Final Bookmarklet
+                    Generate Bookmarklets
                 </h2>
-                <div class="p-6 bg-green-50 border border-green-200 rounded-lg text-center mb-6">
-                    <h3 class="font-semibold text-green-900 mb-3">Ready to Deploy</h3>
-                    <p class="text-green-800 text-sm mb-4">Generate your final form filler bookmarklet with all configured presets.</p>
-                    <input type="text" id="final-bookmarklet-name" placeholder="Enter bookmarklet name (e.g., 'HR Onboarding')" class="w-full max-w-md mx-auto px-4 py-2 border border-slate-300 rounded-lg mb-4 text-center">
-                    <button onclick="app.generateFinalBookmarklet()" class="px-8 py-3 bg-green-600 text-white font-semibold rounded-lg hover:bg-green-700 shadow-md">
-                        Generate Final Bookmarklet
-                    </button>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                         <h3 class="text-lg font-semibold text-green-800 mb-2">Form Filler</h3>
+                        <div class="mb-6">
+                            <label for="final-bookmarklet-name" class="block text-sm font-semibold text-slate-700 mb-2">Bookmarklet Name</label>
+                            <input type="text" id="final-bookmarklet-name" class="w-full px-3 py-2 border border-slate-300 rounded-lg" value="IM Form Filler">
+                        </div>
+                        <button onclick="app.generateFinalBookmarklet()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 w-full">Generate Filler</button>
+                        <div id="final-output" style="display: none;" class="mt-6 text-center">
+                            <p class="text-slate-600 mb-4">Drag this to your bookmarks bar:</p>
+                            <div id="final-bookmarklet-link-container"></div>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-red-50 border border-red-200 rounded-lg">
+                        <h3 class="text-lg font-semibold text-red-800 mb-2">Form Clearer</h3>
+                        <div class="mb-6">
+                            <label for="clear-bookmarklet-name" class="block text-sm font-semibold text-slate-700 mb-2">Bookmarklet Name</label>
+                            <input type="text" id="clear-bookmarklet-name" class="w-full px-3 py-2 border border-slate-300 rounded-lg" value="IM Clear Form">
+                        </div>
+                        <button onclick="app.generateClearBookmarklet()" class="px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 w-full">Generate Clearer</button>
+                        <div id="clear-output" style="display: none;" class="mt-6 text-center">
+                            <p class="text-slate-600 mb-4">Drag this to your bookmarks bar:</p>
+                            <div id="clear-bookmarklet-link-container"></div>
+                        </div>
+                    </div>
                 </div>
-                <div id="final-output" style="display: none;" class="p-6 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                    <p class="font-semibold text-blue-900 mb-4">✅ Success! Drag this link to your bookmarks bar:</p>
-                    <div id="final-bookmarklet-link-container" class="mb-4"></div>
-                </div>
-                <div class="mt-8 flex justify-between">
+                 <div class="mt-8 flex justify-between">
                     <button onclick="app.showStep(2)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">← Back</button>
-                    <button onclick="app.showStep(1)" class="px-6 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700">Start Over</button>
+                </div>
+            </div>
+
+            <!-- Step 4: Help -->
+            <div id="step4" class="step">
+                <h2 class="text-2xl font-semibold text-slate-800 mb-6 border-b pb-4">Help & Documentation</h2>
+                <div class="prose max-w-none text-slate-700">
+                    <h4>Overview</h4>
+                    <p>This tool creates bookmarklets to automate filling complex forms by using preset data for locations and roles.</p>
+                    <h4>Phase 1: Generate Field Mapping Tool</h4>
+                    <p>Create a "mapper" bookmarklet. Run it on the target form to visually map source fields (like a dropdown) to destination fields. This generates a JSON configuration.</p>
+                    <h4>Phase 2: Configure Presets</h4>
+                    <ol>
+                        <li><strong>Load Mappings:</strong> Paste the JSON from the mapper tool into the text area and click "Load Mappings".</li>
+                        <li><strong>Import/Export:</strong> The recommended workflow is to download the Excel template, fill it with your preset data, and import it. Use "Additive" import mode for bulk updates.</li>
+                        <li><strong>Manual Configuration:</strong> You can add presets manually. Use the "Promote to Default" button on any field to make its value a global default, removing it from all individual presets.</li>
+                    </ol>
+                    <h4>Phase 3: Generate Bookmarklets</h4>
+                    <p>This final step generates the "Filler" and "Clearer" bookmarklets. Drag these to your bookmarks bar for use on the target form.</p>
+                </div>
+                <div class="mt-8">
+                    <button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">← Back to Start</button>
                 </div>
             </div>
         </main>
     </div>
     
-    <div id="custom-modal" class="modal-backdrop">
+    <!-- Unified Modal -->
+    <div id="app-modal" class="modal-backdrop">
         <div class="modal-content">
-            <p id="modal-message" class="text-slate-600 mb-6">This is a modal message.</p>
-            <div id="modal-buttons" class="flex justify-end gap-3">
-                <button id="modal-confirm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">OK</button>
-            </div>
+            <h3 id="modal-title" class="text-lg font-semibold text-slate-800 mb-4"></h3>
+            <p id="modal-text" class="text-slate-700 mb-4 whitespace-pre-wrap"></p>
+            <div id="modal-fields"></div>
+            <div id="modal-buttons" class="mt-6 text-right space-x-2"></div>
         </div>
     </div>
 
     <template id="preset-card-template">
         <div class="preset-card">
             <strong data-name class="text-slate-800"></strong>
-            <div data-fields-container></div>
+            <div data-fields-container class="grid grid-cols-1 gap-4 mt-4"></div>
         </div>
     </template>
 
 <script>
-const BUILDER_TOOL = {
-    generateScript: () => {
-        const builderLogic = ''
-            + 'const state = {'
-            + '    panelId: "idm-builder-" + Date.now(),'
-            + '    mode: null,'
-            + '    currentSource: null,'
-            + '    currentDestination: null,'
-            + '    mappings: []'
-            + '};'
-            + ''
-            + 'function cleanup() {'
-            + '    const panel = document.getElementById(state.panelId);'
-            + '    if (panel) panel.remove();'
-            + '    document.body.style.cursor = "default";'
-            + '    document.removeEventListener("click", clickHandler, true);'
-            + '}'
-            + ''
-            + 'function setMode(mode) {'
-            + '    state.mode = mode;'
-            + '    document.body.style.cursor = "crosshair";'
-            + '    document.getElementById(state.panelId + "-mode-display").textContent = "Current Mode: " + mode;'
-            + '}'
-            + '            '
-            + 'function toggleAddAll(destId) {'
-            + '    if(state.currentDestination && state.currentDestination.id === destId) {'
-            + '        state.currentDestination.addAll = !state.currentDestination.addAll;'
-            + '        updateUI();'
-            + '    }'
-            + '}'
-            + 'window.toggleAddAll = toggleAddAll;'
-            + ''
-            + 'function scrapeSource(el) {'
-            + '    const source = {'
-            + '        sourceId: el.id || el.name,'
-            + '        sourceOptions: []'
-            + '    };'
-            + '    if (el.tagName === \'SELECT\') {'
-            + '        source.sourceOptions = Array.from(el.options).map(opt => opt.text.trim()).filter(Boolean);'
-            + '    }'
-            + '    state.currentSource = source;'
-            + '    updateUI();'
-            + '}'
-            + ''
-            + 'function scrapeDestination(el) {'
-            + '    const dest = {'
-            + '        id: el.id || el.name,'
-            + '        type: \'text\','
-            + '        defaultValue: el.value || \'\','
-            + '        addAll: false'
-            + '    };'
-            + '    if (el.tagName === \'SELECT\') {'
-            + '        const container = el.closest(\'td, div\');'
-            + '        const parent = container ? container.parentElement : el.parentElement;'
-            + '        if (parent && parent.querySelector(\'input[id*="OptionSelectorAdd"], button[id*="add"]\')) {'
-            + '            dest.type = \'duallist\';'
-            + '        } else {'
-            + '            dest.type = \'select\';'
-            + '        }'
-            + '    }'
-            + '    state.currentDestination = dest;'
-            + '    updateUI();'
-            + '}'
-            + ''
-            + 'function commitMapping() {'
-            + '    if (!state.currentSource || !state.currentDestination) {'
-            + '        alert("Please select one source and one destination.");'
-            + '        return;'
-            + '    }'
-            + '    const mapping = {'
-            + '        ...state.currentSource,'
-            + '        destinations: [state.currentDestination]'
-            + '    };'
-            + '    state.mappings.push(mapping);'
-            + '    state.currentSource = null;'
-            + '    state.currentDestination = null;'
-            + '    state.mode = null;'
-            + '    document.body.style.cursor = "default";'
-            + '    updateUI();'
-            + '}'
-            + ''
-            + 'function generateJSON() {'
-            + '    const json = JSON.stringify(state.mappings, null, 2);'
-            + '    const textarea = document.getElementById(state.panelId + "-json-output");'
-            + '    textarea.value = json;'
-            + '    textarea.style.display = "block";'
-            + '    textarea.select();'
-            + '    alert("JSON generated. Copy it from the text area.");'
-            + '}'
-            + ''
-            + 'function updateUI() {'
-            + '    const sourceEl = document.getElementById(state.panelId + "-current-source");'
-            + '    const destEl = document.getElementById(state.panelId + "-current-dest");'
-            + '    const mappingsEl = document.getElementById(state.panelId + "-mappings-list");'
-            + ''
-            + '    sourceEl.innerHTML = `<strong>Source:</strong> ${state.currentSource.sourceId}` : \'<em>No source selected</em>\';'
-            + '    if(state.currentDestination) {'
-            + '        let addAllCheckbox = \'\';'
-            + '        if(state.currentDestination.type === \'duallist\') {'
-            + '             addAllCheckbox = `<label style="margin-left: 10px; font-size: 12px;"><input type="checkbox" onchange="toggleAddAll(\'${state.currentDestination.id}\')" ${state.currentDestination.addAll ? \'checked\' : \'\'}> Add All Options</label>`;'
-            + '        }'
-            + '        destEl.innerHTML = `<strong>Destination:</strong> ${state.currentDestination.id} ${addAllCheckbox}`;'
-            + '    } else {'
-            + '        destEl.innerHTML = \'<em>No destination selected</em>\';'
-            + '    }'
-            + ''
-            + '    mappingsEl.innerHTML = state.mappings.map((m, i) => {'
-            + '        const dest = m.destinations[0];'
-            + '        const addAllText = dest.addAll ? \' (Add All)\' : \'\';'
-            + '        return `<div style="border-top: 1px solid #eee; padding: 5px 0;"><strong>Mapping ${i + 1}:</strong> ${m.sourceId} &rarr; ${dest.id}${addAllText}</div>`;'
-            + '    }).join(\'\');'
-            + '    document.getElementById(state.panelId + "-mode-display").textContent = "Current Mode: " + (state.mode || "none");'
-            + '}'
-            + ''
-            + 'function clickHandler(event) {'
-            + '    if (event.target.closest("#" + state.panelId)) return;'
-            + '    event.preventDefault();'
-            + '    event.stopPropagation();'
-            + '    const targetEl = event.target.closest("input:not([type=hidden]), select, textarea, button");'
-            + '    if (targetEl && state.mode) {'
-            + '        if (state.mode === \'source\') scrapeSource(targetEl);'
-            + '        if (state.mode === \'destination\') scrapeDestination(targetEl);'
-            + '        state.mode = null;'
-            + '        document.body.style.cursor = "default";'
-            + '        updateUI();'
-            + '    }'
-            + '}'
-            + ''
-            + 'function buildUI() {'
-            + '    if (document.getElementById(state.panelId)) return;'
-            + '    const uiHTML = `'
-            + '        <div id="${state.panelId}" style="position:fixed; top:10px; right:10px; width:400px; background:white; border:1px solid #ccc; border-radius:8px; box-shadow:0 4px 20px rgba(0,0,0,.2); z-index:999999; font-family:sans-serif; color: #333;">'
-            + '            <h3 style="margin:0; padding:15px; background:#333; color:white; border-radius:8px 8px 0 0; font-size:16px;">Identity Manager Form Builder</h3>'
-            + '            <div style="padding:15px; display:flex; flex-direction:column; gap:10px;">'
-            + '                <div style="display:flex; gap:10px;">'
-            + '                    <button id="${state.panelId}-source-btn" style="flex:1;">1. Map Source</button>'
-            + '                    <button id="${state.panelId}-dest-btn" style="flex:1;">2. Map Destination</button>'
-            + '                </div>'
-            + '                <div id="${state.panelId}-mode-display" style="text-align:center; font-style:italic; font-size:12px;">Current Mode: none</div>'
-            + '                <div style="border: 1px solid #eee; padding: 10px; border-radius: 4px;">'
-            + '                    <div id="${state.panelId}-current-source"><em>No source selected</em></div>'
-            + '                    <div id="${state.panelId}-current-dest"><em>No destination selected</em></div>'
-            + '                </div>'
-            + '                <button id="${state.panelId}-commit-btn" style="background-color: #28a745; color: white;">3. Commit Mapping</button>'
-            + '                <hr style="border:none; border-top:1px solid #eee;">'
-            + '                <h4>Committed Mappings:</h4>'
-            + '                <div id="${state.panelId}-mappings-list" style="max-height:150px; overflow-y:auto; background:#f9f9f9; padding:5px;"></div>'
-            + '                <button id="${state.panelId}-generate-btn" style="background-color: #007bff; color: white;">4. Generate Mappings JSON</button>'
-            + '                <textarea id="${state.panelId}-json-output" style="display:none; height:100px;"></textarea>'
-            + '                <button id="${state.panelId}-close-btn">Close</button>'
-            + '            </div>'
-            + '        </div>`;'
-            + '    document.body.insertAdjacentHTML("beforeend", uiHTML);'
-            + '    document.getElementById(state.panelId + "-source-btn").onclick = () => setMode(\'source\');'
-            + '    document.getElementById(state.panelId + "-dest-btn").onclick = () => setMode(\'destination\');'
-            + '    document.getElementById(state.panelId + "-commit-btn").onclick = commitMapping;'
-            + '    document.getElementById(state.panelId + "-generate-btn").onclick = generateJSON;'
-            + '    document.getElementById(state.panelId + "-close-btn").onclick = cleanup;'
-            + '    document.addEventListener("click", clickHandler, true);'
-            + '}'
-            + 'buildUI();';
-        return 'javascript:(function(){' + encodeURIComponent(builderLogic) + '})()';
-    }
-};
-
+// App v4.4: Final polish from Mode F review.
 const app = {
-    state: { mappings: null, presets: { defaults: {}, locations: {}, roles: {} } },
-    modal: { el: null, message: null, confirmBtn: null },
+    // STATE & CONSTANTS
+    state: {
+        mappings: null,
+        mappingsByField: null,
+        presets: { defaults: {}, locations: {}, roles: {} },
+        pendingImportData: null
+    },
+    ui: {}, // Cache for DOM elements
+    modalResolve: null,
+    DEFAULT_MODAL_BUTTONS: [{ text: 'OK', value: true, class: 'bg-blue-600 text-white' }],
+    MAX_VALIDATION_ERRORS: 10,
+    BOOKMARKLET_SIZE_WARNING_THRESHOLD: 90000,
+    DUALLIST_POLL_INTERVAL: 50,
+    DUALLIST_MAX_TRIES: 100,
 
+    // CORE APP LOGIC
     init() {
-        this.modal.el = document.getElementById('custom-modal');
-        this.modal.message = document.getElementById('modal-message');
-        this.modal.confirmBtn = document.getElementById('modal-confirm');
-        this.modal.el.addEventListener('click', (e) => { if (e.target === this.modal.el) this.hideModal(); });
-        this.modal.confirmBtn.addEventListener('click', () => this.hideModal());
-        document.getElementById('builder-bookmarklet-link').href = BUILDER_TOOL.generateScript();
-    },
-    
-    showModal(message) {
-        this.modal.message.textContent = message;
-        this.modal.el.classList.add('visible');
+        this.ui = {
+            steps: Array.from({length: 4}, (_, i) => document.getElementById(`step${i+1}`)),
+            mappingsJson: document.getElementById('mappings-json'),
+            presetsUiContainer: document.getElementById('presets-ui-container'),
+            bulkImportSection: document.getElementById('bulk-import-section'),
+            defaultsContainer: document.getElementById('defaults-container'),
+            defaultsPresets: document.getElementById('defaults-presets'),
+            locationsPresets: document.getElementById('locations-presets'),
+            rolesPresets: document.getElementById('roles-presets'),
+            modal: document.getElementById('app-modal'),
+            modalTitle: document.getElementById('modal-title'),
+            modalText: document.getElementById('modal-text'),
+            modalFields: document.getElementById('modal-fields'),
+            modalButtons: document.getElementById('modal-buttons'),
+            fileInput: document.getElementById('bulk-file-upload'),
+        };
+        const builderScript = this.BUILDER_TOOL.getMinifiedScript();
+        document.getElementById('builder-bookmarklet-link').href = 'javascript:' + encodeURIComponent(builderScript);
+        this.showStep(1);
     },
 
-    hideModal() { this.modal.el.classList.remove('visible'); },
-    showStep(stepNum) {
-        document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
-        document.getElementById('step' + stepNum).classList.add('active');
+    showStep(stepNumber) {
+        this.ui.steps.forEach((step, index) => {
+            step.classList.toggle('active', index + 1 === stepNumber);
+        });
     },
 
     renderPresetUI() {
+        const jsonInput = this.ui.mappingsJson.value;
+        if (!jsonInput) return this.showModal({ title: '❌ Error', message: 'Please paste the mappings JSON first.' });
         try {
-            const jsonText = document.getElementById('mappings-json').value;
-            if (!jsonText.trim()) return this.showModal('Please paste field mappings JSON first.');
-            
-            this.state.mappings = JSON.parse(jsonText);
-            if (!Array.isArray(this.state.mappings)) throw new Error("Mappings data is not a valid array.");
-            
-            this.state.presets = { defaults: {}, locations: {}, roles: {} };
+            this.state.mappings = JSON.parse(jsonInput);
+            this.state.mappingsByField = Object.fromEntries(this.state.mappings.map(m => [m.destinations[0].id, m]));
+            this.ui.presetsUiContainer.style.display = 'block';
+            this.ui.bulkImportSection.style.display = 'block';
             this.rerenderAllPresetUIs();
-            
-            document.getElementById('presets-ui-container').style.display = 'block';
-            document.getElementById('bulk-import-section').style.display = 'block';
-            this.showModal('Field mappings loaded! You can now download the Excel template or add presets manually.');
         } catch (e) {
-            this.showModal('Invalid JSON in Field Mappings: ' + e.message);
+            this.showModal({ title: '❌ Error: JSON Parse', message: 'Error parsing JSON: ' + e.message });
         }
     },
-    
-    downloadXlsxTemplate() {
-        if (!this.state.mappings) return this.showModal('Please load mappings first.');
 
+    // MODAL SYSTEM
+    _modalButtonClick(value, hasInputs) {
+        const results = hasInputs ? Array.from(this.ui.modalFields.querySelectorAll('select, input')).map(el => el.value) : value;
+        this.hideModal(results);
+    },
+
+    showModal(config) {
+        return new Promise(resolve => {
+            if (this.modalResolve) { this.modalResolve(null); }
+            this.modalResolve = resolve;
+            
+            this.ui.modalTitle.textContent = config.title || '';
+            this.ui.modalText.textContent = config.message || '';
+            this.ui.modalText.style.display = config.message ? 'block' : 'none';
+
+            let fieldsHtml = '';
+            if (config.inputs) {
+                config.inputs.forEach((inputConfig, index) => {
+                    fieldsHtml += this._generateModalFieldHtml(index, inputConfig);
+                });
+            }
+            this.ui.modalFields.innerHTML = fieldsHtml;
+
+            this.ui.modalButtons.innerHTML = (config.buttons || this.DEFAULT_MODAL_BUTTONS).map(btn => 
+                `<button class="px-6 py-2 rounded-lg ${btn.class || 'bg-slate-200 text-slate-800'}" 
+                         onclick="app._modalButtonClick(${JSON.stringify(btn.value)}, ${!!config.inputs})">
+                    ${btn.text}
+                 </button>`
+            ).join('');
+            
+            this.ui.modal.classList.add('visible');
+        });
+    },
+
+    hideModal(value = null) {
+        this.ui.modal.classList.remove('visible');
+        if (this.modalResolve) {
+            this.modalResolve(value);
+            this.modalResolve = null;
+        }
+    },
+
+    // UTILITY HELPERS
+    isEmpty: value => value === undefined || value === null || (typeof value === 'string' && value.trim() === ''),
+    _getMapping: fieldId => app.state.mappingsByField?.[fieldId],
+    forEachPresetType: callback => ['locations', 'roles'].forEach(callback),
+    escapeHtml: str => String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]),
+
+    // EXCEL & IMPORT/EXPORT
+    _generateExcelFile(config) {
+        if (!this.state.mappings) return this.showModal({ title: '❌ Error', message: 'Load mappings first.' });
         const wb = XLSX.utils.book_new();
-        const mainSheetName = 'Presets';
-        
-        const headers = ['Name'];
-        const dropdownMappings = new Map();
-
-        this.state.mappings.forEach(m => {
-            const dest = m.destinations[0];
-            if (dest.addAll) return; // Exclude only 'addAll' fields
-            headers.push(dest.id);
-            if (m.sourceOptions && m.sourceOptions.length > 0) {
-                dropdownMappings.set(dest.id, m.sourceOptions);
-            }
+        config.sheets.forEach(sheetConfig => {
+            const ws = XLSX.utils.json_to_sheet(sheetConfig.data, { headers: sheetConfig.headers });
+            XLSX.utils.book_append_sheet(wb, ws, sheetConfig.name);
         });
-        
-        const ws = XLSX.utils.aoa_to_sheet([headers]);
-        ws['!dataValidation'] = [];
-        
-        let colIndex = 1;
-        headers.slice(1).forEach(header => {
-            if (dropdownMappings.has(header)) {
-                const options = dropdownMappings.get(header);
-                const listSheetName = `list_${header.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 25)}`;
-                const listWs = XLSX.utils.aoa_to_sheet(options.map(o => [o]));
-                XLSX.utils.book_append_sheet(wb, listWs, listSheetName);
-
-                const range = XLSX.utils.encode_range({s: {c: colIndex, r: 1}, e: {c: colIndex, r: 1000}});
-                ws['!dataValidation'].push({ 
-                    sqref: range, 
-                    validation: { 
-                        type: "list", allowBlank: true, showDropDown: true, 
-                        formula1: `'${listSheetName}'!$A$1:$A$${options.length}`,
-                        showErrorMessage: true, errorStyle: 'warning', errorTitle: 'Pasted value not in list',
-                        error: 'This is a warning. The value will be accepted, and the tool will try to find a partial match on the form.'
-                    }
-                });
-            }
-            colIndex++;
-        });
-
-        XLSX.utils.book_append_sheet(wb, ws, mainSheetName);
-        XLSX.writeFile(wb, "preset_template.xlsx");
+        XLSX.writeFile(wb, config.filename);
     },
 
-    importBulkPresets() {
-        if (!this.state.mappings) return this.showModal('Load mappings first.');
-        const fileInput = document.getElementById('bulk-file-upload');
-        if (!fileInput.files.length) return this.showModal('Please select a file.');
-        
-        const presetType = document.getElementById('bulk-preset-type').value;
+    downloadXlsxTemplate() {
+        this._generateExcelFile({
+            filename: 'Preset_Template.xlsx',
+            sheets: [{ name: 'Presets', data: [{}], headers: ['Name', ...this.state.mappings.map(m => m.destinations[0].id)] }]
+        });
+    },
 
+    exportPresetsToExcel() {
+        const sheets = [];
+        this.forEachPresetType(type => {
+            const data = Object.entries(this.state.presets[type]).map(([name, values]) => ({ Name: name, ...values }));
+            if (data.length > 0) sheets.push({ name: type.charAt(0).toUpperCase() + type.slice(1), data });
+        });
+        if (sheets.length > 0) this._generateExcelFile({ filename: 'Exported_Presets.xlsx', sheets });
+        else this.showModal({ title: 'ℹ️ Info', message: 'No presets to export.' });
+    },
+
+    handleImportClick() {
+        if (!this.ui.fileInput.files?.length) return this.showModal({ title: '❌ Error', message: 'Please select a file to import.' });
         const reader = new FileReader();
-        reader.onload = (e) => {
+        reader.onload = async (e) => {
             try {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const json = XLSX.utils.sheet_to_json(worksheet, {defval:""});
-
-                if (json.length === 0) return this.showModal('Spreadsheet is empty.');
-                
-                this.state.presets[presetType] = {};
-                json.forEach(row => {
-                    const presetName = row.Name || row.name;
-                    if (!presetName) return;
-                    
-                    this.state.presets[presetType][presetName] = {};
-                    for (const key in row) {
-                        if (key.toLowerCase() !== 'name') {
-                            this.state.presets[presetType][presetName][key] = row[key];
-                        }
-                    }
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                if (!sheet) throw new Error("Spreadsheet contains no sheets.");
+                const data = XLSX.utils.sheet_to_json(sheet);
+                if (data.length === 0) throw new Error('Spreadsheet has no data rows.');
+                if (!data[0].Name && !data[0].name) throw new Error('Spreadsheet is missing the required "Name" column.');
+                this.state.pendingImportData = data;
+                const results = await this.showModal({
+                    title: '❓ Confirm Import Options',
+                    inputs: [ { label: 'Preset Type', type: 'select', options: ['locations', 'roles'] }, { label: 'Import Mode', type: 'select', options: ['overwrite', 'additive'] } ],
+                    buttons: [{ text: 'Cancel', value: null }, { text: 'Process Import', value: 'process', class: 'bg-amber-600 text-white' }]
                 });
-                
-                if (presetType === 'roles') {
-                    this.analyzeAndExtractGlobals();
-                }
-                
-                this.rerenderAllPresetUIs();
-                this.showModal(`Successfully imported ${json.length} ${presetType}.`);
-                fileInput.value = '';
-
-            } catch (error) { this.showModal('Error reading file: ' + error.message); }
+                if (results) await this.processImport(results[0], results[1]);
+            } catch (err) {
+                await this.showModal({ title: '❌ Error: File Read', message: 'Error reading file: ' + err.message });
+            }
         };
-        reader.readAsArrayBuffer(fileInput.files[0]);
+        reader.readAsArrayBuffer(this.ui.fileInput.files[0]);
     },
 
-    analyzeAndExtractGlobals() {
-        const roles = this.state.presets.roles;
-        const roleNames = Object.keys(roles);
-
-        if (roleNames.length < 2) return; 
-
-        const firstRole = roles[roleNames[0]];
-        const potentialGlobals = {};
-
-        for (const fieldId in firstRole) {
-            const value = firstRole[fieldId];
-            if (value === "" || typeof value === 'undefined') continue;
-
-            let isGlobal = true;
-            for (let i = 1; i < roleNames.length; i++) {
-                const otherRole = roles[roleNames[i]];
-                if (!otherRole.hasOwnProperty(fieldId) || String(otherRole[fieldId]) !== String(value)) {
-                    isGlobal = false;
-                    break;
+    async processImport(presetType, importMode) {
+        if (importMode === 'additive' && !this.state.pendingImportData.some(row => Object.keys(row).some(key => key.toLowerCase() !== 'name' && !this.isEmpty(row[key])))) {
+            const confirmed = await this.showModal({ title: '⚠️ Warning', message: 'All field values are empty. No data will be updated. Continue?', buttons: [{ text: 'Cancel', value: false }, { text: 'Continue', value: true, class: 'bg-blue-600 text-white' }] });
+            if (!confirmed) return;
+        }
+        const errors = [];
+        for (const [idx, row] of this.state.pendingImportData.entries()) {
+            if (errors.length >= this.MAX_VALIDATION_ERRORS) break;
+            for (const fieldId in row) {
+                if (fieldId.toLowerCase() === 'name' || this.state.presets.defaults.hasOwnProperty(fieldId)) continue;
+                const value = row[fieldId], mapping = this._getMapping(fieldId);
+                if (importMode === 'additive' && this.isEmpty(value)) continue;
+                if (!mapping) errors.push(`Row ${idx + 2}: Unknown field "${fieldId}"`);
+                else if (mapping.sourceOptions?.length > 0 && !this.isEmpty(value) && !this.isValidValue(value, mapping.sourceOptions, mapping.format)) {
+                    errors.push(`Row ${idx + 2}, Field "${fieldId}": Invalid value "${value}"`);
                 }
             }
-            if (isGlobal) {
-                potentialGlobals[fieldId] = value;
+        }
+        if (errors.length > 0) {
+            const confirmed = await this.showModal({ title: '⚠️ Warning: Validation Errors', message: `Found ${errors.length} errors:\n${errors.slice(0, 5).join('\n')}\nImport anyway?`, buttons: [{ text: 'Cancel', value: false }, { text: 'Import Anyway', value: true, class: 'bg-red-600 text-white' }] });
+            if (!confirmed) return;
+        }
+        if (importMode === 'overwrite') this.state.presets[presetType] = {};
+        const existingNames = new Set(Object.keys(this.state.presets[presetType]));
+        this.state.pendingImportData.forEach(row => {
+            const presetName = row.Name || row.name;
+            if (!presetName) return;
+            if (!this.state.presets[presetType][presetName]) this.state.presets[presetType][presetName] = {};
+            for (const fieldId in row) {
+                if (fieldId.toLowerCase() === 'name' || this.state.presets.defaults.hasOwnProperty(fieldId)) continue;
+                const value = row[fieldId], mapping = this._getMapping(fieldId);
+                if ((importMode === 'additive' && this.isEmpty(value)) || !mapping) continue;
+                this.state.presets[presetType][presetName][fieldId] = (mapping.format === 'code:description' && !this.isEmpty(value)) ? this.extractCode(value, mapping.sourceOptions) : value;
             }
-        }
-
-        for (const fieldId in potentialGlobals) {
-            this.state.presets.defaults[fieldId] = potentialGlobals[fieldId];
-            roleNames.forEach(roleName => {
-                delete this.state.presets.roles[roleName][fieldId];
-            });
-        }
+        });
+        this.rerenderAllPresetUIs();
+        const importedNames = new Set(this.state.pendingImportData.map(r => r.Name || r.name).filter(Boolean));
+        const newCount = [...importedNames].filter(name => !existingNames.has(name) && this.state.presets[presetType][name]).length;
+        this.showModal({ title: '✅ Import Successful', message: (importMode === 'overwrite') ? `Imported ${importedNames.size} ${presetType}.` : `Import complete: ${newCount} new added, ${importedNames.size - newCount} existing updated.` });
+        this.state.pendingImportData = null;
+        this.ui.fileInput.value = '';
     },
 
+    extractCode: (v, o) => !app.isEmpty(v) && o.find(opt => opt === String(v).trim() || opt.startsWith(String(v).trim()+':'))?.split(':')[0].trim() || String(v).trim(),
+    isValidValue: (v, o, f) => app.isEmpty(v) || f==='text' || !o?.length ? true : (f==='code:description' ? o.some(opt => opt.split(':')[0].trim() === String(v).trim() || opt === String(v).trim()) : o.includes(String(v).trim())),
+
+    // PRESET UI & MANAGEMENT
     rerenderAllPresetUIs() {
-        ['locations-presets', 'roles-presets', 'defaults-presets'].forEach(id => document.getElementById(id).innerHTML = '');
+        let defaultsHtml = '';
+        Object.entries(this.state.presets.defaults).forEach(([id, value]) => {
+            defaultsHtml += this._generateDefaultFieldHtml(id, value);
+        });
+        this.ui.defaultsPresets.innerHTML = defaultsHtml;
+        this.ui.defaultsContainer.style.display = defaultsHtml ? 'block' : 'none';
+        this.forEachPresetType(type => {
+            const container = this.ui[`${type}Presets`];
+            container.innerHTML = '';
+            Object.entries(this.state.presets[type]).forEach(([name, values]) => container.appendChild(this.createPresetCard(type, name, values)));
+        });
+    },
 
-        const defaultsContainer = document.getElementById('defaults-presets');
-        let hasDefaults = false;
-        for (const destId in this.state.presets.defaults) {
-            hasDefaults = true;
-            const value = this.state.presets.defaults[destId];
-            const fieldDiv = document.createElement('div');
-            fieldDiv.className = 'preset-field';
-            
-            let destType = 'text';
-            this.state.mappings.forEach(m => {
-                if (m.destinations.some(d => d.id === destId)) {
-                    destType = m.destinations.find(d => d.id === destId).type;
-                }
-            });
+    _createFieldInputHtml(mapping, value, onChangeJs) {
+        const format = mapping.format || 'text';
+        const fieldId = mapping.destinations[0].id;
+        let fieldHtml = `<label class="block text-sm font-medium text-slate-700 mb-1">${fieldId} <span class="text-xs text-slate-500">(${format})</span></label>`;
+        if (mapping.destinations[0].addAll) return fieldHtml + `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">All source options will be applied.</div>`;
+        if (format === 'text') return fieldHtml + `<input type="text" value="${this.escapeHtml(value || '')}" onchange="${onChangeJs}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">`;
+        if (mapping.sourceOptions?.length > 0) {
+            const options = mapping.sourceOptions.map(opt => {
+                const code = opt.split(':')[0].trim();
+                const val = (format === 'code:description') ? code : opt;
+                return `<option value="${this.escapeHtml(val)}"${value == val ? ' selected' : ''}>${this.escapeHtml(opt)}</option>`;
+            }).join('');
+            return fieldHtml + `<select onchange="${onChangeJs}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"><option value="">-- Choose --</option>${options}</select>`;
+        }
+        return fieldHtml;
+    },
 
-            fieldDiv.innerHTML = `<label class="block text-sm font-medium text-slate-700 mb-1">${destId}</label>`;
-            if (destType === 'text') {
-                fieldDiv.innerHTML += `<input type="text" value="${this.escapeHtml(value)}" onchange="app.updateDefaultValue('${destId}', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">`;
-            } else {
-                 fieldDiv.innerHTML += `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">${this.escapeHtml(value)}</div>`;
+    _generateDefaultFieldHtml(fieldId, value) {
+        const mapping = this._getMapping(fieldId);
+        if (!mapping) { console.warn('Missing mapping for default field:', fieldId); return ''; }
+        return `<div class="preset-field">${this._createFieldInputHtml(mapping, value, `app.updateDefaultValue('${fieldId}', this.value)`)}</div>`;
+    },
+
+    _generatePresetFieldHtml(type, name, fieldId, value) {
+        const mapping = this._getMapping(fieldId);
+        if (!mapping) { console.warn('Missing mapping for preset field:', fieldId); return ''; }
+        const onChangeJs = `app.updatePresetValue('${type}', '${name}', '${fieldId}', this.value)`;
+        return `<div class="preset-field">${this._createFieldInputHtml(mapping, value, onChangeJs)}<button onclick="app.promoteToDefault('${type}','${name}','${fieldId}')" class="text-xs text-blue-500 hover:underline mt-1">Promote to Default</button></div>`;
+    },
+    
+    _generateModalFieldHtml(index, config) {
+        const optionsHtml = config.options?.map(opt => `<option value="${this.escapeHtml(opt)}">${this.escapeHtml(opt)}</option>`).join('') || '';
+        const inputHtml = config.type === 'select'
+            ? `<select id="modal-field-${index}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">${optionsHtml}</select>`
+            : `<input type="${config.type || 'text'}" id="modal-field-${index}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="${config.placeholder || ''}">`;
+        return `<div class="mb-2"><label class="block text-sm font-medium text-slate-700 mb-1">${config.label}</label>${inputHtml}</div>`;
+    },
+
+    createPresetCard(type, name, values) {
+        const card = document.getElementById('preset-card-template').content.cloneNode(true).firstElementChild;
+        card.id = `preset-${type}-${name.replace(/\s+/g, '-')}`;
+        card.querySelector('[data-name]').textContent = name;
+        const fieldsContainer = card.querySelector('[data-fields-container]');
+        let fieldsHtml = '';
+        const renderedFields = new Set();
+        this.state.mappings.forEach(m => {
+            const destId = m.destinations[0].id;
+            if (!this.state.presets.defaults.hasOwnProperty(destId)) {
+                fieldsHtml += this._generatePresetFieldHtml(type, name, destId, values[destId]);
+                renderedFields.add(destId);
             }
-            defaultsContainer.appendChild(fieldDiv);
+        });
+        for (const fieldId in values) {
+            if (!renderedFields.has(fieldId) && !this.state.presets.defaults.hasOwnProperty(fieldId)) {
+                fieldsHtml += `<div class="preset-field opacity-60"><label class="block text-sm font-medium text-slate-500 mb-1">${fieldId} <span class="text-xs text-red-500">(Orphaned)</span></label><input type="text" value="${this.escapeHtml(values[fieldId] || '')}" disabled readonly class="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded-lg text-sm cursor-not-allowed" title="This field is not in the current mappings."></div>`;
+            }
         }
-        document.getElementById('defaults-container').style.display = hasDefaults ? 'block' : 'none';
+        fieldsContainer.innerHTML = fieldsHtml;
+        return card;
+    },
 
-        for (const presetName in this.state.presets.locations) {
-            this.createPresetCard('locations', presetName, this.state.presets.locations[presetName]);
-        }
-        for (const presetName in this.state.presets.roles) {
-            this.createPresetCard('roles', presetName, this.state.presets.roles[presetName]);
+    async promoteToDefault(type, name, fieldId) {
+        const value = this.state.presets[type]?.[name]?.[fieldId];
+        if (this.isEmpty(value)) return this.showModal({title: 'ℹ️ Info', message: 'Cannot promote an empty value to a default.'});
+        const confirmed = await this.showModal({ title: '❓ Confirm', message: `Promote '${fieldId}' with value '${value}' to a global default?`, buttons: [{text: 'Cancel', value: false}, {text: 'Promote', value: true, class: 'bg-blue-600 text-white'}]});
+        if (!confirmed) return;
+        this.state.presets.defaults[fieldId] = value;
+        this.forEachPresetType(t => Object.values(this.state.presets[t]).forEach(p => delete p[fieldId]));
+        this.rerenderAllPresetUIs();
+    },
+
+    updateDefaultValue: (id, val) => { app.state.presets.defaults[id] = val; },
+    updatePresetValue: (t, n, id, val) => { if (app.state.presets[t]?.[n]) app.state.presets[t][n][id] = val; },
+
+    async addPreset(type) {
+        const res = await this.showModal({ title: `Add New ${type.slice(0, -1)}`, inputs: [{ label: 'Preset Name' }] });
+        const name = res?.[0];
+        if (name && !this.state.presets[type]?.[name]) {
+            this.state.presets[type][name] = {};
+            this.ui[`${type}Presets`].appendChild(this.createPresetCard(type, name, {}));
+        } else if (name) this.showModal({ title: '❌ Error', message: `A preset named "${name}" already exists.` });
+    },
+
+    async manageLocalStorage(action) {
+        try {
+            const actions = {
+                save: () => { localStorage.setItem('presetFillerState', JSON.stringify(this.state)); return 'Progress saved.'; },
+                load: () => { 
+                    const s = localStorage.getItem('presetFillerState');
+                    if (!s) return { info: 'No saved state found.' };
+                    const ps = JSON.parse(s);
+                    this.state = ps;
+                    this.ui.mappingsJson.value = JSON.stringify(ps.mappings, null, 2);
+                    this.renderPresetUI();
+                    return 'Saved state loaded.';
+                },
+                clear: async () => {
+                    if (await this.showModal({ title: '❓ Confirm', message: 'Clear all saved progress?', buttons: [{ text: 'Cancel', value: false }, { text: 'Clear', value: true, class: 'bg-red-600 text-white' }] })) {
+                        localStorage.removeItem('presetFillerState');
+                        return 'Saved state cleared.';
+                    }
+                    return null;
+                }
+            };
+            const result = await actions[action]();
+            if (result) await this.showModal({ title: result.info ? 'ℹ️ Info' : '✅ Success', message: result.info || result });
+        } catch (e) {
+            await this.showModal({ title: '❌ Error', message: 'Local Storage Error: ' + e.message });
         }
     },
     
-    createPresetCard(type, name, values) {
-        const existingCard = document.getElementById('preset-' + type + '-' + name.replace(/\s+/g, '-'));
-        if(existingCard) existingCard.remove();
-        
-        const template = document.getElementById('preset-card-template').content.cloneNode(true);
-        const cardElement = template.querySelector('.preset-card');
-        cardElement.id = 'preset-' + type + '-' + name.replace(/\s+/g, '-');
-        template.querySelector('[data-name]').textContent = name;
-        const fieldsContainer = template.querySelector('[data-fields-container]');
+    // BOOKMARKLET GENERATION
+    async _generateBookmarklet(config) {
+        const nameInput = document.getElementById(config.nameInputId);
+        const name = nameInput.value.trim();
+        if (!name) return this.showModal({ title: '❌ Error', message: 'Please provide a name.' });
+        const logic = config.logic.replace(/\s+/g, ' ').trim();
+        const script = 'javascript:(function(){' + encodeURIComponent(logic) + '})()';
+        const sizeKB = (script.length / 1024).toFixed(2);
+        if (script.length > this.BOOKMARKLET_SIZE_WARNING_THRESHOLD) {
+            const confirmed = await this.showModal({ title: '⚠️ Warning', message: `Bookmarklet is ${sizeKB} KB and may not work. Continue?`, buttons: [{ text: 'Cancel', value: false }, { text: 'Continue', value: true }] });
+            if (!confirmed) return;
+        }
+        document.getElementById(config.linkContainerId).innerHTML = `<a href="${script.replace(/"/g, '&quot;')}" class="inline-block px-8 py-3 ${config.buttonClass} text-white font-semibold rounded-lg shadow-md">${this.escapeHtml(name)}</a><p class="text-sm text-slate-600 mt-2">Size: ${sizeKB} KB</p>`;
+        document.getElementById(config.outputContainerId).style.display = 'block';
+    },
 
+    async generateFinalBookmarklet() {
+        if (!this.state.mappings) return await this.showModal({ title: '❌ Error', message: 'Load mappings first.' });
+        const fieldMeta = {}, lookup = {};
         this.state.mappings.forEach(m => {
             const dest = m.destinations[0];
-            // Only render fields that are NOT global defaults
-            if (this.state.presets.defaults.hasOwnProperty(dest.id)) return;
-            
-            const fieldWrapper = document.createElement('div');
-            fieldWrapper.className = 'preset-field';
-            let fieldHTML = `<label class="block text-sm font-medium text-slate-700 mb-1">${dest.id}</label>`;
-
-            if (dest.addAll) {
-                fieldHTML += `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">All source options will be applied.</div>`;
-                fieldWrapper.innerHTML = fieldHTML;
-            } else if (dest.type === 'text') {
-                 fieldWrapper.innerHTML = fieldHTML + `<input type="text" value="${this.escapeHtml(values[dest.id] || '')}" onchange="app.updatePresetValue('${type}', '${name}', '${dest.id}', this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">`;
-            } else {
-                const select = document.createElement('select');
-                select.className = 'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm';
-                select.onchange = () => this.updatePresetValue(type, name, dest.id, select.value);
-                select.add(new Option('-- Choose Value --', ''));
-                m.sourceOptions.forEach(opt => {
-                    const option = new Option(opt, opt);
-                    if (values[dest.id] == opt) option.selected = true; 
-                    select.add(option);
-                });
-                fieldWrapper.innerHTML = fieldHTML;
-                fieldWrapper.appendChild(select);
+            fieldMeta[dest.id] = { t: dest.type, f: m.format || 'text', a: dest.addAll, s: m.sourceId };
+            if (m.format === 'code:description' && m.sourceOptions?.length > 0) {
+                lookup[dest.id] = {};
+                m.sourceOptions.forEach(opt => { const [code] = opt.split(':'); if (code?.trim()) lookup[dest.id][code.trim()] = opt; });
             }
-            fieldsContainer.appendChild(fieldWrapper);
         });
-        document.getElementById(type + '-presets').appendChild(template);
+        const logic = this.BOOKMARKLET_UTILITIES + this.FILLER_LOGIC
+            .replace('__LOOKUP_DATA__', JSON.stringify(lookup))
+            .replace('__FIELDMETA_DATA__', JSON.stringify(fieldMeta))
+            .replace('__PRESETS_DATA__', JSON.stringify(this.state.presets))
+            .replace('__DUALLIST_POLL_INTERVAL__', this.DUALLIST_POLL_INTERVAL)
+            .replace('__DUALLIST_MAX_TRIES__', this.DUALLIST_MAX_TRIES);
+        await this._generateBookmarklet({ nameInputId: 'final-bookmarklet-name', logic, linkContainerId: 'final-bookmarklet-link-container', outputContainerId: 'final-output', buttonClass: 'bg-green-600 hover:bg-green-700' });
     },
 
-    updateDefaultValue(destId, value) { this.state.presets.defaults[destId] = value; },
-    addPreset(type) {
-        if (!this.state.mappings) return this.showModal('Load mappings first.');
-        const name = prompt('Enter name for new ' + type.slice(0, -1) + ':');
-        if (!name || !name.trim()) return;
-        if (this.state.presets[type]?.[name]) return this.showModal('Preset name already exists.');
-        
-        if (!this.state.presets[type]) this.state.presets[type] = {};
-        this.state.presets[type][name] = {};
-        this.createPresetCard(type, name, {});
-    },
-
-    updatePresetValue(type, presetName, destId, value) {
-        if (!this.state.presets[type][presetName]) this.state.presets[type][presetName] = {};
-        if (!value) delete this.state.presets[type][presetName][destId];
-        else this.state.presets[type][presetName][destId] = value;
-    },
-
-    generateFinalBookmarklet() {
-       const name = document.getElementById('final-bookmarklet-name').value.trim();
-       if (!name) return this.showModal('Please provide a name for the bookmarklet.');
-       if (!this.state.mappings) return this.showModal('Load mappings first.');
-
-       // --- COMPRESSION LOGIC START ---
-       const lookup = {};
-       const compressedMappings = this.state.mappings.map(m => {
-           const dest = m.destinations[0];
-           lookup[dest.id] = {};
-           m.sourceOptions.forEach(opt => {
-               const [code] = opt.split(':');
-               if (code && !isNaN(code)) {
-                   lookup[dest.id][code.trim()] = opt;
-               } else {
-                   lookup[dest.id][opt] = opt;
-               }
-           });
-           return { s: m.sourceId, d: dest.id, t: dest.type, a: dest.addAll };
-       });
-
-       const compressedPresets = { defaults: this.state.presets.defaults };
-       ['locations', 'roles'].forEach(type => {
-           compressedPresets[type] = {};
-           for (const presetName in this.state.presets[type]) {
-               const preset = this.state.presets[type][presetName];
-               const compressedPreset = {};
-               for (const fieldId in preset) {
-                   const val = String(preset[fieldId]);
-                   const [code] = val.split(':');
-                   if (code && !isNaN(code) && lookup[fieldId] && lookup[fieldId][code.trim()]) {
-                       compressedPreset[fieldId] = code.trim();
-                   } else {
-                       compressedPreset[fieldId] = val;
-                   }
-               }
-               compressedPresets[type][presetName] = compressedPreset;
-           }
-       });
-       // --- COMPRESSION LOGIC END ---
-       
-       const finalLogic = 'const L=' + JSON.stringify(lookup) + ';const M=' + JSON.stringify(compressedMappings) + ';const P=' + JSON.stringify(compressedPresets) + ';function getEl(e){return document.getElementById(e)||document.getElementsByName(e)[0]}function apply(vals){M.forEach(m=>{const v=vals[m.d];if(typeof v==="undefined")return;const el=getEl(m.d);if(!el)return;const findFullOpt=(sel,val)=>{const tVal=String(val).trim();if(L[m.d]&&L[m.d][tVal])return L[m.d][tVal];const opts=Array.from(sel.options);let f=opts.find(o=>o.text.trim()===tVal);if(f)return f.text.trim();f=opts.find(o=>o.text.trim().startsWith(tVal));if(f)return f.text.trim();return val;};if(m.t==="duallist"){const srcEl=getEl(m.s);const addBtn=el.closest("td,div")?.parentElement?.querySelector("input[id*=\\"OptionSelectorAdd\\"],button[id*=\\"add\\"]");if(!srcEl||!addBtn)return;let valsToProc=m.a?Object.values(L[m.d]):(Array.isArray(v)?v:String(v).split(",").map(s=>s.trim()));const resolved=valsToProc.map(val=>findFullOpt(srcEl,val));Array.from(srcEl.options).forEach(opt=>{opt.selected=resolved.includes(opt.text.trim())});addBtn.click()}else if(m.t==="select"){el.value=findFullOpt(el,v)}else{el.value=v};["input","change"].forEach(ev=>el.dispatchEvent(new Event(ev,{bubbles:!0})))})}function start(){const id="_filler_"+Date.now();if(document.getElementById(id))return;const locHTML=Object.keys(P.locations||{}).map(e=>"<option value=\\""+e+"\\">"+e+"</option>").join("");const roleHTML=Object.keys(P.roles||{}).map(e=>"<option value=\\""+e+"\\">"+e+"</option>").join("");const H="<div id=\\""+id+"\\" style=\\"position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;\\"><h3 style=\\"margin:0 0 16px;\\">Form Filler</h3><div><label>Location:</label><select id=\\"_loc\\"><option value=\\"\\">-- Select --</option>"+locHTML+"</select></div><div><label>Role:</label><select id=\\"_role\\"><option value=\\"\\">-- Select --</option>"+roleHTML+"</select></div><button id=\\"_fill\\">Fill</button><button onclick=\\"document.getElementById(\'"+id+"\').remove()\\">Cancel</button></div>";document.body.insertAdjacentHTML("beforeend",H);document.getElementById("_fill").onclick=()=>{const l=document.getElementById("_loc").value;const r=document.getElementById("_role").value;const V={...P.defaults||{},...P.locations[l]||{},...P.roles[r]||{}};apply(V);document.getElementById(id).remove()}}start();';
-       
-       const finalScript = 'javascript:(function(){' + encodeURIComponent(finalLogic.replace(/\s+/g, ' ').trim()) + '})()';
-       
-       const container = document.getElementById('final-bookmarklet-link-container');
-       container.innerHTML = '<a href="' + finalScript.replace(/"/g, '&quot;') + '" class="inline-block px-8 py-3 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700">' + this.escapeHtml(name) + '</a>';
-       document.getElementById('final-output').style.display = 'block';
+    async generateClearBookmarklet() {
+        if (!this.state.mappings) return await this.showModal({ title: '❌ Error', message: 'Load mappings first.' });
+        const fields = this.state.mappings.map(m => m.destinations[0].id);
+        const logic = this.BOOKMARKLET_UTILITIES + this.CLEAR_LOGIC.replace('__FIELDS_DATA__', JSON.stringify(fields));
+        await this._generateBookmarklet({ nameInputId: 'clear-bookmarklet-name', logic, linkContainerId: 'clear-bookmarklet-link-container', outputContainerId: 'clear-output', buttonClass: 'bg-red-600 hover:bg-red-700' });
     },
     
-    escapeHtml: (text) => {
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+    BOOKMARKLET_UTILITIES: `function getEl(i){return document.getElementById(i)||document.getElementsByName(i)[0]}function trigger(e,v){e.dispatchEvent(new Event(v,{bubbles:true}))}`,
+    FILLER_LOGIC: `const L=__LOOKUP_DATA__,M=__FIELDMETA_DATA__,P=__PRESETS_DATA__;function resolve(i,v){const m=M[i];if(!m||m.f!=='code:description'||!L[i])return v;return L[i][v]||v}function fill(i,v){try{const e=getEl(i);if(!e)return;const m=M[i];if(m.t==='duallist'){const sId=m.s||(i+'.Options'),sEl=getEl(sId);if(!sEl)return;const c=e.closest('td,div'),p=c?.parentElement;if(!p)return;const a=p.querySelector('input[name="action.'+i+'.OptionSelectorAdd"]'),r=p.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]'),dL=e;if(!a||!r)return;const add=()=>{let vs=m.a?Object.values(L[i]||{}):String(v).split(',').map(v=>resolve(i,v.trim()));Array.from(sEl.options).forEach(o=>{o.selected=vs.some(v=>(o.text.trim()===v||o.text.trim().startsWith(v+':')))});a.click()};if(dL.options.length>0){Array.from(dL.options).forEach(o=>o.selected=true);r.click();let t=0;const p=setInterval(()=>{if(dL.options.length===0||++t>__DUALLIST_MAX_TRIES__){clearInterval(p);if(dL.options.length===0)add()}},__DUALLIST_POLL_INTERVAL__)}else add()}else if(m.t==='select'){const rV=resolve(i,v),opt=Array.from(e.options).find(o=>o.text.trim()===rV||o.text.trim().startsWith(rV));if(opt)e.value=opt.value;else e.value=rV;trigger(e,'change')}else{e.value=resolve(i,v);trigger(e,'input');trigger(e,'change')}}catch(e){console.error('Error filling',i,':',e)}}function showUI(){const id='_formFillerUI';if(document.getElementById(id))return;const lO=Object.keys(P.locations||{}).map(n=>'<option value="'+n+'">'+n+'</option>').join(''),rO=Object.keys(P.roles||{}).map(n=>'<option value="'+n+'">'+n+'</option>').join('');document.body.insertAdjacentHTML('beforeend','<div id="'+id+'" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;"><h3 style="margin:0 0 16px;">Form Filler</h3><div style="margin-bottom:12px;"><label>Location:</label><select id="_loc" style="width:100%"><option value="">--</option>'+lO+'</select></div><div style="margin-bottom:16px;"><label>Role:</label><select id="_role" style="width:100%"><option value="">--</option>'+rO+'</select></div><button id="_fill" style="padding:8px 16px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;margin-right:8px;">Fill</button><button onclick="this.parentElement.remove()" style="padding:8px 16px;background:#6b7280;color:white;border:none;border-radius:6px;cursor:pointer;">Cancel</button></div>');document.getElementById('_fill').onclick=()=>{const l=document.getElementById('_loc').value,r=document.getElementById('_role').value,m={...P.defaults,...(P.locations[l]||{}),...(P.roles[r]||{})};for(const f in m)fill(f,m[f]);document.getElementById(id).remove()}}try{showUI()}catch(e){alert('Error: '+e.message)}}`,
+    CLEAR_LOGIC: `const F=__FIELDS_DATA__;F.forEach(i=>{const e=getEl(i);if(!e)return;if(e.tagName==='SELECT'&&e.multiple){const r=e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]');if(r&&e.options.length>0){Array.from(e.options).forEach(o=>o.selected=true);r.click();return}}e.value='';trigger(e,'input');trigger(e,'change')});alert('Mapped fields cleared.')`,
+    
+    BUILDER_TOOL: {
+        getMinifiedScript() { return this.BUILDER_LOGIC.replace(/\s+/g, ' ').trim(); },
+        BUILDER_LOGIC: `
+            (function(){
+                if (document.getElementById('_mapperUIRoot')) return;
+                const state = { mappings: [], currentSource: null, currentDestination: null, mode: null, lastHovered: null };
+                function getFieldId(el) { return el.id || el.name; }
+                function analyzeFormat(options) { if (!options?.length) return 'text'; const clean = options.filter(o => !/Enter one|Select one|Almost every/.test(o)); if (clean.length === 0) return 'text'; if (clean.filter(o => /^\\d+:/.test(o.trim())).length / clean.length > 0.7) return 'code:description'; if (clean.every(o => /^[A-Z]+$/.test(o) && o.length < 20)) return 'enum'; if (clean.every(o => /^\\d+$/.test(o.trim()))) return 'plain'; return 'text'; }
+                function scrapeSource(el) { const id = getFieldId(el); if (!id) return alert('No ID/name'); const source = { sourceId: id, sourceOptions: [], format: 'unknown' }; if (el.tagName === 'SELECT') { source.sourceOptions = Array.from(el.options).map(o => o.text.trim()).filter(Boolean); source.format = analyzeFormat(source.sourceOptions); } state.currentSource = source; updateUI(); }
+                function scrapeDestination(el) { const id = getFieldId(el); if (!id) return alert('No ID/name'); if (id.endsWith('.Options')) return alert('Cannot use .Options as destination.'); if (el.tagName === 'SELECT' && el.hasAttribute('readonly') && document.querySelector(\`[name="\${id}1"]\`)) alert('Map to editable version: ' + id + '1'); const dest = { id: id, type: 'text', addAll: false }; if (el.tagName === 'SELECT') dest.type = document.querySelector(\`[name="\${id}.Options"]\`) ? 'duallist' : 'select'; state.currentDestination = dest; updateUI(); }
+                function commitMapping() { if (!state.currentSource || !state.currentDestination) return alert('Select source & destination.'); const isDuplicate = state.mappings.find(m => m.sourceId === state.currentSource.sourceId && m.destinations[0].id === state.currentDestination.id); if (isDuplicate && !window.confirm('This mapping already exists. Add again?')) return; if (state.currentDestination.type === 'duallist') { const expected = state.currentDestination.id + '.Options'; if (state.currentSource.sourceId !== expected && !window.confirm(\`Warning: For "\${state.currentDestination.id}", source should be "\${expected}". You chose "\${state.currentSource.sourceId}". Continue?\`)) return; } state.mappings.push({ ...state.currentSource, destinations: [state.currentDestination] }); state.currentSource = null; state.currentDestination = null; state.mode = null; document.body.style.cursor = 'default'; updateUI(); }
+                function setMode(m) { state.mode = m; document.body.style.cursor = 'crosshair'; updateUI(); }
+                function handleMouseOver(e) { if (!state.mode) return; state.lastHovered = e.target; e.target.style.outline = '2px solid red'; }
+                function handleMouseOut(e) { if (state.lastHovered) state.lastHovered.style.outline = ''; }
+                function handleClick(e) { if (!state.mode) return; e.preventDefault(); e.stopPropagation(); if (state.lastHovered) state.lastHovered.style.outline = ''; if (state.mode === 'source') scrapeSource(e.target); else scrapeDestination(e.target); state.mode = null; document.body.style.cursor = 'default'; }
+                function updateUI() { const root = document.getElementById('_mapperUIRoot'); if (!root) return; const mappingsHtml = state.mappings.map((m, i) => \`<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>\${m.sourceId}</b> &rarr; <b>\${m.destinations[0].id}</b></span><button onclick="window._mapper.removeMapping(\${i})" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>\`).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>'; const sourceText = state.currentSource ? \`\${state.currentSource.sourceId} (\${state.currentSource.format})\` : 'None', destText = state.currentDestination ? \`\${state.currentDestination.id} (\${state.currentDestination.type})\` : 'None'; root.innerHTML = \`<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v4.3</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" field as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._mapper.setMode('source')" class="m-btn \${state.mode==='source'?'act':''}">1. Select Source</button><button onclick="window._mapper.setMode('destination')" class="m-btn \${state.mode==='destination'?'act':''}">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> \${sourceText}<br><b>Dest:</b> \${destText}</div><button onclick="window._mapper.commitMapping()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">\${mappingsHtml}</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._mapper.generateJSON()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._mapper.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>\`; }
+                function generateJSON() { const json = JSON.stringify(state.mappings, null, 2); const textarea = document.createElement('textarea'); textarea.value = json; document.body.appendChild(textarea); textarea.select(); try { document.execCommand('copy'); alert('JSON copied!'); } catch (e) { alert('Copy failed'); console.log(json); } document.body.removeChild(textarea); }
+                function removeMapping(i) { state.mappings.splice(i, 1); updateUI(); }
+                function destroy() { if(state.lastHovered) state.lastHovered.style.outline = ''; document.removeEventListener('mouseover', handleMouseOver); document.removeEventListener('mouseout', handleMouseOut); document.removeEventListener('click', handleClick, true); document.getElementById('_mapperUIRoot').remove(); }
+                const root = document.createElement('div'); root.id = '_mapperUIRoot'; root.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10001;width:350px;background:#f7fafc;border:1px solid #ccc;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);font-family:sans-serif;font-size:14px;'; document.body.appendChild(root); updateUI(); document.addEventListener('mouseover', handleMouseOver); document.addEventListener('mouseout', handleMouseOut); document.addEventListener('click', handleClick, true); window._mapper = { setMode, commitMapping, generateJSON, removeMapping, destroy };
+            })()
+        `
     }
 };
 
-document.addEventListener('DOMContentLoaded', () => app.init());
+document.addEventListener('DOMContentLoaded', () => { window.app = app; app.init(); });
 </script>
 </body>
 </html>
-

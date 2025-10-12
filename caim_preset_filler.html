@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler v4.7</title>
+    <title>CA IM Preset Form Filler v4.8</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -55,7 +55,7 @@
                 <div class="text-center py-8">
                     <p class="text-slate-600 mb-4">Drag this bookmarklet to your bookmarks bar:</p>
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        🔧 Field Mapper Tool v4.6
+                        🔧 Field Mapper Tool v4.8
                     </a>
                 </div>
                 <div class="mt-8 flex justify-end">
@@ -207,7 +207,7 @@
     </template>
 
 <script>
-// App v4.6: Ultra-compact refactor.
+// App v4.7: Fixed import modal bug and builder tool click target issue.
 const app = {
     // STATE & CONSTANTS
     state: {
@@ -369,7 +369,7 @@ const app = {
                     });
                     if (results) {
                         const mode = results[1].startsWith('overwrite') ? 'overwrite' : 'additive';
-                        await this.processImport(results[0], mode);
+                        this.processImport(results[0], mode); // Removed await
                     }
                 }, 'File Read');
             };
@@ -385,7 +385,8 @@ const app = {
         if (importMode === 'overwrite') this.state.presets[presetType] = {};
         const existingNames = new Set(Object.keys(this.state.presets[presetType]));
         
-        await this.showModal({ title: '⏳ Importing...', message: `Processing ${this.state.pendingImportData.length} rows...`, buttons: [] });
+        this.showModal({ title: '⏳ Importing...', message: `Processing ${this.state.pendingImportData.length} rows...`, buttons: [] });
+        await new Promise(resolve => setTimeout(resolve, 50)); 
 
         for (const [i, row] of this.state.pendingImportData.entries()) {
             const presetName = row.Name || row.name;
@@ -591,14 +592,14 @@ const app = {
                 const state = { mappings: [], currentSource: null, currentDestination: null, mode: null, lastHovered: null };
                 function getFieldId(el) { return el.id || el.name; }
                 function analyzeFormat(options) { if (!options?.length) return 'text'; const clean = options.filter(o => !/Enter one|Select one|Almost every/.test(o)); if (clean.length === 0) return 'text'; if (clean.filter(o => /^\\d+:/.test(o.trim())).length / clean.length > 0.7) return 'code:description'; if (clean.every(o => /^[A-Z]+$/.test(o) && o.length < 20)) return 'enum'; if (clean.every(o => /^\\d+$/.test(o.trim()))) return 'plain'; return 'text'; }
-                function scrapeSource(el) { const id = getFieldId(el); if (!id) return alert('No ID/name'); const source = { sourceId: id, sourceOptions: [], format: 'unknown' }; if (el.tagName === 'SELECT') { source.sourceOptions = Array.from(el.options).map(o => o.text.trim()).filter(Boolean); source.format = analyzeFormat(source.sourceOptions); } state.currentSource = source; updateUI(); }
+                function scrapeSource(el) { const id = getFieldId(el); if (!id) return alert('No ID/name'); const source = { sourceId: id, sourceOptions: [], format: 'unknown', addAll: false }; if (el.tagName === 'SELECT') { source.sourceOptions = Array.from(el.options).map(o => o.text.trim()).filter(Boolean); source.format = analyzeFormat(source.sourceOptions); } state.currentSource = source; updateUI(); }
                 function scrapeDestination(el) { const id = getFieldId(el); if (!id) return alert('No ID/name'); if (id.endsWith('.Options')) return alert('Cannot use .Options as destination.'); if (el.tagName === 'SELECT' && el.hasAttribute('readonly') && document.querySelector(\`[name="\${id}1"]\`)) alert('Map to editable version: ' + id + '1'); const dest = { id: id, type: 'text', addAll: false }; if (el.tagName === 'SELECT') dest.type = document.querySelector(\`[name="\${id}.Options"]\`) ? 'duallist' : 'select'; state.currentDestination = dest; updateUI(); }
-                function commitMapping() { if (!state.currentSource || !state.currentDestination) return alert('Select source & destination.'); const isDuplicate = state.mappings.find(m => m.sourceId === state.currentSource.sourceId && m.destinations[0].id === state.currentDestination.id); if (isDuplicate && !window.confirm('This mapping already exists. Add again?')) return; if (state.currentDestination.type === 'duallist') { const expected = state.currentDestination.id + '.Options'; if (state.currentSource.sourceId !== expected && !window.confirm(\`Warning: For "\${state.currentDestination.id}", source should be "\${expected}". You chose "\${state.currentSource.sourceId}". Continue?\`)) return; } state.mappings.push({ ...state.currentSource, destinations: [state.currentDestination] }); state.currentSource = null; state.currentDestination = null; state.mode = null; document.body.style.cursor = 'default'; updateUI(); }
+                function commitMapping() { if (!state.currentSource || !state.currentDestination) return alert('Select source & destination.'); const isDuplicate = state.mappings.find(m => m.sourceId === state.currentSource.sourceId && m.destinations[0].id === state.currentDestination.id); if (isDuplicate && !window.confirm('This mapping already exists. Add again?')) return; if (state.currentDestination.type === 'duallist') { state.currentDestination.addAll = document.getElementById('_addAllCheckbox').checked; const expected = state.currentDestination.id + '.Options'; if (state.currentSource.sourceId !== expected && !window.confirm(\`Warning: For "\${state.currentDestination.id}", source should be "\${expected}". You chose "\${state.currentSource.sourceId}". Continue?\`)) return; } state.mappings.push({ ...state.currentSource, destinations: [state.currentDestination] }); state.currentSource = null; state.currentDestination = null; state.mode = null; document.body.style.cursor = 'default'; updateUI(); }
                 function setMode(m) { state.mode = m; document.body.style.cursor = 'crosshair'; updateUI(); }
-                function handleMouseOver(e) { if (!state.mode) return; state.lastHovered = e.target; e.target.style.outline = '2px solid red'; }
+                function handleMouseOver(e) { const target = e.target.closest('select, input, textarea'); if (!state.mode || !target) return; state.lastHovered = target; target.style.outline = '2px solid red'; }
                 function handleMouseOut(e) { if (state.lastHovered) state.lastHovered.style.outline = ''; }
-                function handleClick(e) { if (!state.mode) return; e.preventDefault(); e.stopPropagation(); if (state.lastHovered) state.lastHovered.style.outline = ''; if (state.mode === 'source') scrapeSource(e.target); else scrapeDestination(e.target); state.mode = null; document.body.style.cursor = 'default'; }
-                function updateUI() { const root = document.getElementById('_mapperUIRoot'); if (!root) return; const mappingsHtml = state.mappings.map((m, i) => \`<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>\${m.sourceId}</b> &rarr; <b>\${m.destinations[0].id}</b></span><button onclick="window._mapper.removeMapping(\${i})" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>\`).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>'; const sourceText = state.currentSource ? \`\${state.currentSource.sourceId} (\${state.currentSource.format})\` : 'None', destText = state.currentDestination ? \`\${state.currentDestination.id} (\${state.currentDestination.type})\` : 'None'; root.innerHTML = \`<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v4.6</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" field as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._mapper.setMode('source')" class="m-btn \${state.mode==='source'?'act':''}">1. Select Source</button><button onclick="window._mapper.setMode('destination')" class="m-btn \${state.mode==='destination'?'act':''}">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> \${sourceText}<br><b>Dest:</b> \${destText}</div><button onclick="window._mapper.commitMapping()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">\${mappingsHtml}</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._mapper.generateJSON()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._mapper.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>\`; }
+                function handleClick(e) { if (!state.mode) return; const target = e.target.closest('select, input, textarea'); if (!target) return; e.preventDefault(); e.stopPropagation(); if (state.lastHovered) state.lastHovered.style.outline = ''; if (state.mode === 'source') scrapeSource(target); else scrapeDestination(target); state.mode = null; document.body.style.cursor = 'default'; }
+                function updateUI() { const root = document.getElementById('_mapperUIRoot'); if (!root) return; const mappingsHtml = state.mappings.map((m, i) => \`<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>\${m.sourceId}</b> &rarr; <b>\${m.destinations[0].id}</b>\${m.destinations[0].addAll ? ' (All)' : ''}</span><button onclick="window._mapper.removeMapping(\${i})" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>\`).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>'; const sourceText = state.currentSource ? \`\${state.currentSource.sourceId} (\${state.currentSource.format})\` : 'None', destText = state.currentDestination ? \`\${state.currentDestination.id} (\${state.currentDestination.type})\` : 'None'; const addAllContainerDisplay = state.currentDestination?.type === 'duallist' ? 'block' : 'none'; root.innerHTML = \`<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v4.7</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" field as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._mapper.setMode('source')" class="m-btn \${state.mode==='source'?'act':''}">1. Select Source</button><button onclick="window._mapper.setMode('destination')" class="m-btn \${state.mode==='destination'?'act':''}">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> \${sourceText}<br><b>Dest:</b> \${destText}</div><div id="_addAllContainer" style="margin-top:8px;font-size:12px;display:\${addAllContainerDisplay};"><label><input type="checkbox" id="_addAllCheckbox"> Add All Source Options</label></div><button onclick="window._mapper.commitMapping()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">\${mappingsHtml}</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._mapper.generateJSON()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._mapper.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>\`; }
                 function generateJSON() { const json = JSON.stringify(state.mappings, null, 2); const textarea = document.createElement('textarea'); textarea.value = json; document.body.appendChild(textarea); textarea.select(); try { document.execCommand('copy'); alert('JSON copied!'); } catch (e) { alert('Copy failed'); console.log(json); } document.body.removeChild(textarea); }
                 function removeMapping(i) { state.mappings.splice(i, 1); updateUI(); }
                 function destroy() { if(state.lastHovered) state.lastHovered.style.outline = ''; document.removeEventListener('mouseover', handleMouseOver); document.removeEventListener('mouseout', handleMouseOut); document.removeEventListener('click', handleClick, true); document.getElementById('_mapperUIRoot').remove(); }
@@ -612,4 +613,3 @@ document.addEventListener('DOMContentLoaded', () => { window.app = app; app.init
 </script>
 </body>
 </html>
-

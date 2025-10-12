@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler v4.4</title>
+    <title>CA IM Preset Form Filler v4.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -49,13 +49,13 @@
                 <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg mb-6">
                     <h3 class="font-semibold text-blue-900 mb-2">How It Works</h3>
                     <p class="text-blue-800 text-sm leading-relaxed">
-                        This tool helps you map your form fields. Run it on your CA IM form, then click on a source field (like a dropdown) and a destination field to create a mapping. The builder automatically detects the format of each field.
+                        This tool helps you map your form fields. Run it on your CA IM form, then click on a source field (like a dropdown) and a destination field to create a mapping. The builder automatically detects the format of each field. <strong>Note:</strong> If a dropdown appears read-only, map to the editable version (typically the same name with a "1" suffix).
                     </p>
                 </div>
                 <div class="text-center py-8">
                     <p class="text-slate-600 mb-4">Drag this bookmarklet to your bookmarks bar:</p>
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        🔧 Field Mapper Tool v4.4
+                        🔧 Field Mapper Tool v4.6
                     </a>
                 </div>
                 <div class="mt-8 flex justify-end">
@@ -173,8 +173,14 @@
                         <li><strong>Import/Export:</strong> The recommended workflow is to download the Excel template, fill it with your preset data, and import it. Use "Additive" import mode for bulk updates.</li>
                         <li><strong>Manual Configuration:</strong> You can add presets manually. Use the "Promote to Default" button on any field to make its value a global default, removing it from all individual presets.</li>
                     </ol>
-                    <h4>Phase 3: Generate Bookmarklets</h4>
-                    <p>This final step generates the "Filler" and "Clearer" bookmarklets. Drag these to your bookmarks bar for use on the target form.</p>
+                    <h4>Field Formats</h4>
+                    <p>The mapper tool automatically detects the format of your source fields to handle data more efficiently:</p>
+                    <ul>
+                        <li><strong>code:description:</strong> For fields where the option text is like "01:Adams County". The tool stores only the code ("01") and looks up the full description when filling the form.</li>
+                        <li><strong>plain / enum:</strong> For simple value fields (e.g., "1", "2", "3" or "CREATE", "MODIFY").</li>
+                        <li><strong>text:</strong> For free-form text input fields.</li>
+                    </ul>
+                    <p><strong>Text Entry Limitations:</strong> Fields that allow manual text entry (via "Add new Value" buttons) cannot be pre-filled by the filler bookmarklet. The tool only supports mapping from dropdown source fields to destination fields.</p>
                 </div>
                 <div class="mt-8">
                     <button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">← Back to Start</button>
@@ -201,7 +207,7 @@
     </template>
 
 <script>
-// App v4.4: Final polish from Mode F review.
+// App v4.6: Ultra-compact refactor.
 const app = {
     // STATE & CONSTANTS
     state: {
@@ -212,9 +218,14 @@ const app = {
     },
     ui: {}, // Cache for DOM elements
     modalResolve: null,
-    DEFAULT_MODAL_BUTTONS: [{ text: 'OK', value: true, class: 'bg-blue-600 text-white' }],
+    CSS: {
+        BTN_PRIMARY: 'bg-blue-600 text-white',
+        BTN_DANGER: 'bg-red-600 text-white',
+        BTN_SUCCESS: 'bg-green-600 text-white',
+        INPUT: 'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm',
+    },
     MAX_VALIDATION_ERRORS: 10,
-    BOOKMARKLET_SIZE_WARNING_THRESHOLD: 90000,
+    BOOKMARKLET_SIZE_WARNING_THRESHOLD: 60000,
     DUALLIST_POLL_INTERVAL: 50,
     DUALLIST_MAX_TRIES: 100,
 
@@ -242,26 +253,22 @@ const app = {
     },
 
     showStep(stepNumber) {
-        this.ui.steps.forEach((step, index) => {
-            step.classList.toggle('active', index + 1 === stepNumber);
-        });
+        this.ui.steps.forEach((step, index) => step.classList.toggle('active', index + 1 === stepNumber));
     },
 
     renderPresetUI() {
-        const jsonInput = this.ui.mappingsJson.value;
-        if (!jsonInput) return this.showModal({ title: '❌ Error', message: 'Please paste the mappings JSON first.' });
-        try {
+        this.safely(async () => {
+            const jsonInput = this.ui.mappingsJson.value;
+            if (!jsonInput) return this.showError('Please paste the mappings JSON first.');
             this.state.mappings = JSON.parse(jsonInput);
-            this.state.mappingsByField = Object.fromEntries(this.state.mappings.map(m => [m.destinations[0].id, m]));
+            this.state.mappingsByField = Object.fromEntries(this.state.mappings.map(m => [this._fieldId(m), m]));
             this.ui.presetsUiContainer.style.display = 'block';
             this.ui.bulkImportSection.style.display = 'block';
-            this.rerenderAllPresetUIs();
-        } catch (e) {
-            this.showModal({ title: '❌ Error: JSON Parse', message: 'Error parsing JSON: ' + e.message });
-        }
+            this.rerender();
+        }, 'JSON Parse');
     },
 
-    // MODAL SYSTEM
+    // MODAL & MESSAGE SYSTEM
     _modalButtonClick(value, hasInputs) {
         const results = hasInputs ? Array.from(this.ui.modalFields.querySelectorAll('select, input')).map(el => el.value) : value;
         this.hideModal(results);
@@ -271,47 +278,49 @@ const app = {
         return new Promise(resolve => {
             if (this.modalResolve) { this.modalResolve(null); }
             this.modalResolve = resolve;
-            
             this.ui.modalTitle.textContent = config.title || '';
             this.ui.modalText.textContent = config.message || '';
             this.ui.modalText.style.display = config.message ? 'block' : 'none';
-
             let fieldsHtml = '';
-            if (config.inputs) {
-                config.inputs.forEach((inputConfig, index) => {
-                    fieldsHtml += this._generateModalFieldHtml(index, inputConfig);
-                });
-            }
+            if (config.inputs) config.inputs.forEach((inputConfig, index) => { fieldsHtml += this._generateModalFieldHtml(index, inputConfig); });
             this.ui.modalFields.innerHTML = fieldsHtml;
-
-            this.ui.modalButtons.innerHTML = (config.buttons || this.DEFAULT_MODAL_BUTTONS).map(btn => 
-                `<button class="px-6 py-2 rounded-lg ${btn.class || 'bg-slate-200 text-slate-800'}" 
-                         onclick="app._modalButtonClick(${JSON.stringify(btn.value)}, ${!!config.inputs})">
-                    ${btn.text}
-                 </button>`
+            this.ui.modalButtons.innerHTML = (config.buttons || [{ text: 'OK', value: true, class: this.CSS.BTN_PRIMARY }]).map(btn => 
+                `<button class="px-6 py-2 rounded-lg ${btn.class || 'bg-slate-200 text-slate-800'}" onclick="app._modalButtonClick(${JSON.stringify(btn.value)}, ${!!config.inputs})">${btn.text}</button>`
             ).join('');
-            
             this.ui.modal.classList.add('visible');
         });
     },
 
     hideModal(value = null) {
         this.ui.modal.classList.remove('visible');
-        if (this.modalResolve) {
-            this.modalResolve(value);
-            this.modalResolve = null;
-        }
+        if (this.modalResolve) { this.modalResolve(value); this.modalResolve = null; }
+    },
+    
+    msg: (msg, icon, title) => app.showModal({title: `${icon} ${title}`, message: msg}),
+    showError: (msg, title = 'Error') => app.msg(msg, '❌', title),
+    showWarning: (msg) => app.msg(msg, '⚠️', 'Warning'),
+    showInfo: (msg) => app.msg(msg, 'ℹ️', 'Info'),
+    showSuccess: (msg) => app.msg(msg, '✅', 'Success'),
+    async confirmAction(message, confirmText = 'Confirm') {
+        return await this.showModal({ title: '❓ Confirm', message, buttons: [{text: 'Cancel', value: false}, {text: confirmText, value: true, class: this.CSS.BTN_PRIMARY}] });
+    },
+
+    async safely(fn, errorContext = 'Operation') {
+        try { return await fn(); } 
+        catch (e) { await this.showError(`${errorContext}: ${e.message}`); return null; }
     },
 
     // UTILITY HELPERS
     isEmpty: value => value === undefined || value === null || (typeof value === 'string' && value.trim() === ''),
     _getMapping: fieldId => app.state.mappingsByField?.[fieldId],
-    forEachPresetType: callback => ['locations', 'roles'].forEach(callback),
+    _fieldId: m => m.destinations[0].id,
+    forEachPresetType: (callback, withUI = false) => ['locations', 'roles'].forEach(type => callback(type, withUI ? app.ui[`${type}Presets`] : null)),
+    forEachPreset: (type, callback) => Object.entries(app.state.presets[type]).forEach(([n, v]) => callback(n, v)),
     escapeHtml: str => String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]),
 
     // EXCEL & IMPORT/EXPORT
     _generateExcelFile(config) {
-        if (!this.state.mappings) return this.showModal({ title: '❌ Error', message: 'Load mappings first.' });
+        if (!this.state.mappings) return this.showError('Load mappings first.');
         const wb = XLSX.utils.book_new();
         config.sheets.forEach(sheetConfig => {
             const ws = XLSX.utils.json_to_sheet(sheetConfig.data, { headers: sheetConfig.headers });
@@ -321,10 +330,7 @@ const app = {
     },
 
     downloadXlsxTemplate() {
-        this._generateExcelFile({
-            filename: 'Preset_Template.xlsx',
-            sheets: [{ name: 'Presets', data: [{}], headers: ['Name', ...this.state.mappings.map(m => m.destinations[0].id)] }]
-        });
+        this._generateExcelFile({ filename: 'Preset_Template.xlsx', sheets: [{ name: 'Presets', data: [{}], headers: ['Name', ...this.state.mappings.map(this._fieldId)] }] });
     },
 
     exportPresetsToExcel() {
@@ -334,61 +340,51 @@ const app = {
             if (data.length > 0) sheets.push({ name: type.charAt(0).toUpperCase() + type.slice(1), data });
         });
         if (sheets.length > 0) this._generateExcelFile({ filename: 'Exported_Presets.xlsx', sheets });
-        else this.showModal({ title: 'ℹ️ Info', message: 'No presets to export.' });
+        else this.showInfo('No presets to export.');
     },
 
     handleImportClick() {
-        if (!this.ui.fileInput.files?.length) return this.showModal({ title: '❌ Error', message: 'Please select a file to import.' });
-        const reader = new FileReader();
-        reader.onload = async (e) => {
-            try {
-                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                if (!sheet) throw new Error("Spreadsheet contains no sheets.");
-                const data = XLSX.utils.sheet_to_json(sheet);
-                if (data.length === 0) throw new Error('Spreadsheet has no data rows.');
-                if (!data[0].Name && !data[0].name) throw new Error('Spreadsheet is missing the required "Name" column.');
-                this.state.pendingImportData = data;
-                const results = await this.showModal({
-                    title: '❓ Confirm Import Options',
-                    inputs: [ { label: 'Preset Type', type: 'select', options: ['locations', 'roles'] }, { label: 'Import Mode', type: 'select', options: ['overwrite', 'additive'] } ],
-                    buttons: [{ text: 'Cancel', value: null }, { text: 'Process Import', value: 'process', class: 'bg-amber-600 text-white' }]
-                });
-                if (results) await this.processImport(results[0], results[1]);
-            } catch (err) {
-                await this.showModal({ title: '❌ Error: File Read', message: 'Error reading file: ' + err.message });
-            }
-        };
-        reader.readAsArrayBuffer(this.ui.fileInput.files[0]);
+        this.safely(async () => {
+            if (!this.ui.fileInput.files?.length) return this.showError('Please select a file to import.');
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                await this.safely(async () => {
+                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                    if (!sheet) throw new Error("Spreadsheet contains no sheets.");
+                    const data = XLSX.utils.sheet_to_json(sheet);
+                    if (data.length === 0) throw new Error('Spreadsheet has no data rows.');
+                    if (!data[0].Name && !data[0].name) throw new Error('Spreadsheet is missing "Name" column.');
+                    this.state.pendingImportData = data;
+                    const results = await this.showModal({
+                        title: '❓ Choose Import Options',
+                        message: `Importing ${this.state.pendingImportData.length} rows`,
+                        inputs: [ { label: 'Preset Type', type: 'select', options: ['locations', 'roles'] }, { label: 'Import Mode', type: 'select', options: ['overwrite - Delete all existing, replace with file', 'additive - Keep existing, update/add from file'] } ],
+                        buttons: [{ text: 'Cancel', value: null }, { text: 'Import', value: 'process', class: 'bg-amber-600 text-white' }]
+                    });
+                    if (results) {
+                        const mode = results[1].startsWith('overwrite') ? 'overwrite' : 'additive';
+                        await this.processImport(results[0], mode);
+                    }
+                }, 'File Read');
+            };
+            reader.readAsArrayBuffer(this.ui.fileInput.files[0]);
+        });
     },
 
     async processImport(presetType, importMode) {
         if (importMode === 'additive' && !this.state.pendingImportData.some(row => Object.keys(row).some(key => key.toLowerCase() !== 'name' && !this.isEmpty(row[key])))) {
-            const confirmed = await this.showModal({ title: '⚠️ Warning', message: 'All field values are empty. No data will be updated. Continue?', buttons: [{ text: 'Cancel', value: false }, { text: 'Continue', value: true, class: 'bg-blue-600 text-white' }] });
-            if (!confirmed) return;
+            if (!await this.confirmAction('All field values are empty. No data will be updated. Continue?')) return;
         }
-        const errors = [];
-        for (const [idx, row] of this.state.pendingImportData.entries()) {
-            if (errors.length >= this.MAX_VALIDATION_ERRORS) break;
-            for (const fieldId in row) {
-                if (fieldId.toLowerCase() === 'name' || this.state.presets.defaults.hasOwnProperty(fieldId)) continue;
-                const value = row[fieldId], mapping = this._getMapping(fieldId);
-                if (importMode === 'additive' && this.isEmpty(value)) continue;
-                if (!mapping) errors.push(`Row ${idx + 2}: Unknown field "${fieldId}"`);
-                else if (mapping.sourceOptions?.length > 0 && !this.isEmpty(value) && !this.isValidValue(value, mapping.sourceOptions, mapping.format)) {
-                    errors.push(`Row ${idx + 2}, Field "${fieldId}": Invalid value "${value}"`);
-                }
-            }
-        }
-        if (errors.length > 0) {
-            const confirmed = await this.showModal({ title: '⚠️ Warning: Validation Errors', message: `Found ${errors.length} errors:\n${errors.slice(0, 5).join('\n')}\nImport anyway?`, buttons: [{ text: 'Cancel', value: false }, { text: 'Import Anyway', value: true, class: 'bg-red-600 text-white' }] });
-            if (!confirmed) return;
-        }
+        
         if (importMode === 'overwrite') this.state.presets[presetType] = {};
         const existingNames = new Set(Object.keys(this.state.presets[presetType]));
-        this.state.pendingImportData.forEach(row => {
+        
+        await this.showModal({ title: '⏳ Importing...', message: `Processing ${this.state.pendingImportData.length} rows...`, buttons: [] });
+
+        for (const [i, row] of this.state.pendingImportData.entries()) {
             const presetName = row.Name || row.name;
-            if (!presetName) return;
+            if (!presetName) continue;
             if (!this.state.presets[presetType][presetName]) this.state.presets[presetType][presetName] = {};
             for (const fieldId in row) {
                 if (fieldId.toLowerCase() === 'name' || this.state.presets.defaults.hasOwnProperty(fieldId)) continue;
@@ -396,68 +392,70 @@ const app = {
                 if ((importMode === 'additive' && this.isEmpty(value)) || !mapping) continue;
                 this.state.presets[presetType][presetName][fieldId] = (mapping.format === 'code:description' && !this.isEmpty(value)) ? this.extractCode(value, mapping.sourceOptions) : value;
             }
-        });
-        this.rerenderAllPresetUIs();
+            if (i % 10 === 0 || i === this.state.pendingImportData.length - 1) {
+                this.ui.modalText.textContent = `Processing row ${i + 1} of ${this.state.pendingImportData.length}`;
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+        }
+        
+        this.hideModal();
+        this.rerender();
         const importedNames = new Set(this.state.pendingImportData.map(r => r.Name || r.name).filter(Boolean));
         const newCount = [...importedNames].filter(name => !existingNames.has(name) && this.state.presets[presetType][name]).length;
-        this.showModal({ title: '✅ Import Successful', message: (importMode === 'overwrite') ? `Imported ${importedNames.size} ${presetType}.` : `Import complete: ${newCount} new added, ${importedNames.size - newCount} existing updated.` });
+        this.showSuccess((importMode === 'overwrite') ? `Imported ${importedNames.size} ${presetType}.` : `Import complete: ${newCount} new added, ${importedNames.size - newCount} existing updated.`);
         this.state.pendingImportData = null;
         this.ui.fileInput.value = '';
     },
 
-    extractCode: (v, o) => !app.isEmpty(v) && o.find(opt => opt === String(v).trim() || opt.startsWith(String(v).trim()+':'))?.split(':')[0].trim() || String(v).trim(),
+    extractCode: (v, o) => o.find(opt => opt === String(v).trim() || opt.startsWith(String(v).trim()+':'))?.split(':')[0].trim() || String(v).trim(),
     isValidValue: (v, o, f) => app.isEmpty(v) || f==='text' || !o?.length ? true : (f==='code:description' ? o.some(opt => opt.split(':')[0].trim() === String(v).trim() || opt === String(v).trim()) : o.includes(String(v).trim())),
 
     // PRESET UI & MANAGEMENT
-    rerenderAllPresetUIs() {
-        let defaultsHtml = '';
-        Object.entries(this.state.presets.defaults).forEach(([id, value]) => {
-            defaultsHtml += this._generateDefaultFieldHtml(id, value);
-        });
-        this.ui.defaultsPresets.innerHTML = defaultsHtml;
-        this.ui.defaultsContainer.style.display = defaultsHtml ? 'block' : 'none';
-        this.forEachPresetType(type => {
-            const container = this.ui[`${type}Presets`];
-            container.innerHTML = '';
-            Object.entries(this.state.presets[type]).forEach(([name, values]) => container.appendChild(this.createPresetCard(type, name, values)));
-        });
+    rerender(type = null, name = null) {
+        if (!type) { // Full rerender
+            let defaultsHtml = '';
+            Object.entries(this.state.presets.defaults).forEach(([id, value]) => defaultsHtml += this._generateDefaultFieldHtml(id, value));
+            this.ui.defaultsPresets.innerHTML = defaultsHtml;
+            this.ui.defaultsContainer.style.display = defaultsHtml ? 'block' : 'none';
+            this.forEachPresetType((t, container) => {
+                container.innerHTML = '';
+                this.forEachPreset(t, (n, v) => container.appendChild(this.createPresetCard(t, n, v)));
+            }, true);
+        } else if (name) { // Single preset update
+            const card = document.getElementById(`preset-${type}-${name.replace(/\s+/g, '-')}`);
+            const newCard = this.createPresetCard(type, name, this.state.presets[type][name]);
+            if (card) card.replaceWith(newCard);
+            else this.ui[`${type}Presets`].appendChild(newCard);
+        }
     },
 
     _createFieldInputHtml(mapping, value, onChangeJs) {
         const format = mapping.format || 'text';
-        const fieldId = mapping.destinations[0].id;
-        let fieldHtml = `<label class="block text-sm font-medium text-slate-700 mb-1">${fieldId} <span class="text-xs text-slate-500">(${format})</span></label>`;
-        if (mapping.destinations[0].addAll) return fieldHtml + `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">All source options will be applied.</div>`;
-        if (format === 'text') return fieldHtml + `<input type="text" value="${this.escapeHtml(value || '')}" onchange="${onChangeJs}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">`;
+        const fieldId = this._fieldId(mapping);
+        let html = `<label class="block text-sm font-medium text-slate-700 mb-1">${fieldId} <span class="text-xs text-slate-500">(${format})</span></label>`;
+        if (mapping.destinations[0].addAll) return html + `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">All source options applied.</div>`;
+        if (format === 'text') return html + `<input type="text" value="${this.escapeHtml(value || '')}" onchange="${onChangeJs}" class="${this.CSS.INPUT}">`;
         if (mapping.sourceOptions?.length > 0) {
             const options = mapping.sourceOptions.map(opt => {
-                const code = opt.split(':')[0].trim();
-                const val = (format === 'code:description') ? code : opt;
+                const val = (format === 'code:description') ? opt.split(':')[0].trim() : opt;
                 return `<option value="${this.escapeHtml(val)}"${value == val ? ' selected' : ''}>${this.escapeHtml(opt)}</option>`;
             }).join('');
-            return fieldHtml + `<select onchange="${onChangeJs}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"><option value="">-- Choose --</option>${options}</select>`;
+            return html + `<select onchange="${onChangeJs}" class="${this.CSS.INPUT}"><option value="">-- Choose --</option>${options}</select>`;
         }
-        return fieldHtml;
+        return html;
     },
 
     _generateDefaultFieldHtml(fieldId, value) {
         const mapping = this._getMapping(fieldId);
-        if (!mapping) { console.warn('Missing mapping for default field:', fieldId); return ''; }
+        if (!mapping) { console.warn('Missing mapping for default:', fieldId); return ''; }
         return `<div class="preset-field">${this._createFieldInputHtml(mapping, value, `app.updateDefaultValue('${fieldId}', this.value)`)}</div>`;
-    },
-
-    _generatePresetFieldHtml(type, name, fieldId, value) {
-        const mapping = this._getMapping(fieldId);
-        if (!mapping) { console.warn('Missing mapping for preset field:', fieldId); return ''; }
-        const onChangeJs = `app.updatePresetValue('${type}', '${name}', '${fieldId}', this.value)`;
-        return `<div class="preset-field">${this._createFieldInputHtml(mapping, value, onChangeJs)}<button onclick="app.promoteToDefault('${type}','${name}','${fieldId}')" class="text-xs text-blue-500 hover:underline mt-1">Promote to Default</button></div>`;
     },
     
     _generateModalFieldHtml(index, config) {
         const optionsHtml = config.options?.map(opt => `<option value="${this.escapeHtml(opt)}">${this.escapeHtml(opt)}</option>`).join('') || '';
         const inputHtml = config.type === 'select'
-            ? `<select id="modal-field-${index}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm">${optionsHtml}</select>`
-            : `<input type="${config.type || 'text'}" id="modal-field-${index}" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm" placeholder="${config.placeholder || ''}">`;
+            ? `<select id="modal-field-${index}" class="${this.CSS.INPUT}">${optionsHtml}</select>`
+            : `<input type="${config.type || 'text'}" id="modal-field-${index}" class="${this.CSS.INPUT}" placeholder="${config.placeholder || ''}">`;
         return `<div class="mb-2"><label class="block text-sm font-medium text-slate-700 mb-1">${config.label}</label>${inputHtml}</div>`;
     },
 
@@ -469,15 +467,15 @@ const app = {
         let fieldsHtml = '';
         const renderedFields = new Set();
         this.state.mappings.forEach(m => {
-            const destId = m.destinations[0].id;
+            const destId = this._fieldId(m);
             if (!this.state.presets.defaults.hasOwnProperty(destId)) {
-                fieldsHtml += this._generatePresetFieldHtml(type, name, destId, values[destId]);
+                fieldsHtml += `<div class="preset-field">${this._createFieldInputHtml(m, values[destId], `app.updatePresetValue('${type}', '${name}', '${destId}', this.value)`)}<button onclick="app.promoteToDefault('${type}','${name}','${destId}')" class="text-xs text-blue-500 hover:underline mt-1">Promote to Default</button></div>`;
                 renderedFields.add(destId);
             }
         });
         for (const fieldId in values) {
             if (!renderedFields.has(fieldId) && !this.state.presets.defaults.hasOwnProperty(fieldId)) {
-                fieldsHtml += `<div class="preset-field opacity-60"><label class="block text-sm font-medium text-slate-500 mb-1">${fieldId} <span class="text-xs text-red-500">(Orphaned)</span></label><input type="text" value="${this.escapeHtml(values[fieldId] || '')}" disabled readonly class="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded-lg text-sm cursor-not-allowed" title="This field is not in the current mappings."></div>`;
+                fieldsHtml += `<div class="preset-field opacity-60 flex items-start gap-2"><div class="flex-grow"><label class="block text-sm font-medium text-slate-500 mb-1">${fieldId} <span class="text-xs text-red-500">(Orphaned)</span></label><input type="text" value="${this.escapeHtml(values[fieldId] || '')}" disabled readonly class="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded-lg text-sm cursor-not-allowed"></div><button onclick="app.deleteOrphanedField('${type}','${name}','${fieldId}')" class="mt-6 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200" title="Delete this orphaned field">×</button></div>`;
             }
         }
         fieldsContainer.innerHTML = fieldsHtml;
@@ -486,16 +484,22 @@ const app = {
 
     async promoteToDefault(type, name, fieldId) {
         const value = this.state.presets[type]?.[name]?.[fieldId];
-        if (this.isEmpty(value)) return this.showModal({title: 'ℹ️ Info', message: 'Cannot promote an empty value to a default.'});
-        const confirmed = await this.showModal({ title: '❓ Confirm', message: `Promote '${fieldId}' with value '${value}' to a global default?`, buttons: [{text: 'Cancel', value: false}, {text: 'Promote', value: true, class: 'bg-blue-600 text-white'}]});
-        if (!confirmed) return;
+        if (this.isEmpty(value)) return this.showInfo('Cannot promote an empty value.');
+        if (!await this.confirmAction(`Promote '${fieldId}' with value '${value}' to a global default?`, 'Promote')) return;
         this.state.presets.defaults[fieldId] = value;
-        this.forEachPresetType(t => Object.values(this.state.presets[t]).forEach(p => delete p[fieldId]));
-        this.rerenderAllPresetUIs();
+        this.forEachPresetType(t => {
+            this.forEachPreset(t, (pName, pValues) => {
+                if (pValues.hasOwnProperty(fieldId)) {
+                    delete pValues[fieldId];
+                    this.rerender(t, pName);
+                }
+            });
+        });
+        this.rerender(); // Full rerender to update defaults section
     },
 
     updateDefaultValue: (id, val) => { app.state.presets.defaults[id] = val; },
-    updatePresetValue: (t, n, id, val) => { if (app.state.presets[t]?.[n]) app.state.presets[t][n][id] = val; },
+    updatePresetValue: (t, n, id, val) => { if (app.state.presets[t]?.[n]) { app.state.presets[t][n][id] = val; }}, // Rerender removed to prevent lag on typing
 
     async addPreset(type) {
         const res = await this.showModal({ title: `Add New ${type.slice(0, -1)}`, inputs: [{ label: 'Preset Name' }] });
@@ -503,62 +507,57 @@ const app = {
         if (name && !this.state.presets[type]?.[name]) {
             this.state.presets[type][name] = {};
             this.ui[`${type}Presets`].appendChild(this.createPresetCard(type, name, {}));
-        } else if (name) this.showModal({ title: '❌ Error', message: `A preset named "${name}" already exists.` });
+        } else if (name) this.showError(`A preset named "${name}" already exists.`);
+    },
+
+    async deleteOrphanedField(type, name, fieldId) {
+        if (!await this.confirmAction(`Remove orphaned field "${fieldId}" from preset "${name}"?`, 'Delete')) return;
+        delete this.state.presets[type][name][fieldId];
+        this.rerender(type, name);
     },
 
     async manageLocalStorage(action) {
+        const button = document.querySelector(`button[onclick*="manageLocalStorage('${action}')"]`);
+        const originalText = button?.textContent;
+        if (button) button.textContent = { save: '💾 Saving...', load: '📂 Loading...', clear: '🗑️ Clearing...' }[action];
         try {
             const actions = {
                 save: () => { localStorage.setItem('presetFillerState', JSON.stringify(this.state)); return 'Progress saved.'; },
-                load: () => { 
-                    const s = localStorage.getItem('presetFillerState');
-                    if (!s) return { info: 'No saved state found.' };
-                    const ps = JSON.parse(s);
-                    this.state = ps;
-                    this.ui.mappingsJson.value = JSON.stringify(ps.mappings, null, 2);
-                    this.renderPresetUI();
-                    return 'Saved state loaded.';
-                },
-                clear: async () => {
-                    if (await this.showModal({ title: '❓ Confirm', message: 'Clear all saved progress?', buttons: [{ text: 'Cancel', value: false }, { text: 'Clear', value: true, class: 'bg-red-600 text-white' }] })) {
-                        localStorage.removeItem('presetFillerState');
-                        return 'Saved state cleared.';
-                    }
-                    return null;
-                }
+                load: () => { const s = localStorage.getItem('presetFillerState'); if (!s) return { info: 'No saved state found.' }; this.state = JSON.parse(s); this.ui.mappingsJson.value = JSON.stringify(this.state.mappings, null, 2); this.renderPresetUI(); return 'Saved state loaded.'; },
+                clear: async () => { if (await this.confirmAction('Clear all saved progress?', 'Clear')) { localStorage.removeItem('presetFillerState'); return 'Saved state cleared.'; } return null; }
             };
             const result = await actions[action]();
-            if (result) await this.showModal({ title: result.info ? 'ℹ️ Info' : '✅ Success', message: result.info || result });
+            if (result) await (result.info ? this.showInfo(result.info) : this.showSuccess(result));
         } catch (e) {
-            await this.showModal({ title: '❌ Error', message: 'Local Storage Error: ' + e.message });
+            await this.showError('Local Storage Error: ' + e.message);
+        } finally {
+            if (button && originalText) button.textContent = originalText;
         }
     },
     
     // BOOKMARKLET GENERATION
     async _generateBookmarklet(config) {
-        const nameInput = document.getElementById(config.nameInputId);
-        const name = nameInput.value.trim();
-        if (!name) return this.showModal({ title: '❌ Error', message: 'Please provide a name.' });
+        const name = document.getElementById(config.nameInputId).value.trim();
+        if (!name) return this.showError('Please provide a name.');
         const logic = config.logic.replace(/\s+/g, ' ').trim();
         const script = 'javascript:(function(){' + encodeURIComponent(logic) + '})()';
         const sizeKB = (script.length / 1024).toFixed(2);
         if (script.length > this.BOOKMARKLET_SIZE_WARNING_THRESHOLD) {
-            const confirmed = await this.showModal({ title: '⚠️ Warning', message: `Bookmarklet is ${sizeKB} KB and may not work. Continue?`, buttons: [{ text: 'Cancel', value: false }, { text: 'Continue', value: true }] });
-            if (!confirmed) return;
+            if (!await this.showModal({ title: '⚠️ Warning: Large Bookmarklet', message: `Bookmarklet is ${sizeKB} KB. Browser limits:\n• Chrome/Edge: ~2MB (safe)\n• Firefox: ~64KB (may fail)\n• Safari: ~80KB (may fail)\n\nContinue anyway?`, buttons: [{ text: 'Cancel', value: false }, { text: 'Generate Anyway', value: true }] })) return;
         }
         document.getElementById(config.linkContainerId).innerHTML = `<a href="${script.replace(/"/g, '&quot;')}" class="inline-block px-8 py-3 ${config.buttonClass} text-white font-semibold rounded-lg shadow-md">${this.escapeHtml(name)}</a><p class="text-sm text-slate-600 mt-2">Size: ${sizeKB} KB</p>`;
         document.getElementById(config.outputContainerId).style.display = 'block';
     },
 
     async generateFinalBookmarklet() {
-        if (!this.state.mappings) return await this.showModal({ title: '❌ Error', message: 'Load mappings first.' });
+        if (!this.state.mappings) return await this.showError('Load mappings first.');
         const fieldMeta = {}, lookup = {};
         this.state.mappings.forEach(m => {
-            const dest = m.destinations[0];
-            fieldMeta[dest.id] = { t: dest.type, f: m.format || 'text', a: dest.addAll, s: m.sourceId };
+            const destId = this._fieldId(m);
+            fieldMeta[destId] = { t: m.destinations[0].type, f: m.format || 'text', a: m.destinations[0].addAll, s: m.sourceId };
             if (m.format === 'code:description' && m.sourceOptions?.length > 0) {
-                lookup[dest.id] = {};
-                m.sourceOptions.forEach(opt => { const [code] = opt.split(':'); if (code?.trim()) lookup[dest.id][code.trim()] = opt; });
+                lookup[destId] = {};
+                m.sourceOptions.forEach(opt => { const [code] = opt.split(':'); if (code?.trim()) lookup[destId][code.trim()] = opt; });
             }
         });
         const logic = this.BOOKMARKLET_UTILITIES + this.FILLER_LOGIC
@@ -567,14 +566,14 @@ const app = {
             .replace('__PRESETS_DATA__', JSON.stringify(this.state.presets))
             .replace('__DUALLIST_POLL_INTERVAL__', this.DUALLIST_POLL_INTERVAL)
             .replace('__DUALLIST_MAX_TRIES__', this.DUALLIST_MAX_TRIES);
-        await this._generateBookmarklet({ nameInputId: 'final-bookmarklet-name', logic, linkContainerId: 'final-bookmarklet-link-container', outputContainerId: 'final-output', buttonClass: 'bg-green-600 hover:bg-green-700' });
+        await this._generateBookmarklet({ nameInputId: 'final-bookmarklet-name', logic, linkContainerId: 'final-bookmarklet-link-container', outputContainerId: 'final-output', buttonClass: this.CSS.BTN_SUCCESS });
     },
 
     async generateClearBookmarklet() {
-        if (!this.state.mappings) return await this.showModal({ title: '❌ Error', message: 'Load mappings first.' });
-        const fields = this.state.mappings.map(m => m.destinations[0].id);
+        if (!this.state.mappings) return await this.showError('Load mappings first.');
+        const fields = this.state.mappings.map(this._fieldId);
         const logic = this.BOOKMARKLET_UTILITIES + this.CLEAR_LOGIC.replace('__FIELDS_DATA__', JSON.stringify(fields));
-        await this._generateBookmarklet({ nameInputId: 'clear-bookmarklet-name', logic, linkContainerId: 'clear-bookmarklet-link-container', outputContainerId: 'clear-output', buttonClass: 'bg-red-600 hover:bg-red-700' });
+        await this._generateBookmarklet({ nameInputId: 'clear-bookmarklet-name', logic, linkContainerId: 'clear-bookmarklet-link-container', outputContainerId: 'clear-output', buttonClass: this.CSS.BTN_DANGER });
     },
     
     BOOKMARKLET_UTILITIES: `function getEl(i){return document.getElementById(i)||document.getElementsByName(i)[0]}function trigger(e,v){e.dispatchEvent(new Event(v,{bubbles:true}))}`,
@@ -596,7 +595,7 @@ const app = {
                 function handleMouseOver(e) { if (!state.mode) return; state.lastHovered = e.target; e.target.style.outline = '2px solid red'; }
                 function handleMouseOut(e) { if (state.lastHovered) state.lastHovered.style.outline = ''; }
                 function handleClick(e) { if (!state.mode) return; e.preventDefault(); e.stopPropagation(); if (state.lastHovered) state.lastHovered.style.outline = ''; if (state.mode === 'source') scrapeSource(e.target); else scrapeDestination(e.target); state.mode = null; document.body.style.cursor = 'default'; }
-                function updateUI() { const root = document.getElementById('_mapperUIRoot'); if (!root) return; const mappingsHtml = state.mappings.map((m, i) => \`<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>\${m.sourceId}</b> &rarr; <b>\${m.destinations[0].id}</b></span><button onclick="window._mapper.removeMapping(\${i})" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>\`).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>'; const sourceText = state.currentSource ? \`\${state.currentSource.sourceId} (\${state.currentSource.format})\` : 'None', destText = state.currentDestination ? \`\${state.currentDestination.id} (\${state.currentDestination.type})\` : 'None'; root.innerHTML = \`<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v4.3</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" field as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._mapper.setMode('source')" class="m-btn \${state.mode==='source'?'act':''}">1. Select Source</button><button onclick="window._mapper.setMode('destination')" class="m-btn \${state.mode==='destination'?'act':''}">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> \${sourceText}<br><b>Dest:</b> \${destText}</div><button onclick="window._mapper.commitMapping()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">\${mappingsHtml}</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._mapper.generateJSON()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._mapper.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>\`; }
+                function updateUI() { const root = document.getElementById('_mapperUIRoot'); if (!root) return; const mappingsHtml = state.mappings.map((m, i) => \`<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>\${m.sourceId}</b> &rarr; <b>\${m.destinations[0].id}</b></span><button onclick="window._mapper.removeMapping(\${i})" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>\`).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>'; const sourceText = state.currentSource ? \`\${state.currentSource.sourceId} (\${state.currentSource.format})\` : 'None', destText = state.currentDestination ? \`\${state.currentDestination.id} (\${state.currentDestination.type})\` : 'None'; root.innerHTML = \`<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v4.5</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" field as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._mapper.setMode('source')" class="m-btn \${state.mode==='source'?'act':''}">1. Select Source</button><button onclick="window._mapper.setMode('destination')" class="m-btn \${state.mode==='destination'?'act':''}">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> \${sourceText}<br><b>Dest:</b> \${destText}</div><button onclick="window._mapper.commitMapping()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">\${mappingsHtml}</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._mapper.generateJSON()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._mapper.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>\`; }
                 function generateJSON() { const json = JSON.stringify(state.mappings, null, 2); const textarea = document.createElement('textarea'); textarea.value = json; document.body.appendChild(textarea); textarea.select(); try { document.execCommand('copy'); alert('JSON copied!'); } catch (e) { alert('Copy failed'); console.log(json); } document.body.removeChild(textarea); }
                 function removeMapping(i) { state.mappings.splice(i, 1); updateUI(); }
                 function destroy() { if(state.lastHovered) state.lastHovered.style.outline = ''; document.removeEventListener('mouseover', handleMouseOver); document.removeEventListener('mouseout', handleMouseOut); document.removeEventListener('click', handleClick, true); document.getElementById('_mapperUIRoot').remove(); }

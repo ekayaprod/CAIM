@@ -320,7 +320,6 @@ const app = {
 
     // EXCEL & IMPORT/EXPORT
     _generateExcelFile(config) {
-        if (!this.state.mappings) return this.showError('Load mappings first.');
         const wb = XLSX.utils.book_new();
         config.sheets.forEach(sheetConfig => {
             const ws = XLSX.utils.json_to_sheet(sheetConfig.data, { headers: sheetConfig.headers });
@@ -330,10 +329,12 @@ const app = {
     },
 
     downloadXlsxTemplate() {
+        if (!this.state.mappings) return this.showError('Load mappings first.');
         this._generateExcelFile({ filename: 'Preset_Template.xlsx', sheets: [{ name: 'Presets', data: [{}], headers: ['Name', ...this.state.mappings.map(this._fieldId)] }] });
     },
 
     exportPresetsToExcel() {
+        if (!this.state.mappings) return this.showError('Load mappings first.');
         const sheets = [];
         this.forEachPresetType(type => {
             const data = Object.entries(this.state.presets[type]).map(([name, values]) => ({ Name: name, ...values }));
@@ -495,11 +496,11 @@ const app = {
                 }
             });
         });
-        this.rerender(); // Full rerender to update defaults section
+        this.rerender();
     },
 
     updateDefaultValue: (id, val) => { app.state.presets.defaults[id] = val; },
-    updatePresetValue: (t, n, id, val) => { if (app.state.presets[t]?.[n]) { app.state.presets[t][n][id] = val; }}, // Rerender removed to prevent lag on typing
+    updatePresetValue: (t, n, id, val) => { if (app.state.presets[t]?.[n]) { app.state.presets[t][n][id] = val; }},
 
     async addPreset(type) {
         const res = await this.showModal({ title: `Add New ${type.slice(0, -1)}`, inputs: [{ label: 'Preset Name' }] });
@@ -520,7 +521,7 @@ const app = {
         const button = document.querySelector(`button[onclick*="manageLocalStorage('${action}')"]`);
         const originalText = button?.textContent;
         if (button) button.textContent = { save: '💾 Saving...', load: '📂 Loading...', clear: '🗑️ Clearing...' }[action];
-        try {
+        await this.safely(async () => {
             const actions = {
                 save: () => { localStorage.setItem('presetFillerState', JSON.stringify(this.state)); return 'Progress saved.'; },
                 load: () => { const s = localStorage.getItem('presetFillerState'); if (!s) return { info: 'No saved state found.' }; this.state = JSON.parse(s); this.ui.mappingsJson.value = JSON.stringify(this.state.mappings, null, 2); this.renderPresetUI(); return 'Saved state loaded.'; },
@@ -528,16 +529,14 @@ const app = {
             };
             const result = await actions[action]();
             if (result) await (result.info ? this.showInfo(result.info) : this.showSuccess(result));
-        } catch (e) {
-            await this.showError('Local Storage Error: ' + e.message);
-        } finally {
-            if (button && originalText) button.textContent = originalText;
-        }
+        }, 'Local Storage');
+        if (button && originalText) button.textContent = originalText;
     },
     
     // BOOKMARKLET GENERATION
     async _generateBookmarklet(config) {
-        const name = document.getElementById(config.nameInputId).value.trim();
+        const nameInput = document.getElementById(config.nameInputId);
+        const name = nameInput.value.trim();
         if (!name) return this.showError('Please provide a name.');
         const logic = config.logic.replace(/\s+/g, ' ').trim();
         const script = 'javascript:(function(){' + encodeURIComponent(logic) + '})()';
@@ -595,7 +594,7 @@ const app = {
                 function handleMouseOver(e) { if (!state.mode) return; state.lastHovered = e.target; e.target.style.outline = '2px solid red'; }
                 function handleMouseOut(e) { if (state.lastHovered) state.lastHovered.style.outline = ''; }
                 function handleClick(e) { if (!state.mode) return; e.preventDefault(); e.stopPropagation(); if (state.lastHovered) state.lastHovered.style.outline = ''; if (state.mode === 'source') scrapeSource(e.target); else scrapeDestination(e.target); state.mode = null; document.body.style.cursor = 'default'; }
-                function updateUI() { const root = document.getElementById('_mapperUIRoot'); if (!root) return; const mappingsHtml = state.mappings.map((m, i) => \`<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>\${m.sourceId}</b> &rarr; <b>\${m.destinations[0].id}</b></span><button onclick="window._mapper.removeMapping(\${i})" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>\`).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>'; const sourceText = state.currentSource ? \`\${state.currentSource.sourceId} (\${state.currentSource.format})\` : 'None', destText = state.currentDestination ? \`\${state.currentDestination.id} (\${state.currentDestination.type})\` : 'None'; root.innerHTML = \`<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v4.5</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" field as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._mapper.setMode('source')" class="m-btn \${state.mode==='source'?'act':''}">1. Select Source</button><button onclick="window._mapper.setMode('destination')" class="m-btn \${state.mode==='destination'?'act':''}">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> \${sourceText}<br><b>Dest:</b> \${destText}</div><button onclick="window._mapper.commitMapping()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">\${mappingsHtml}</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._mapper.generateJSON()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._mapper.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>\`; }
+                function updateUI() { const root = document.getElementById('_mapperUIRoot'); if (!root) return; const mappingsHtml = state.mappings.map((m, i) => \`<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>\${m.sourceId}</b> &rarr; <b>\${m.destinations[0].id}</b></span><button onclick="window._mapper.removeMapping(\${i})" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>\`).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>'; const sourceText = state.currentSource ? \`\${state.currentSource.sourceId} (\${state.currentSource.format})\` : 'None', destText = state.currentDestination ? \`\${state.currentDestination.id} (\${state.currentDestination.type})\` : 'None'; root.innerHTML = \`<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v4.6</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" field as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._mapper.setMode('source')" class="m-btn \${state.mode==='source'?'act':''}">1. Select Source</button><button onclick="window._mapper.setMode('destination')" class="m-btn \${state.mode==='destination'?'act':''}">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> \${sourceText}<br><b>Dest:</b> \${destText}</div><button onclick="window._mapper.commitMapping()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">\${mappingsHtml}</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._mapper.generateJSON()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._mapper.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>\`; }
                 function generateJSON() { const json = JSON.stringify(state.mappings, null, 2); const textarea = document.createElement('textarea'); textarea.value = json; document.body.appendChild(textarea); textarea.select(); try { document.execCommand('copy'); alert('JSON copied!'); } catch (e) { alert('Copy failed'); console.log(json); } document.body.removeChild(textarea); }
                 function removeMapping(i) { state.mappings.splice(i, 1); updateUI(); }
                 function destroy() { if(state.lastHovered) state.lastHovered.style.outline = ''; document.removeEventListener('mouseover', handleMouseOver); document.removeEventListener('mouseout', handleMouseOut); document.removeEventListener('click', handleClick, true); document.getElementById('_mapperUIRoot').remove(); }
@@ -609,3 +608,4 @@ document.addEventListener('DOMContentLoaded', () => { window.app = app; app.init
 </script>
 </body>
 </html>
+

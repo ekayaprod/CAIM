@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler v4.8</title>
+    <title>CA IM Preset Form Filler v5.0</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -27,13 +27,28 @@
             transform: scale(0.95); transition: transform 0.3s ease;
         }
         .modal-backdrop.visible .modal-content { transform: scale(1); }
+        .group-item {
+            background-color: white;
+            border: 1px solid #e2e8f0;
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            border-radius: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: grab;
+        }
+        .group-item.dragging {
+            opacity: 0.5;
+            background: #f7fafc;
+        }
     </style>
 </head>
 <body class="bg-slate-100 min-h-screen">
     <div class="container max-w-5xl mx-auto p-6">
         <header class="mb-8">
             <h1 class="text-4xl font-bold text-slate-800">Preset Form Filler</h1>
-            <p class="text-slate-600 mt-2">Build intelligent form fillers with location and role presets</p>
+            <p class="text-slate-600 mt-2">Build intelligent form fillers with hierarchical preset groups</p>
             <nav class="mt-4">
                 <button onclick="app.showStep(4)" class="text-blue-600 hover:underline">Help & Documentation</button>
             </nav>
@@ -49,13 +64,13 @@
                 <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg mb-6">
                     <h3 class="font-semibold text-blue-900 mb-2">How It Works</h3>
                     <p class="text-blue-800 text-sm leading-relaxed">
-                        This tool helps you map your form fields. Run it on your CA IM form, then click on a source field (like a dropdown) and a destination field to create a mapping. The builder automatically detects the format of each field. <strong>Note:</strong> If a dropdown appears read-only, map to the editable version (typically the same name with a "1" suffix).
+                        This tool helps you map your form fields. Run it on your CA IM form, then click on a source field (like a dropdown) and a destination field to create a mapping. The builder automatically detects the format of each field.
                     </p>
                 </div>
                 <div class="text-center py-8">
                     <p class="text-slate-600 mb-4">Drag this bookmarklet to your bookmarks bar:</p>
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        🔧 Field Mapper Tool v4.8
+                        🔧 Field Mapper Tool v5.0
                     </a>
                 </div>
                 <div class="mt-8 flex justify-end">
@@ -77,48 +92,30 @@
                 </div>
                  <div class="mt-6 flex gap-3 flex-wrap">
                     <button onclick="app.renderPresetUI()" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700">2. Load Mappings</button>
-                    <button onclick="app.manageLocalStorage('save')" class="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-lg hover:bg-indigo-200 text-sm">💾 Save Progress</button>
-                    <button onclick="app.manageLocalStorage('load')" class="px-4 py-2 bg-indigo-100 text-indigo-800 rounded-lg hover:bg-indigo-200 text-sm">📂 Load Saved</button>
-                    <button onclick="app.manageLocalStorage('clear')" class="px-4 py-2 bg-red-100 text-red-800 rounded-lg hover:bg-red-200 text-sm">🗑️ Clear Saved</button>
                 </div>
-                <div id="bulk-import-section" style="display: none;" class="mt-6 p-6 bg-amber-50 border border-amber-200 rounded-lg">
-                    <h3 class="text-lg font-semibold text-slate-800 mb-3">3. Bulk Import/Export</h3>
-                    <p class="text-sm text-slate-600 mb-4">For bulk updates, use "Additive" import mode. This is the most efficient way to manage many presets.</p>
-                    <div class="flex items-end gap-4 flex-wrap">
-                        <button onclick="app.downloadXlsxTemplate()" class="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">Download Template</button>
-                        <div class="flex-grow">
-                             <label for="bulk-file-upload" class="block text-sm font-medium text-slate-700 mb-2">Upload Completed Excel File</label>
-                             <input type="file" id="bulk-file-upload" accept=".xlsx, .xls, .csv" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm">
-                        </div>
-                        <button onclick="app.handleImportClick()" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">Import...</button>
-                        <button onclick="app.exportPresetsToExcel()" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700">Export Presets</button>
-                    </div>
-                </div>
-                <div id="presets-ui-container" style="display: none;">
-                    <div id="defaults-container" class="p-6 bg-slate-50 border border-slate-200 rounded-lg my-6" style="display: none;">
-                        <h3 class="text-lg font-semibold text-slate-800 mb-4">Global Default Values</h3>
-                        <div id="defaults-presets" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div>
-                            <h3 class="text-lg font-semibold text-slate-800 mb-3">Location Presets</h3>
-                            <div id="locations-presets"></div>
-                            <div class="mt-3 flex gap-2 flex-wrap">
-                                <button onclick="app.addPreset('locations')" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm">+ Add</button>
+                <div id="presets-config-section" style="display: none;">
+                    <div class="mt-6 p-6 bg-amber-50 border border-amber-200 rounded-lg">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-3">3. Import Preset Groups</h3>
+                        <div class="flex items-end gap-4 flex-wrap">
+                            <button onclick="app.downloadXlsxTemplate()" class="px-6 py-2 bg-sky-600 text-white rounded-lg hover:bg-sky-700 transition-colors">Download Template</button>
+                            <div class="flex-grow">
+                                 <label for="bulk-file-upload" class="block text-sm font-medium text-slate-700 mb-2">Upload Completed Excel File</label>
+                                 <input type="file" id="bulk-file-upload" accept=".xlsx, .xls, .csv" class="w-full px-3 py-2 border border-slate-300 rounded-lg bg-white text-sm">
                             </div>
+                            <button onclick="app.handleImportClick()" class="px-6 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors">Import Group...</button>
                         </div>
-                        <div>
-                            <h3 class="text-lg font-semibold text-slate-800 mb-3">Role Presets</h3>
-                            <div id="roles-presets"></div>
-                            <div class="mt-3 flex gap-2 flex-wrap">
-                                <button onclick="app.addPreset('roles')" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm">+ Add</button>
-                            </div>
+                    </div>
+                    <div id="presets-ui-container" class="mt-6">
+                        <h3 class="text-lg font-semibold text-slate-800 mb-3">4. Set Group Priority</h3>
+                        <p class="text-sm text-slate-600 mb-4">Drag and drop groups to set their merge priority. Groups at the bottom have higher priority and will override values from groups above them.</p>
+                        <div id="preset-groups-container" class="bg-slate-50 p-4 rounded-lg border">
+                            <!-- Preset groups will be rendered here -->
                         </div>
                     </div>
                 </div>
                 <div class="mt-8 flex justify-between">
                     <button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">← Back</button>
-                    <button onclick="app.showStep(3)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Generate Bookmarklets →</button>
+                    <button onclick="app.showStep(3)" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Generate Bookmarklet →</button>
                 </div>
             </div>
             
@@ -129,7 +126,7 @@
                     Generate Bookmarklets
                 </h2>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
+                     <div class="p-4 bg-green-50 border border-green-200 rounded-lg">
                          <h3 class="text-lg font-semibold text-green-800 mb-2">Form Filler</h3>
                         <div class="mb-6">
                             <label for="final-bookmarklet-name" class="block text-sm font-semibold text-slate-700 mb-2">Bookmarklet Name</label>
@@ -164,23 +161,17 @@
                 <h2 class="text-2xl font-semibold text-slate-800 mb-6 border-b pb-4">Help & Documentation</h2>
                 <div class="prose max-w-none text-slate-700">
                     <h4>Overview</h4>
-                    <p>This tool creates bookmarklets to automate filling complex forms by using preset data for locations and roles.</p>
+                    <p>This tool creates bookmarklets to automate filling complex forms by using hierarchical "Preset Groups".</p>
                     <h4>Phase 1: Generate Field Mapping Tool</h4>
-                    <p>Create a "mapper" bookmarklet. Run it on the target form to visually map source fields (like a dropdown) to destination fields. This generates a JSON configuration.</p>
+                    <p>Create a "mapper" bookmarklet. Run it on the target form to visually map source fields (like a dropdown) to destination fields. This generates a JSON configuration that defines the form's structure.</p>
                     <h4>Phase 2: Configure Presets</h4>
                     <ol>
                         <li><strong>Load Mappings:</strong> Paste the JSON from the mapper tool into the text area and click "Load Mappings".</li>
-                        <li><strong>Import/Export:</strong> The recommended workflow is to download the Excel template, fill it with your preset data, and import it. Use "Additive" import mode for bulk updates.</li>
-                        <li><strong>Manual Configuration:</strong> You can add presets manually. Use the "Promote to Default" button on any field to make its value a global default, removing it from all individual presets.</li>
+                        <li><strong>Import Preset Groups:</strong> Import one or more Excel spreadsheets. Each spreadsheet will become a "Preset Group". You will be asked to name each group upon import (e.g., "Locations", "Roles", "Departments").</li>
+                        <li><strong>Set Hierarchy:</strong> After importing, drag and drop the groups in the list to set their priority. Groups at the bottom of the list have higher priority and their data will override data from groups above them in case of a conflict.</li>
                     </ol>
-                    <h4>Field Formats</h4>
-                    <p>The mapper tool automatically detects the format of your source fields to handle data more efficiently:</p>
-                    <ul>
-                        <li><strong>code:description:</strong> For fields where the option text is like "01:Adams County". The tool stores only the code ("01") and looks up the full description when filling the form.</li>
-                        <li><strong>plain / enum:</strong> For simple value fields (e.g., "1", "2", "3" or "CREATE", "MODIFY").</li>
-                        <li><strong>text:</strong> For free-form text input fields.</li>
-                    </ul>
-                    <p><strong>Text Entry Limitations:</strong> Fields that allow manual text entry (via "Add new Value" buttons) cannot be pre-filled by the filler bookmarklet. The tool only supports mapping from dropdown source fields to destination fields.</p>
+                    <h4>Phase 3: Generate Bookmarklets</h4>
+                    <p>This final step generates the "Filler" and "Clearer" bookmarklets. When you run the Filler on the target form, it will show a dropdown menu for each Preset Group you created.</p>
                 </div>
                 <div class="mt-8">
                     <button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50">← Back to Start</button>
@@ -199,33 +190,37 @@
         </div>
     </div>
 
-    <template id="preset-card-template">
-        <div class="preset-card">
-            <strong data-name class="text-slate-800"></strong>
-            <div data-fields-container class="grid grid-cols-1 gap-4 mt-4"></div>
+    <template id="preset-group-template">
+        <div class="group-item" draggable="true">
+            <div class="flex items-center">
+                <svg class="w-5 h-5 text-slate-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+                <strong data-name></strong>
+            </div>
+            <div>
+                <button data-action="view" class="text-sm text-blue-600 hover:underline">View Presets</button>
+                <button data-action="delete" class="text-sm text-red-600 hover:underline ml-4">&times; Delete</button>
+            </div>
         </div>
     </template>
 
 <script>
-// App v4.7: Fixed import modal bug and builder tool click target issue.
+// App v5.0: Fixed critical syntax error in builder bookmarklet.
 const app = {
     // STATE & CONSTANTS
     state: {
         mappings: null,
         mappingsByField: null,
-        presets: { defaults: {}, locations: {}, roles: {} },
+        presets: { defaults: {}, groups: [] },
         pendingImportData: null
     },
-    ui: {}, // Cache for DOM elements
+    ui: {},
     modalResolve: null,
+    draggedItem: null,
     CSS: {
         BTN_PRIMARY: 'bg-blue-600 text-white',
         BTN_DANGER: 'bg-red-600 text-white',
-        BTN_SUCCESS: 'bg-green-600 text-white',
         INPUT: 'w-full px-3 py-2 border border-slate-300 rounded-lg text-sm',
     },
-    MAX_VALIDATION_ERRORS: 10,
-    BOOKMARKLET_SIZE_WARNING_THRESHOLD: 60000,
     DUALLIST_POLL_INTERVAL: 50,
     DUALLIST_MAX_TRIES: 100,
 
@@ -234,12 +229,8 @@ const app = {
         this.ui = {
             steps: Array.from({length: 4}, (_, i) => document.getElementById(`step${i+1}`)),
             mappingsJson: document.getElementById('mappings-json'),
-            presetsUiContainer: document.getElementById('presets-ui-container'),
-            bulkImportSection: document.getElementById('bulk-import-section'),
-            defaultsContainer: document.getElementById('defaults-container'),
-            defaultsPresets: document.getElementById('defaults-presets'),
-            locationsPresets: document.getElementById('locations-presets'),
-            rolesPresets: document.getElementById('roles-presets'),
+            presetsConfigSection: document.getElementById('presets-config-section'),
+            presetGroupsContainer: document.getElementById('preset-groups-container'),
             modal: document.getElementById('app-modal'),
             modalTitle: document.getElementById('modal-title'),
             modalText: document.getElementById('modal-text'),
@@ -250,6 +241,7 @@ const app = {
         const builderScript = this.BUILDER_TOOL.getMinifiedScript();
         document.getElementById('builder-bookmarklet-link').href = 'javascript:' + encodeURIComponent(builderScript);
         this.showStep(1);
+        this.addDragDropListeners();
     },
 
     showStep(stepNumber) {
@@ -262,9 +254,8 @@ const app = {
             if (!jsonInput) return this.showError('Please paste the mappings JSON first.');
             this.state.mappings = JSON.parse(jsonInput);
             this.state.mappingsByField = Object.fromEntries(this.state.mappings.map(m => [this._fieldId(m), m]));
-            this.ui.presetsUiContainer.style.display = 'block';
-            this.ui.bulkImportSection.style.display = 'block';
-            this.rerender();
+            this.ui.presetsConfigSection.style.display = 'block';
+            this.rerenderGroupsUI();
         }, 'JSON Parse');
     },
 
@@ -298,8 +289,6 @@ const app = {
     
     msg: (msg, icon, title) => app.showModal({title: `${icon} ${title}`, message: msg}),
     showError: (msg, title = 'Error') => app.msg(msg, '❌', title),
-    showWarning: (msg) => app.msg(msg, '⚠️', 'Warning'),
-    showInfo: (msg) => app.msg(msg, 'ℹ️', 'Info'),
     showSuccess: (msg) => app.msg(msg, '✅', 'Success'),
     async confirmAction(message, confirmText = 'Confirm') {
         return await this.showModal({ title: '❓ Confirm', message, buttons: [{text: 'Cancel', value: false}, {text: confirmText, value: true, class: this.CSS.BTN_PRIMARY}] });
@@ -311,23 +300,10 @@ const app = {
     },
 
     // UTILITY HELPERS
-    isEmpty: value => value === undefined || value === null || (typeof value === 'string' && value.trim() === ''),
-    _getMapping: fieldId => app.state.mappingsByField?.[fieldId],
     _fieldId: m => m.destinations[0].id,
-    forEachPresetType: (callback, withUI = false) => ['locations', 'roles'].forEach(type => callback(type, withUI ? app.ui[`${type}Presets`] : null)),
-    forEachPreset: (type, callback) => Object.entries(app.state.presets[type]).forEach(([n, v]) => callback(n, v)),
     escapeHtml: str => String(str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[m]),
 
-    // EXCEL & IMPORT/EXPORT
-    _generateExcelFile(config) {
-        const wb = XLSX.utils.book_new();
-        config.sheets.forEach(sheetConfig => {
-            const ws = XLSX.utils.json_to_sheet(sheetConfig.data, { headers: sheetConfig.headers });
-            XLSX.utils.book_append_sheet(wb, ws, sheetConfig.name);
-        });
-        XLSX.writeFile(wb, config.filename);
-    },
-
+    // EXCEL & IMPORT
     downloadXlsxTemplate() {
         if (!this.state.mappings) return this.showError('Load mappings first.');
         const headers = ['Name', ...this.state.mappings.map(this._fieldId)];
@@ -335,17 +311,6 @@ const app = {
         const ws = XLSX.utils.aoa_to_sheet([headers]);
         XLSX.utils.book_append_sheet(wb, ws, 'Presets');
         XLSX.writeFile(wb, 'Preset_Template.xlsx');
-    },
-
-    exportPresetsToExcel() {
-        if (!this.state.mappings) return this.showError('Load mappings first.');
-        const sheets = [];
-        this.forEachPresetType(type => {
-            const data = Object.entries(this.state.presets[type]).map(([name, values]) => ({ Name: name, ...values }));
-            if (data.length > 0) sheets.push({ name: type.charAt(0).toUpperCase() + type.slice(1), data });
-        });
-        if (sheets.length > 0) this._generateExcelFile({ filename: 'Exported_Presets.xlsx', sheets });
-        else this.showInfo('No presets to export.');
     },
 
     handleImportClick() {
@@ -360,16 +325,19 @@ const app = {
                     const data = XLSX.utils.sheet_to_json(sheet);
                     if (data.length === 0) throw new Error('Spreadsheet has no data rows.');
                     if (!data[0].Name && !data[0].name) throw new Error('Spreadsheet is missing "Name" column.');
-                    this.state.pendingImportData = data;
+                    
                     const results = await this.showModal({
-                        title: '❓ Choose Import Options',
-                        message: `Importing ${this.state.pendingImportData.length} rows`,
-                        inputs: [ { label: 'Preset Type', type: 'select', options: ['locations', 'roles'] }, { label: 'Import Mode', type: 'select', options: ['overwrite - Delete all existing, replace with file', 'additive - Keep existing, update/add from file'] } ],
-                        buttons: [{ text: 'Cancel', value: null }, { text: 'Import', value: 'process', class: 'bg-amber-600 text-white' }]
+                        title: '❓ Name Your Preset Group',
+                        message: `Importing ${data.length} presets. Give this group a name.`,
+                        inputs: [ { label: 'Group Name', placeholder: 'e.g., Locations' } ],
+                        buttons: [{ text: 'Cancel', value: null }, { text: 'Import', value: 'import', class: 'bg-amber-600 text-white' }]
                     });
+
                     if (results) {
-                        const mode = results[1].startsWith('overwrite') ? 'overwrite' : 'additive';
-                        this.processImport(results[0], mode); // Removed await
+                        const groupName = results[0];
+                        if (!groupName) return this.showError('Group name cannot be empty.');
+                        if (this.state.presets.groups.some(g => g.name === groupName)) return this.showError(`A group named "${groupName}" already exists.`);
+                        this.processImport(groupName, data);
                     }
                 }, 'File Read');
             };
@@ -377,179 +345,107 @@ const app = {
         });
     },
 
-    async processImport(presetType, importMode) {
-        if (importMode === 'additive' && !this.state.pendingImportData.some(row => Object.keys(row).some(key => key.toLowerCase() !== 'name' && !this.isEmpty(row[key])))) {
-            if (!await this.confirmAction('All field values are empty. No data will be updated. Continue?')) return;
-        }
-        
-        if (importMode === 'overwrite') this.state.presets[presetType] = {};
-        const existingNames = new Set(Object.keys(this.state.presets[presetType]));
-        
-        this.showModal({ title: '⏳ Importing...', message: `Processing ${this.state.pendingImportData.length} rows...`, buttons: [] });
-        await new Promise(resolve => setTimeout(resolve, 50)); 
-
-        for (const [i, row] of this.state.pendingImportData.entries()) {
+    processImport(groupName, importData) {
+        const groupData = {};
+        importData.forEach(row => {
             const presetName = row.Name || row.name;
-            if (!presetName) continue;
-            if (!this.state.presets[presetType][presetName]) this.state.presets[presetType][presetName] = {};
+            if (!presetName) return;
+            const preset = {};
             for (const fieldId in row) {
-                if (fieldId.toLowerCase() === 'name' || this.state.presets.defaults.hasOwnProperty(fieldId)) continue;
-                const value = row[fieldId], mapping = this._getMapping(fieldId);
-                if ((importMode === 'additive' && this.isEmpty(value)) || !mapping) continue;
-                this.state.presets[presetType][presetName][fieldId] = (mapping.format === 'code:description' && !this.isEmpty(value)) ? this.extractCode(value, mapping.sourceOptions) : value;
+                if (fieldId.toLowerCase() === 'name') continue;
+                const mapping = this.state.mappingsByField[fieldId];
+                if (mapping) {
+                    preset[fieldId] = (mapping.format === 'code:description' && row[fieldId]) 
+                        ? String(row[fieldId]).split(':')[0].trim() 
+                        : row[fieldId];
+                }
             }
-            if (i % 10 === 0 || i === this.state.pendingImportData.length - 1) {
-                this.ui.modalText.textContent = `Processing row ${i + 1} of ${this.state.pendingImportData.length}`;
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
-        }
+            groupData[presetName] = preset;
+        });
         
-        this.hideModal();
-        this.rerender();
-        const importedNames = new Set(this.state.pendingImportData.map(r => r.Name || r.name).filter(Boolean));
-        const newCount = [...importedNames].filter(name => !existingNames.has(name) && this.state.presets[presetType][name]).length;
-        this.showSuccess((importMode === 'overwrite') ? `Imported ${importedNames.size} ${presetType}.` : `Import complete: ${newCount} new added, ${importedNames.size - newCount} existing updated.`);
-        this.state.pendingImportData = null;
+        this.state.presets.groups.push({ name: groupName, data: groupData });
+        this.rerenderGroupsUI();
         this.ui.fileInput.value = '';
+        this.showSuccess(`Group "${groupName}" imported successfully.`);
     },
 
-    extractCode: (v, o) => o.find(opt => opt === String(v).trim() || opt.startsWith(String(v).trim()+':'))?.split(':')[0].trim() || String(v).trim(),
-    isValidValue: (v, o, f) => app.isEmpty(v) || f==='text' || !o?.length ? true : (f==='code:description' ? o.some(opt => opt.split(':')[0].trim() === String(v).trim() || opt === String(v).trim()) : o.includes(String(v).trim())),
-
-    // PRESET UI & MANAGEMENT
-    rerender(type = null, name = null) {
-        if (!type) { // Full rerender
-            let defaultsHtml = '';
-            Object.entries(this.state.presets.defaults).forEach(([id, value]) => defaultsHtml += this._generateDefaultFieldHtml(id, value));
-            this.ui.defaultsPresets.innerHTML = defaultsHtml;
-            this.ui.defaultsContainer.style.display = defaultsHtml ? 'block' : 'none';
-            this.forEachPresetType((t, container) => {
-                container.innerHTML = '';
-                this.forEachPreset(t, (n, v) => container.appendChild(this.createPresetCard(t, n, v)));
-            }, true);
-        } else if (name) { // Single preset update
-            const card = document.getElementById(`preset-${type}-${name.replace(/\s+/g, '-')}`);
-            const newCard = this.createPresetCard(type, name, this.state.presets[type][name]);
-            if (card) card.replaceWith(newCard);
-            else this.ui[`${type}Presets`].appendChild(newCard);
+    // PRESET GROUP UI & MANAGEMENT
+    rerenderGroupsUI() {
+        this.ui.presetGroupsContainer.innerHTML = '';
+        if (this.state.presets.groups.length === 0) {
+            this.ui.presetGroupsContainer.innerHTML = '<p class="text-slate-500 text-center py-4">No preset groups imported yet.</p>';
+            return;
         }
+        this.state.presets.groups.forEach((group, index) => {
+            const template = document.getElementById('preset-group-template').content.cloneNode(true);
+            const groupEl = template.querySelector('.group-item');
+            groupEl.dataset.index = index;
+            groupEl.querySelector('[data-name]').textContent = group.name;
+            groupEl.querySelector('[data-action="view"]').onclick = () => this.viewGroupPresets(index);
+            groupEl.querySelector('[data-action="delete"]').onclick = () => this.deleteGroup(index);
+            this.ui.presetGroupsContainer.appendChild(groupEl);
+        });
     },
 
-    _createFieldInputHtml(mapping, value, onChangeJs) {
-        const format = mapping.format || 'text';
-        const fieldId = this._fieldId(mapping);
-        let html = `<label class="block text-sm font-medium text-slate-700 mb-1">${fieldId} <span class="text-xs text-slate-500">(${format})</span></label>`;
-        if (mapping.destinations[0].addAll) return html + `<div class="p-2 bg-slate-100 rounded text-sm text-slate-500">All source options applied.</div>`;
-        if (format === 'text') return html + `<input type="text" value="${this.escapeHtml(value || '')}" onchange="${onChangeJs}" class="${this.CSS.INPUT}">`;
-        if (mapping.sourceOptions?.length > 0) {
-            const options = mapping.sourceOptions.map(opt => {
-                const val = (format === 'code:description') ? opt.split(':')[0].trim() : opt;
-                return `<option value="${this.escapeHtml(val)}"${value == val ? ' selected' : ''}>${this.escapeHtml(opt)}</option>`;
-            }).join('');
-            return html + `<select onchange="${onChangeJs}" class="${this.CSS.INPUT}"><option value="">-- Choose --</option>${options}</select>`;
+    async viewGroupPresets(index) {
+        const group = this.state.presets.groups[index];
+        if (!group) return;
+        let content = `<div class="max-h-96 overflow-y-auto -mx-4 px-4">`;
+        Object.entries(group.data).forEach(([presetName, values]) => {
+            content += `<div class="preset-card !p-3 !mt-2"><strong class="text-slate-800">${presetName}</strong><div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-1 mt-2 text-sm">`;
+            Object.entries(values).forEach(([field, value]) => {
+                content += `<div><span class="font-medium text-slate-600">${field}:</span> ${this.escapeHtml(value)}</div>`;
+            });
+            content += `</div></div>`;
+        });
+        content += `</div>`;
+        await this.showModal({ title: `Presets in "${group.name}"`, message: content });
+    },
+
+    async deleteGroup(index) {
+        const groupName = this.state.presets.groups[index]?.name;
+        if (!groupName) return;
+        if (await this.confirmAction(`Are you sure you want to delete the "${groupName}" group?`, 'Delete')) {
+            this.state.presets.groups.splice(index, 1);
+            this.rerenderGroupsUI();
         }
-        return html;
-    },
-
-    _generateDefaultFieldHtml(fieldId, value) {
-        const mapping = this._getMapping(fieldId);
-        if (!mapping) { console.warn('Missing mapping for default:', fieldId); return ''; }
-        return `<div class="preset-field">${this._createFieldInputHtml(mapping, value, `app.updateDefaultValue('${fieldId}', this.value)`)}</div>`;
     },
     
-    _generateModalFieldHtml(index, config) {
-        const optionsHtml = config.options?.map(opt => `<option value="${this.escapeHtml(opt)}">${this.escapeHtml(opt)}</option>`).join('') || '';
-        const inputHtml = config.type === 'select'
-            ? `<select id="modal-field-${index}" class="${this.CSS.INPUT}">${optionsHtml}</select>`
-            : `<input type="${config.type || 'text'}" id="modal-field-${index}" class="${this.CSS.INPUT}" placeholder="${config.placeholder || ''}">`;
-        return `<div class="mb-2"><label class="block text-sm font-medium text-slate-700 mb-1">${config.label}</label>${inputHtml}</div>`;
-    },
-
-    createPresetCard(type, name, values) {
-        const card = document.getElementById('preset-card-template').content.cloneNode(true).firstElementChild;
-        card.id = `preset-${type}-${name.replace(/\s+/g, '-')}`;
-        card.querySelector('[data-name]').textContent = name;
-        const fieldsContainer = card.querySelector('[data-fields-container]');
-        let fieldsHtml = '';
-        const renderedFields = new Set();
-        this.state.mappings.forEach(m => {
-            const destId = this._fieldId(m);
-            if (!this.state.presets.defaults.hasOwnProperty(destId)) {
-                fieldsHtml += `<div class="preset-field">${this._createFieldInputHtml(m, values[destId], `app.updatePresetValue('${type}', '${name}', '${destId}', this.value)`)}<button onclick="app.promoteToDefault('${type}','${name}','${destId}')" class="text-xs text-blue-500 hover:underline mt-1">Promote to Default</button></div>`;
-                renderedFields.add(destId);
-            }
+    addDragDropListeners() {
+        const container = this.ui.presetGroupsContainer;
+        container.addEventListener('dragstart', e => { this.draggedItem = e.target; setTimeout(() => e.target.classList.add('dragging'), 0); });
+        container.addEventListener('dragend', e => { this.draggedItem.classList.remove('dragging'); this.draggedItem = null; });
+        container.addEventListener('dragover', e => {
+            e.preventDefault();
+            const afterElement = this.getDragAfterElement(container, e.clientY);
+            const current = document.querySelector('.dragging');
+            if (afterElement == null) container.appendChild(current);
+            else container.insertBefore(current, afterElement);
         });
-        for (const fieldId in values) {
-            if (!renderedFields.has(fieldId) && !this.state.presets.defaults.hasOwnProperty(fieldId)) {
-                fieldsHtml += `<div class="preset-field opacity-60 flex items-start gap-2"><div class="flex-grow"><label class="block text-sm font-medium text-slate-500 mb-1">${fieldId} <span class="text-xs text-red-500">(Orphaned)</span></label><input type="text" value="${this.escapeHtml(values[fieldId] || '')}" disabled readonly class="w-full px-3 py-2 border border-slate-200 bg-slate-100 rounded-lg text-sm cursor-not-allowed"></div><button onclick="app.deleteOrphanedField('${type}','${name}','${fieldId}')" class="mt-6 px-2 py-1 text-xs bg-red-100 text-red-700 rounded hover:bg-red-200" title="Delete this orphaned field">×</button></div>`;
-            }
-        }
-        fieldsContainer.innerHTML = fieldsHtml;
-        return card;
-    },
-
-    async promoteToDefault(type, name, fieldId) {
-        const value = this.state.presets[type]?.[name]?.[fieldId];
-        if (this.isEmpty(value)) return this.showInfo('Cannot promote an empty value.');
-        if (!await this.confirmAction(`Promote '${fieldId}' with value '${value}' to a global default?`, 'Promote')) return;
-        this.state.presets.defaults[fieldId] = value;
-        this.forEachPresetType(t => {
-            this.forEachPreset(t, (pName, pValues) => {
-                if (pValues.hasOwnProperty(fieldId)) {
-                    delete pValues[fieldId];
-                    this.rerender(t, pName);
-                }
-            });
+        container.addEventListener('drop', e => {
+            const newOrder = Array.from(container.querySelectorAll('.group-item')).map(el => this.state.presets.groups[parseInt(el.dataset.index, 10)]);
+            this.state.presets.groups = newOrder;
+            this.rerenderGroupsUI();
         });
-        this.rerender();
     },
 
-    updateDefaultValue: (id, val) => { app.state.presets.defaults[id] = val; },
-    updatePresetValue: (t, n, id, val) => { if (app.state.presets[t]?.[n]) { app.state.presets[t][n][id] = val; }},
-
-    async addPreset(type) {
-        const res = await this.showModal({ title: `Add New ${type.slice(0, -1)}`, inputs: [{ label: 'Preset Name' }] });
-        const name = res?.[0];
-        if (name && !this.state.presets[type]?.[name]) {
-            this.state.presets[type][name] = {};
-            this.ui[`${type}Presets`].appendChild(this.createPresetCard(type, name, {}));
-        } else if (name) this.showError(`A preset named "${name}" already exists.`);
-    },
-
-    async deleteOrphanedField(type, name, fieldId) {
-        if (!await this.confirmAction(`Remove orphaned field "${fieldId}" from preset "${name}"?`, 'Delete')) return;
-        delete this.state.presets[type][name][fieldId];
-        this.rerender(type, name);
-    },
-
-    async manageLocalStorage(action) {
-        const button = document.querySelector(`button[onclick*="manageLocalStorage('${action}')"]`);
-        const originalText = button?.textContent;
-        if (button) button.textContent = { save: '💾 Saving...', load: '📂 Loading...', clear: '🗑️ Clearing...' }[action];
-        await this.safely(async () => {
-            const actions = {
-                save: () => { localStorage.setItem('presetFillerState', JSON.stringify(this.state)); return 'Progress saved.'; },
-                load: () => { const s = localStorage.getItem('presetFillerState'); if (!s) return { info: 'No saved state found.' }; this.state = JSON.parse(s); this.ui.mappingsJson.value = JSON.stringify(this.state.mappings, null, 2); this.renderPresetUI(); return 'Saved state loaded.'; },
-                clear: async () => { if (await this.confirmAction('Clear all saved progress?', 'Clear')) { localStorage.removeItem('presetFillerState'); return 'Saved state cleared.'; } return null; }
-            };
-            const result = await actions[action]();
-            if (result) await (result.info ? this.showInfo(result.info) : this.showSuccess(result));
-        }, 'Local Storage');
-        if (button && originalText) button.textContent = originalText;
+    getDragAfterElement(container, y) {
+        const draggable = [...container.querySelectorAll('.group-item:not(.dragging)')];
+        return draggable.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest;
+        }, { offset: Number.NEGATIVE_INFINITY }).element;
     },
     
     // BOOKMARKLET GENERATION
     async _generateBookmarklet(config) {
-        const nameInput = document.getElementById(config.nameInputId);
-        const name = nameInput.value.trim();
+        const name = document.getElementById(config.nameInputId).value.trim();
         if (!name) return this.showError('Please provide a name.');
         const logic = config.logic.replace(/\s+/g, ' ').trim();
         const script = 'javascript:(function(){' + encodeURIComponent(logic) + '})()';
-        const sizeKB = (script.length / 1024).toFixed(2);
-        if (script.length > this.BOOKMARKLET_SIZE_WARNING_THRESHOLD) {
-            if (!await this.showModal({ title: '⚠️ Warning: Large Bookmarklet', message: `Bookmarklet is ${sizeKB} KB. Browser limits:\n• Chrome/Edge: ~2MB (safe)\n• Firefox: ~64KB (may fail)\n• Safari: ~80KB (may fail)\n\nContinue anyway?`, buttons: [{ text: 'Cancel', value: false }, { text: 'Generate Anyway', value: true }] })) return;
-        }
-        document.getElementById(config.linkContainerId).innerHTML = `<a href="${script.replace(/"/g, '&quot;')}" class="inline-block px-8 py-3 ${config.buttonClass} text-white font-semibold rounded-lg shadow-md">${this.escapeHtml(name)}</a><p class="text-sm text-slate-600 mt-2">Size: ${sizeKB} KB</p>`;
+        await this.showModal({ title: '✅ Generated!', message: `Drag this link to your bookmarks bar.`, buttons: [{text: 'Close', value: true}]});
+        document.getElementById(config.linkContainerId).innerHTML = `<a href="${script.replace(/"/g, '&quot;')}" class="inline-block px-8 py-3 ${config.buttonClass} text-white font-semibold rounded-lg shadow-md">${this.escapeHtml(name)}</a>`;
         document.getElementById(config.outputContainerId).style.display = 'block';
     },
 
@@ -567,9 +463,7 @@ const app = {
         const logic = this.BOOKMARKLET_UTILITIES + this.FILLER_LOGIC
             .replace('__LOOKUP_DATA__', JSON.stringify(lookup))
             .replace('__FIELDMETA_DATA__', JSON.stringify(fieldMeta))
-            .replace('__PRESETS_DATA__', JSON.stringify(this.state.presets))
-            .replace('__DUALLIST_POLL_INTERVAL__', this.DUALLIST_POLL_INTERVAL)
-            .replace('__DUALLIST_MAX_TRIES__', this.DUALLIST_MAX_TRIES);
+            .replace('__PRESETS_DATA__', JSON.stringify(this.state.presets));
         await this._generateBookmarklet({ nameInputId: 'final-bookmarklet-name', logic, linkContainerId: 'final-bookmarklet-link-container', outputContainerId: 'final-output', buttonClass: this.CSS.BTN_SUCCESS });
     },
 
@@ -581,31 +475,29 @@ const app = {
     },
     
     BOOKMARKLET_UTILITIES: `function getEl(i){return document.getElementById(i)||document.getElementsByName(i)[0]}function trigger(e,v){e.dispatchEvent(new Event(v,{bubbles:true}))}`,
-    FILLER_LOGIC: `const L=__LOOKUP_DATA__,M=__FIELDMETA_DATA__,P=__PRESETS_DATA__;function resolve(i,v){const m=M[i];if(!m||m.f!=='code:description'||!L[i])return v;return L[i][v]||v}function fill(i,v){try{const e=getEl(i);if(!e)return;const m=M[i];if(m.t==='duallist'){const sId=m.s||(i+'.Options'),sEl=getEl(sId);if(!sEl)return;const c=e.closest('td,div'),p=c?.parentElement;if(!p)return;const a=p.querySelector('input[name="action.'+i+'.OptionSelectorAdd"]'),r=p.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]'),dL=e;if(!a||!r)return;const add=()=>{let vs=m.a?Object.values(L[i]||{}):String(v).split(',').map(v=>resolve(i,v.trim()));Array.from(sEl.options).forEach(o=>{o.selected=vs.some(v=>(o.text.trim()===v||o.text.trim().startsWith(v+':')))});a.click()};if(dL.options.length>0){Array.from(dL.options).forEach(o=>o.selected=true);r.click();let t=0;const p=setInterval(()=>{if(dL.options.length===0||++t>__DUALLIST_MAX_TRIES__){clearInterval(p);if(dL.options.length===0)add()}},__DUALLIST_POLL_INTERVAL__)}else add()}else if(m.t==='select'){const rV=resolve(i,v),opt=Array.from(e.options).find(o=>o.text.trim()===rV||o.text.trim().startsWith(rV));if(opt)e.value=opt.value;else e.value=rV;trigger(e,'change')}else{e.value=resolve(i,v);trigger(e,'input');trigger(e,'change')}}catch(e){console.error('Error filling',i,':',e)}}function showUI(){const id='_formFillerUI';if(document.getElementById(id))return;const lO=Object.keys(P.locations||{}).map(n=>'<option value="'+n+'">'+n+'</option>').join(''),rO=Object.keys(P.roles||{}).map(n=>'<option value="'+n+'">'+n+'</option>').join('');document.body.insertAdjacentHTML('beforeend','<div id="'+id+'" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;"><h3 style="margin:0 0 16px;">Form Filler</h3><div style="margin-bottom:12px;"><label>Location:</label><select id="_loc" style="width:100%"><option value="">--</option>'+lO+'</select></div><div style="margin-bottom:16px;"><label>Role:</label><select id="_role" style="width:100%"><option value="">--</option>'+rO+'</select></div><button id="_fill" style="padding:8px 16px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;margin-right:8px;">Fill</button><button onclick="this.parentElement.remove()" style="padding:8px 16px;background:#6b7280;color:white;border:none;border-radius:6px;cursor:pointer;">Cancel</button></div>');document.getElementById('_fill').onclick=()=>{const l=document.getElementById('_loc').value,r=document.getElementById('_role').value,m={...P.defaults,...(P.locations[l]||{}),...(P.roles[r]||{})};for(const f in m)fill(f,m[f]);document.getElementById(id).remove()}}try{showUI()}catch(e){alert('Error: '+e.message)}}`,
+    FILLER_LOGIC: `const L=__LOOKUP_DATA__,M=__FIELDMETA_DATA__,P=__PRESETS_DATA__;function resolve(i,v){const m=M[i];if(!m||m.f!=='code:description'||!L[i])return v;return L[i][v]||v}function fill(i,v){try{const e=getEl(i);if(!e)return;const m=M[i];if(m.t==='duallist'){const sId=m.s||(i+'.Options'),sEl=getEl(sId);if(!sEl)return;const c=e.closest('td,div'),p=c?.parentElement;if(!p)return;const a=p.querySelector('input[name="action.'+i+'.OptionSelectorAdd"]'),r=p.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]'),dL=e;if(!a||!r)return;const add=()=>{let vs=m.a?Object.values(L[i]||{}):String(v).split(',').map(v=>resolve(i,v.trim()));Array.from(sEl.options).forEach(o=>{o.selected=vs.some(v=>(o.text.trim()===v||o.text.trim().startsWith(v+':')))});a.click()};if(dL.options.length>0){Array.from(dL.options).forEach(o=>o.selected=true);r.click();let t=0;const p=setInterval(()=>{if(dL.options.length===0||++t>100){clearInterval(p);if(dL.options.length===0)add()}},50)}else add()}else if(m.t==='select'){const rV=resolve(i,v),opt=Array.from(e.options).find(o=>o.text.trim()===rV||o.text.trim().startsWith(rV));if(opt)e.value=opt.value;else e.value=rV;trigger(e,'change')}else{e.value=resolve(i,v);trigger(e,'input');trigger(e,'change')}}catch(e){console.error('Error filling',i,':',e)}}function showUI(){const id='_formFillerUI';if(document.getElementById(id))return;let selects='';P.groups.forEach((g,i)=>{selects+='<div style="margin-bottom:12px;"><label>'+g.name+':</label><select id="_group_'+i+'" style="width:100%"><option value="">--</option>'+Object.keys(g.data).map(n=>'<option value="'+n+'">'+n+'</option>').join('')+'</select></div>'});document.body.insertAdjacentHTML('beforeend','<div id="'+id+'" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;"><h3 style="margin:0 0 16px;">Form Filler</h3>'+selects+'<button id="_fill" style="padding:8px 16px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;margin-right:8px;">Fill</button><button onclick="this.parentElement.remove()" style="padding:8px 16px;background:#6b7280;color:white;border:none;border-radius:6px;cursor:pointer;">Cancel</button></div>');document.getElementById('_fill').onclick=()=>{let merged={...P.defaults};P.groups.forEach((g,i)=>{const sel=document.getElementById('_group_'+i).value;if(sel&&g.data[sel]){merged={...merged,...g.data[sel]}}});for(const f in merged)fill(f,merged[f]);document.getElementById(id).remove()}}try{showUI()}catch(e){alert('Error: '+e.message)}}`,
     CLEAR_LOGIC: `const F=__FIELDS_DATA__;F.forEach(i=>{const e=getEl(i);if(!e)return;if(e.tagName==='SELECT'&&e.multiple){const r=e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]');if(r&&e.options.length>0){Array.from(e.options).forEach(o=>o.selected=true);r.click();return}}e.value='';trigger(e,'input');trigger(e,'change')});alert('Mapped fields cleared.')`,
     
     BUILDER_TOOL: {
         getMinifiedScript() { return this.BUILDER_LOGIC.replace(/\s+/g, ' ').trim(); },
         BUILDER_LOGIC: `
             (function(){
-                if (document.getElementById('_mapperUIRoot')) return;
-                const state = { mappings: [], currentSource: null, currentDestination: null, mode: null, lastHovered: null };
-                function getFieldId(el) { return el.id || el.name; }
-                function analyzeFormat(options) { if (!options?.length) return 'text'; const clean = options.filter(o => !/Enter one|Select one|Almost every/.test(o)); if (clean.length === 0) return 'text'; if (clean.filter(o => /^\\d+:/.test(o.trim())).length / clean.length > 0.7) return 'code:description'; if (clean.every(o => /^[A-Z]+$/.test(o) && o.length < 20)) return 'enum'; if (clean.every(o => /^\\d+$/.test(o.trim()))) return 'plain'; return 'text'; }
-                function scrapeSource(el) { const id = getFieldId(el); if (!id) return alert('No ID/name'); const source = { sourceId: id, sourceOptions: [], format: 'unknown', addAll: false }; if (el.tagName === 'SELECT') { source.sourceOptions = Array.from(el.options).map(o => o.text.trim()).filter(Boolean); source.format = analyzeFormat(source.sourceOptions); } state.currentSource = source; updateUI(); }
-                function scrapeDestination(el) { const id = getFieldId(el); if (!id) return alert('No ID/name'); if (id.endsWith('.Options')) return alert('Cannot use .Options as destination.'); if (el.tagName === 'SELECT' && el.hasAttribute('readonly') && document.querySelector(\`[name="\${id}1"]\`)) alert('Map to editable version: ' + id + '1'); const dest = { id: id, type: 'text', addAll: false }; if (el.tagName === 'SELECT') dest.type = document.querySelector(\`[name="\${id}.Options"]\`) ? 'duallist' : 'select'; state.currentDestination = dest; updateUI(); }
-                function commitMapping() { if (!state.currentSource || !state.currentDestination) return alert('Select source & destination.'); const isDuplicate = state.mappings.find(m => m.sourceId === state.currentSource.sourceId && m.destinations[0].id === state.currentDestination.id); if (isDuplicate && !window.confirm('This mapping already exists. Add again?')) return; if (state.currentDestination.type === 'duallist') { state.currentDestination.addAll = document.getElementById('_addAllCheckbox').checked; const expected = state.currentDestination.id + '.Options'; if (state.currentSource.sourceId !== expected && !window.confirm(\`Warning: For "\${state.currentDestination.id}", source should be "\${expected}". You chose "\${state.currentSource.sourceId}". Continue?\`)) return; } state.mappings.push({ ...state.currentSource, destinations: [state.currentDestination] }); state.currentSource = null; state.currentDestination = null; state.mode = null; document.body.style.cursor = 'default'; updateUI(); }
-                function setMode(m) { state.mode = m; document.body.style.cursor = 'crosshair'; updateUI(); }
-                function handleMouseOver(e) { const target = e.target.closest('select, input, textarea'); if (!state.mode || !target) return; state.lastHovered = target; target.style.outline = '2px solid red'; }
-                function handleMouseOut(e) { if (state.lastHovered) state.lastHovered.style.outline = ''; }
-                function handleClick(e) { if (!state.mode) return; const target = e.target.closest('select, input, textarea'); if (!target) return; e.preventDefault(); e.stopPropagation(); if (state.lastHovered) state.lastHovered.style.outline = ''; if (state.mode === 'source') scrapeSource(target); else scrapeDestination(target); state.mode = null; document.body.style.cursor = 'default'; }
-                function updateUI() { const root = document.getElementById('_mapperUIRoot'); if (!root) return; const mappingsHtml = state.mappings.map((m, i) => \`<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>\${m.sourceId}</b> &rarr; <b>\${m.destinations[0].id}</b>\${m.destinations[0].addAll ? ' (All)' : ''}</span><button onclick="window._mapper.removeMapping(\${i})" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>\`).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>'; const sourceText = state.currentSource ? \`\${state.currentSource.sourceId} (\${state.currentSource.format})\` : 'None', destText = state.currentDestination ? \`\${state.currentDestination.id} (\${state.currentDestination.type})\` : 'None'; const addAllContainerDisplay = state.currentDestination?.type === 'duallist' ? 'block' : 'none'; root.innerHTML = \`<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v4.7</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" field as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._mapper.setMode('source')" class="m-btn \${state.mode==='source'?'act':''}">1. Select Source</button><button onclick="window._mapper.setMode('destination')" class="m-btn \${state.mode==='destination'?'act':''}">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> \${sourceText}<br><b>Dest:</b> \${destText}</div><div id="_addAllContainer" style="margin-top:8px;font-size:12px;display:\${addAllContainerDisplay};"><label><input type="checkbox" id="_addAllCheckbox"> Add All Source Options</label></div><button onclick="window._mapper.commitMapping()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">\${mappingsHtml}</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._mapper.generateJSON()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._mapper.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>\`; }
-                function generateJSON() { const json = JSON.stringify(state.mappings, null, 2); const textarea = document.createElement('textarea'); textarea.value = json; document.body.appendChild(textarea); textarea.select(); try { document.execCommand('copy'); alert('JSON copied!'); } catch (e) { alert('Copy failed'); console.log(json); } document.body.removeChild(textarea); }
-                function removeMapping(i) { state.mappings.splice(i, 1); updateUI(); }
-                function destroy() { if(state.lastHovered) state.lastHovered.style.outline = ''; document.removeEventListener('mouseover', handleMouseOver); document.removeEventListener('mouseout', handleMouseOut); document.removeEventListener('click', handleClick, true); document.getElementById('_mapperUIRoot').remove(); }
-                const root = document.createElement('div'); root.id = '_mapperUIRoot'; root.style.cssText = 'position:fixed;top:20px;right:20px;z-index:10001;width:350px;background:#f7fafc;border:1px solid #ccc;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);font-family:sans-serif;font-size:14px;'; document.body.appendChild(root); updateUI(); document.addEventListener('mouseover', handleMouseOver); document.addEventListener('mouseout', handleMouseOut); document.addEventListener('click', handleClick, true); window._mapper = { setMode, commitMapping, generateJSON, removeMapping, destroy };
-            })()
-        `
+                if(document.getElementById('mUI'))return;
+                const S={m:[],cS:null,cD:null,mode:null,lH:null};
+                function gId(e){return e.id||e.name}
+                function aF(o){if(!o?.length)return'text';const c=o.filter(p=>!/Enter one|Select one|Almost every/.test(p));if(c.length===0)return'text';if(c.filter(p=>/^\\d+:/.test(p.trim())).length/c.length>0.7)return'code:description';if(c.every(p=>/^[A-Z]+$/.test(p)&&p.length<20))return'enum';if(c.every(p=>/^\\d+$/.test(p.trim())))return'plain';return'text'}
+                function scrS(e){const i=gId(e);if(!i)return alert('No ID/name');const s={sId:i,sO:[],fmt:'unknown',addAll:false};if(e.tagName==='SELECT'){s.sO=Array.from(e.options).map(o=>o.text.trim()).filter(Boolean);s.fmt=aF(s.sO)}S.cS=s;upd()}
+                function scrD(e){const i=gId(e);if(!i)return alert('No ID/name');if(i.endsWith('.Options'))return alert('Cannot use .Options as destination.');if(e.tagName==='SELECT'&&e.hasAttribute('readonly')&&document.querySelector('[name="'+i+'1"]'))alert('Map to editable version: '+i+'1');const d={id:i,type:'text',addAll:false};if(e.tagName==='SELECT')d.type=document.querySelector('[name="'+i+'.Options"]')?'duallist':'select';S.cD=d;upd()}
+                function cMap(){if(!S.cS||!S.cD)return alert('Select source & destination.');const d=S.m.find(m=>m.sId===S.cS.sId&&m.destinations[0].id===S.cD.id);if(d&&!window.confirm('Mapping exists. Add again?'))return;if(S.cD.type==='duallist'){S.cD.addAll=document.getElementById('_aACb').checked;const ex=S.cD.id+'.Options';if(S.cS.sId!==ex&&!window.confirm('Warning: For "'+S.cD.id+'", source should be "'+ex+'". You chose "'+S.cS.sId+'". Continue?'))return}S.m.push({...S.cS,destinations:[S.cD]});S.cS=null;S.cD=null;S.mode=null;document.body.style.cursor='default';upd()}
+                function setM(m){S.mode=m;document.body.style.cursor='crosshair';upd()}
+                function hMO(e){const t=e.target.closest('select,input,textarea');if(!S.mode||!t)return;S.lH=t;t.style.outline='2px solid red'}
+                function hMOu(e){if(S.lH)S.lH.style.outline=''}
+                function hC(e){if(!S.mode)return;const t=e.target.closest('select,input,textarea');if(!t)return;e.preventDefault();e.stopPropagation();if(S.lH)S.lH.style.outline='';if(S.mode==='source')scrS(t);else scrD(t);S.mode=null;document.body.style.cursor='default'}
+                function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+m.sId+'</b> &rarr; <b>'+m.destinations[0].id+'</b>'+(m.destinations[0].addAll?' (All)':'')+'</span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';const sT=S.cS?S.cS.sId+' ('+S.cS.fmt+')':'None',dT=S.cD?S.cD.id+' ('+S.cD.type+')':'None';const aAD=S.cD?.type==='duallist'?'block':'none';r.innerHTML='<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v5.2</div><div style="padding:16px;"><div style="padding:8px;background:#fffacd;border:1px solid #f0e68c;margin-bottom:12px;font-size:11px;border-radius:4px;"><b>Tip:</b> Map ".Options" as SOURCE, regular field as DESTINATION.</div><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._m.setM(\\'source\\')" class="m-btn '+(S.mode==='source'?'act':'')+'">1. Select Source</button><button onclick="window._m.setM(\\'destination\\')" class="m-btn '+(S.mode==='destination'?'act':'')+'">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> '+sT+'<br><b>Dest:</b> '+dT+'</div><div style="margin-top:8px;font-size:12px;display:'+aAD+';"><label><input type="checkbox" id="_aACb"> Add All Source Options</label></div><button onclick="window._m.cMap()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:120px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">'+mH+'</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._m.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>'}
+                function gJ(){const j=JSON.stringify(S.m,null,2);const t=document.createElement('textarea');t.value=j;document.body.appendChild(t);t.select();try{document.execCommand('copy');alert('JSON copied!')}catch(e){alert('Copy failed');console.log(j)}document.body.removeChild(t)}
+                function rM(i){S.m.splice(i,1);upd()}function destroy(){if(S.lH)S.lH.style.outline='';document.removeEventListener('mouseover',hMO);document.removeEventListener('mouseout',hMOu);document.removeEventListener('click',hC,true);document.getElementById('mUI').remove()}
+                const r=document.createElement('div');r.id='mUI';r.style.cssText='position:fixed;top:20px;right:20px;z-index:10001;width:350px;background:#f7fafc;border:1px solid #ccc;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);font-family:sans-serif;font-size:14px;';document.body.appendChild(r);upd();document.addEventListener('mouseover',hMO);document.addEventListener('mouseout',hMOu);document.addEventListener('click',hC,true);window._m={setM,cMap,gJ,rM,destroy};
+            })()`
     }
 };
 
@@ -613,3 +505,4 @@ document.addEventListener('DOMContentLoaded', () => { window.app = app; app.init
 </script>
 </body>
 </html>
+

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler v5.0</title>
+    <title>CA IM Preset Form Filler v5.1</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -70,7 +70,7 @@
                 <div class="text-center py-8">
                     <p class="text-slate-600 mb-4">Drag this bookmarklet to your bookmarks bar:</p>
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        🔧 Field Mapper Tool v5.0
+                        🔧 Field Mapper Tool v5.1
                     </a>
                 </div>
                 <div class="mt-8 flex justify-end">
@@ -204,7 +204,7 @@
     </template>
 
 <script>
-// App v5.0: Fixed critical syntax error in builder bookmarklet.
+// App v5.1: Fixed import modal bug and builder click target issue.
 const app = {
     // STATE & CONSTANTS
     state: {
@@ -345,28 +345,39 @@ const app = {
         });
     },
 
-    processImport(groupName, importData) {
-        const groupData = {};
-        importData.forEach(row => {
-            const presetName = row.Name || row.name;
-            if (!presetName) return;
-            const preset = {};
-            for (const fieldId in row) {
-                if (fieldId.toLowerCase() === 'name') continue;
-                const mapping = this.state.mappingsByField[fieldId];
-                if (mapping) {
-                    preset[fieldId] = (mapping.format === 'code:description' && row[fieldId]) 
-                        ? String(row[fieldId]).split(':')[0].trim() 
-                        : row[fieldId];
+    async processImport(groupName, importData) {
+        this.showModal({ title: '⏳ Importing...', message: `Processing ${importData.length} rows...`, buttons: [] });
+        await new Promise(resolve => setTimeout(resolve, 50)); // Allow modal to render
+
+        await this.safely(async () => {
+            const groupData = {};
+            for (const [i, row] of importData.entries()) {
+                const presetName = row.Name || row.name;
+                if (!presetName) continue;
+                const preset = {};
+                for (const fieldId in row) {
+                    if (fieldId.toLowerCase() === 'name') continue;
+                    const mapping = this.state.mappingsByField[fieldId];
+                    if (mapping) {
+                        preset[fieldId] = (mapping.format === 'code:description' && row[fieldId]) 
+                            ? String(row[fieldId]).split(':')[0].trim() 
+                            : row[fieldId];
+                    }
+                }
+                groupData[presetName] = preset;
+
+                if (i % 10 === 0 || i === importData.length - 1) {
+                    this.ui.modalText.textContent = `Processing row ${i + 1} of ${importData.length}`;
+                    await new Promise(resolve => setTimeout(resolve, 0)); // UI update tick
                 }
             }
-            groupData[presetName] = preset;
-        });
-        
-        this.state.presets.groups.push({ name: groupName, data: groupData });
-        this.rerenderGroupsUI();
-        this.ui.fileInput.value = '';
-        this.showSuccess(`Group "${groupName}" imported successfully.`);
+            
+            this.state.presets.groups.push({ name: groupName, data: groupData });
+            this.rerenderGroupsUI();
+            this.ui.fileInput.value = '';
+            this.hideModal();
+            this.showSuccess(`Group "${groupName}" imported successfully.`);
+        }, "Import Processing");
     },
 
     // PRESET GROUP UI & MANAGEMENT

@@ -265,6 +265,28 @@ const app = {
         this.hideModal(results);
     },
 
+    _generateModalFieldHtml(index, inputConfig) {
+        const inputId = `modal-input-${index}`;
+        let html = `<div class="mb-4">`;
+        html += `<label for="${inputId}" class="block text-sm font-medium text-slate-700 mb-2">${inputConfig.label || 'Input'}</label>`;
+        
+        if (inputConfig.type === 'select' && inputConfig.options) {
+            html += `<select id="${inputId}" class="${this.CSS.INPUT}">`;
+            inputConfig.options.forEach(opt => {
+                html += `<option value="${opt.value || opt}">${opt.label || opt}</option>`;
+            });
+            html += `</select>`;
+        } else {
+            html += `<input type="${inputConfig.type || 'text'}" id="${inputId}" 
+                     placeholder="${inputConfig.placeholder || ''}" 
+                     value="${inputConfig.value || ''}" 
+                     class="${this.CSS.INPUT}">`;
+        }
+        
+        html += `</div>`;
+        return html;
+    },
+
     showModal(config) {
         return new Promise(resolve => {
             if (this.modalResolve) { this.modalResolve(null); }

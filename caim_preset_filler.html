@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler v7.0 (Intuitive Workflow)</title>
+    <title>CA IM Preset Form Filler v7.6 (Feature-Relevance Fixes)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -65,7 +65,7 @@
                 </div>
                 <div class="text-center py-8">
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        🔧 Field Mapper Tool v7.0
+                        🔧 Field Mapper Tool v7.6
                     </a>
                 </div>
                 <div class="mt-8 flex justify-end">
@@ -145,14 +145,13 @@
                         <li><strong>Set Hierarchy:</strong> Drag and drop the imported groups to set their merge priority.</li>
                         <li><strong>Generate Bookmarklet:</strong> Create the final "Form Filler" bookmarklet.</li>
                     </ol>
-                    <h4>How to Use the Form Filler Bookmarklet</h4>
-                    <p>The generated bookmarklet is intelligent and handles page reloads caused by the form.</p>
+                    <h4>How to Use the Form Filler Bookmarklet (New Stateless Logic)</h4>
+                    <p>The generated bookmarklet is now "stateless" and intelligent, making it much more robust against page reloads.</p>
                     <ol>
-                        <li>Click the bookmarklet. It will scan the form and determine the necessary actions based on your presets.</li>
-                        <li>A confirmation prompt will appear summarizing the actions (e.g., "2 fields to clear, 3 fields to update"). Click OK to begin.</li>
-                        <li>If a change causes a page reload, a progress screen will appear.</li>
-                        <li>**After the page reloads, simply click the bookmarklet again.** It will automatically resume where it left off.</li>
-                        <li>Repeat until you see the "Fill Complete!" message.</li>
+                        <li><strong>First Click:</strong> Click the bookmarklet. If it's a new task, it will prompt you to select your presets. A confirmation will show the number of actions. Click OK.</li>
+                        <li>The filler will complete all standard fields (text boxes, dropdowns) first. Then, it will perform the <strong>first</strong> action that causes a page reload (like a duallist update) and then stop, showing a progress overlay.</li>
+                        <li><strong>Subsequent Clicks:</strong> After the page reloads, <strong>simply click the bookmarklet again</strong>. It will silently re-scan the form, see what's left to do, and automatically continue with the next action without prompting you again.</li>
+                        <li>Repeat this process until you see the "Fill Complete!" message. The process is seamless for resuming tasks.</li>
                     </ol>
                 </div>
                 <div class="mt-8">
@@ -174,8 +173,7 @@
 
     <template id="preset-group-template">
         <div class="group-item" draggable="true">
-            <div class="flex items-center">
-                <svg class="w-5 h-5 text-slate-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            <div class="flex items-center pl-2">
                 <div class="flex flex-col">
                     <strong data-name></strong>
                     <small data-behavior class="text-slate-500 text-xs"></small>
@@ -189,7 +187,7 @@
     </template>
 
 <script>
-// App v7.0: Implemented intuitive workflow with scan/confirm step and fixed modal logic.
+// App v7.6: Removed cosmetic icon and redundant error wrapper.
 const app = {
     // STATE
     state: {
@@ -326,11 +324,11 @@ const app = {
         return html + `</div>`;
     },
 
-    msg: (msg, icon, title) => app.showModal({title: `${icon} ${title}`, message: msg}),
-    showError: (msg, title = 'Error') => app.msg(msg, '❌', title),
-    showSuccess: (msg) => app.msg(msg, '✅', 'Success'),
+    msg: (title, message) => app.showModal({title: title, message: message}),
+    showError: (msg, title = 'Error') => app.msg(title, msg),
+    showSuccess: (msg, title = 'Success') => app.msg(title, msg),
     async confirmAction(message, confirmText = 'Confirm') {
-        return await this.showModal({ title: '❓ Confirm', message: message.replace(/\n/g, '<br>'), buttons: [{text: 'Cancel', value: false}, {text: confirmText, value: true, class: this.CSS.BTN_PRIMARY}] });
+        return await this.showModal({ title: 'Confirm Action', message: message.replace(/\n/g, '<br>'), buttons: [{text: 'Cancel', value: false}, {text: confirmText, value: true, class: this.CSS.BTN_PRIMARY}] });
     },
 
     async safely(fn, errorContext = 'Operation') {
@@ -352,45 +350,43 @@ const app = {
         XLSX.writeFile(wb, 'Preset_Template.xlsx');
     },
 
-    handleImportClick() {
-        this.safely(async () => {
-            if (!this.ui.fileInput.files?.length) return this.showError('Please select a file to import.');
-            const reader = new FileReader();
-            reader.onload = async (e) => {
-                await this.safely(async () => {
-                    const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
-                    const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const data = XLSX.utils.sheet_to_json(sheet);
-                    if (data.length === 0) throw new Error('Spreadsheet has no data rows.');
-                    if (!data[0].Name && !data[0].name) throw new Error('Spreadsheet is missing "Name" column.');
-                    
-                    const result = await this.showModal({
-                        title: 'Import Preset Group',
-                        message: `Importing ${data.length} presets. Give this group a name and choose how to handle blank cells.`,
-                        inputs: [ 
-                            { label: 'Group Name', placeholder: 'e.g., Locations' },
-                            { label: 'Blank Cell Behavior', type: 'select', options: [
-                                {value: 'ignore', label: 'Ignore Blanks (Default)'},
-                                {value: 'clear', label: 'Blanks Mean "Clear Field"'},
-                            ]}
-                        ],
-                        buttons: [{ text: 'Cancel', value: null }, { text: 'Import', value: 'import', class: 'bg-amber-600 text-white' }]
-                    });
+    async handleImportClick() {
+        if (!this.ui.fileInput.files?.length) return this.showError('Please select a file to import.');
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            await this.safely(async () => {
+                const workbook = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const sheet = workbook.Sheets[workbook.SheetNames[0]];
+                const data = XLSX.utils.sheet_to_json(sheet);
+                if (data.length === 0) throw new Error('Spreadsheet has no data rows.');
+                if (!data[0].Name && !data[0].name) throw new Error('Spreadsheet is missing "Name" column.');
+                
+                const result = await this.showModal({
+                    title: 'Import Preset Group',
+                    message: `Importing ${data.length} presets. Give this group a name and choose how to handle blank cells.`,
+                    inputs: [ 
+                        { label: 'Group Name', placeholder: 'e.g., Locations' },
+                        { label: 'Blank Cell Behavior', type: 'select', options: [
+                            {value: 'ignore', label: 'Ignore Blanks (Default)'},
+                            {value: 'clear', label: 'Blanks Mean "Clear Field"'},
+                        ]}
+                    ],
+                    buttons: [{ text: 'Cancel', value: null }, { text: 'Import', value: 'import', class: 'bg-amber-600 text-white' }]
+                });
 
-                    if (result && result.length > 0 && result[0]) {
-                        const [groupName, blankBehavior] = result;
-                        if (this.state.presets.groups.some(g => g.name === groupName)) return this.showError(`A group named "${groupName}" already exists.`);
-                        await new Promise(resolve => setTimeout(resolve, 350));
-                        this.processImport(groupName, data, blankBehavior === 'clear');
-                    }
-                }, 'File Read');
-            };
-            reader.readAsArrayBuffer(this.ui.fileInput.files[0]);
-        });
+                if (result && result.length > 0 && result[0]) {
+                    const [groupName, blankBehavior] = result;
+                    if (this.state.presets.groups.some(g => g.name === groupName)) return this.showError(`A group named "${groupName}" already exists.`);
+                    await new Promise(resolve => setTimeout(resolve, 350));
+                    this.processImport(groupName, data, blankBehavior === 'clear');
+                }
+            }, 'File Read');
+        };
+        reader.readAsArrayBuffer(this.ui.fileInput.files[0]);
     },
 
     async processImport(groupName, importData, blanksAsClear) {
-        this.showModal({ title: '⏳ Importing...', message: `Preparing to import ${importData.length} presets...`, buttons: [] });
+        this.showModal({ title: 'Importing...', message: `Preparing to import ${importData.length} presets...`, buttons: [] });
         await new Promise(resolve => setTimeout(resolve, 50));
 
         await this.safely(async () => {
@@ -526,7 +522,20 @@ const app = {
                 
             const name = document.getElementById('final-bookmarklet-name').value.trim();
             if (!name) return this.showError('Please provide a name.');
-            const script = 'javascript:(function(){' + encodeURIComponent(logic.replace(/\s+/g, ' ').trim()) + '})()';
+            
+            const minifiedLogic = logic
+                .replace(/[\n\r\t]/g, '')
+                .replace(/\s*;\s*/g, ";")
+                .replace(/\s*:\s*/g, ":")
+                .replace(/\s*,\s*/g, ",")
+                .replace(/\s*=\s*/g, "=")
+                .replace(/\s*{\s*/g, "{")
+                .replace(/\s*}\s*/g, "}")
+                .replace(/\s*\(\s*/g, "(")
+                .replace(/\s*\)\s*/g, ")")
+                .replace(/ {2,}/g, ' ');
+
+            const script = 'javascript:(function(){' + encodeURIComponent(minifiedLogic) + '})()';
             
             document.getElementById('final-bookmarklet-link-container').innerHTML = `<a href="${script.replace(/"/g, '&quot;')}" class="inline-block px-8 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700">${this.escapeHtml(name)}</a>`;
             document.getElementById('final-output').style.display = 'block';
@@ -534,7 +543,7 @@ const app = {
     },
 
     BOOKMARKLET_UTILITIES: `function getEl(i){return document.getElementById(i)||document.getElementsByName(i)[0]}function trigger(e,v){if(!e)return;e.dispatchEvent(new Event(v,{bubbles:true}))}`,
-    FILLER_LOGIC: `const C={L:__LOOKUP_DATA__,M:__FIELDMETA_DATA__,P:__PRESETS_DATA__,SK:'_caim_fill_s',ID:'_caim_fill_o'};C.p=function(){const s=this.gS();let a=s.q.shift();s.p++;this.sS(s);const e=getEl(a.i);if(!e){console.log('Skipped missing:',a.i);s.e.push(a.i);return this.p()}const m=this.M[a.i];if(a.c==='clear'){s.cl++;this.sS(s);if(m.t==='duallist'){const r=this.gR(e,a.i);if(r&&e.options.length>0){Array.from(e.options).forEach(o=>o.selected=true);this.sh(s,a.i,a.c);r.click();return}else{return this.p()}}else{e.value='';trigger(e,'input');trigger(e,'change');return this.p()}}else if(a.c==='set'){s.up++;this.sS(s);if(m.t==='duallist'){const sEl=getEl(m.s||(a.i+'.Options')),addBtn=this.gA(e,a.i);if(!sEl||!addBtn)return this.p();const v=this.r(a.i,a.v);Array.from(sEl.options).forEach(o=>{o.selected=o.text.trim()===v||o.text.trim().startsWith(v+':')});this.sh(s,a.i,a.c);addBtn.click();return}else if(m.t==='select'){const rV=this.r(a.i,a.v),opt=Array.from(e.options).find(o=>o.text.trim()===rV||o.text.trim().startsWith(rV));if(opt)e.value=opt.value;else e.value=rV;trigger(e,'change');return this.p()}else{e.value=this.r(a.i,a.v);trigger(e,'input');trigger(e,'change');return this.p()}}};C.gS=function(){return JSON.parse(sessionStorage.getItem(this.SK)||'null')};C.sS=function(d){sessionStorage.setItem(this.SK,JSON.stringify(d))};C.c=function(){sessionStorage.removeItem(this.SK);const o=document.getElementById(this.ID);if(o)o.remove()};C.f=function(s){this.c();let m='✅ Fill Complete!\\n\\n- Fields Cleared: '+(s.cl||0)+'\\n- Fields Updated: '+(s.up||0);if(s.e&&s.e.length>0)m+='\\n- Fields Skipped: '+s.e.length+' (see console)';alert(m)};C.sh=function(s,n,cmd){this.c();const h='<div id="'+this.ID+'" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(0,0,0,0.7);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;"><div style="font-size:4rem;">🔄</div><h2 style="font-size:2rem;margin:0.5em 0;">Filling Form...</h2><p style="background:rgba(0,0,0,0.5);padding:0.5em 1em;border-radius:6px;font-size:1.2rem;">Action '+s.p+' / '+s.t+'</p><p style="font-size:1.5rem;font-weight:bold;margin:0.5em 0;">'+cmd.toUpperCase()+': '+n+'</p><p style="margin-top:2em;">After page reloads, click bookmarklet again to continue.</p><button onclick="window._caim_filler.c()" style="margin-top:1em;padding:0.5em 1em;border:1px solid white;background:transparent;color:white;border-radius:6px;cursor:pointer;">Cancel</button></div>';document.body.insertAdjacentHTML('beforeend',h)};C.r=function(i,v){const m=this.M[i];return(m.f==='code:description'&&this.L[i])?this.L[i][v]||v:v};C.gA=function(e,i){return e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorAdd"]')};C.gR=function(e,i){return e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]')};C.gV=function(e,m){if(!e)return'';if(m.t==='duallist')return Array.from(e.options).map(o=>o.text).join(',');if(m.t==='select')return e.options[e.selectedIndex]?.text||e.value;return e.value};C.run=async function(){const s=this.gS(),curUserEl=getEl('USAccountName'),curUser=curUserEl?curUserEl.value:null;if(s&&s.u===curUser){if(s.q&&s.q.length>0){this.p();return}else{this.f(s);return}}let merged={...this.P.defaults};if(this.P.groups.length===1&&Object.keys(this.P.groups[0].data).length===1){const g=this.P.groups[0];merged={...merged,...g.data[Object.keys(g.data)[0]]}}else{const sels=await this.showModal();if(!sels)return;this.P.groups.forEach((g,i)=>{const sel=sels[i];if(sel&&g.data[sel]){merged={...merged,...g.data[sel]}}})}const q=[],CLR_MRKS=['DELETE','CLEAR','REMOVE',''];let cl=0,up=0;for(const f in merged){const m=this.M[f],e=getEl(f);if(!m||!e)continue;const pVRaw=merged[f],isClr=CLR_MRKS.includes(String(pVRaw).toUpperCase()),cV=this.gV(e,m).trim();if(isClr){if(cV!==''){q.push({i:f,c:'clear'});cl++}}else{const pV=String(pVRaw);if(m.t==='duallist'){const cVs=cV?cV.split(',').map(s=>s.trim()):[],pVNorm=this.r(f,pV).split(':')[0].trim();if(!cVs.some(cv=>cv===pVNorm||cv.startsWith(pVNorm+':'))){if(cVs.length>0&&cVs[0]!==''){q.push({i:f,c:'clear'});cl++}q.push({i:f,c:'set',v:pV});up++;}}else if(pV.trim()!==cV){q.push({i:f,c:'set',v:pV});up++;}}}if(q.length===0)return alert('All fields already match the selected presets. Nothing to do.');const ok=await this.confirm('This will perform '+(cl+up)+' actions:\\n- '+cl+' fields to clear\\n- '+up+' fields to update\\n\\nClick OK to begin.');if(ok){const userEl=getEl('USAccountName');this.sS({u:userEl?userEl.value:null,q:q,t:q.length,p:0,e:[],cl:0,up:0});this.p()}};C.showModal=function(){return new Promise(r=>{let selects='';this.P.groups.forEach((g,i)=>{selects+='<div style="margin-bottom:12px;"><label style="display:block;font-size:14px;color:#333;margin-bottom:4px;">'+g.name+':</label><select id="_group_'+i+'" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;"><option value="">--</option>'+Object.keys(g.data).map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n.replace(/</g,'&lt;')+'</option>').join('')+'</select></div>'});const uiId='_formFillerUI_sel';const d=document.createElement('div');d.id=uiId;d.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;max-width:90vw;';d.innerHTML='<h3 style="margin:0 0 16px;font-size:18px;">Form Filler</h3>'+selects+'<button id="_fill" style="padding:8px 16px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;margin-right:8px;">Scan & Continue</button><button id="_cancel" style="padding:8px 16px;background:#6b7280;color:white;border:none;border-radius:6px;cursor:pointer;">Cancel</button>';document.body.appendChild(d);d.querySelector('#_fill').onclick=()=>{const vals=Array.from(d.querySelectorAll('select')).map(el=>el.value);d.remove();r(vals)};d.querySelector('#_cancel').onclick=()=>{d.remove();r(null)}})};C.confirm=function(msg){return new Promise(r=>{const uiId='_formFillerUI_conf';const d=document.createElement('div');d.id=uiId;d.style.cssText='position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;max-width:90vw;';d.innerHTML='<h3 style="margin:0 0 16px;font-size:18px;">Confirm Action</h3><p style="white-space:pre-wrap;margin-bottom:16px;">'+msg+'</p><button id="_ok" style="padding:8px 16px;background:#3b82f6;color:white;border:none;border-radius:6px;cursor:pointer;margin-right:8px;">OK</button><button id="_cancel" style="padding:8px 16px;background:#6b7280;color:white;border:none;border-radius:6px;cursor:pointer;">Cancel</button>';document.body.appendChild(d);d.querySelector('#_ok').onclick=()=>{d.remove();r(true)};d.querySelector('#_cancel').onclick=()=>{d.remove();r(false)}})};try{C.run()}catch(e){alert('An error occurred: '+e.message);console.error(e)}window._caim_filler=C;`,
+    FILLER_LOGIC: `const C={L:__LOOKUP_DATA__,M:__FIELDMETA_DATA__,P:__PRESETS_DATA__,SK:'_caim_fill_s',ID:'_caim_fill_o',MS:'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;max-width:90vw;'};C.gS=function(){return JSON.parse(sessionStorage.getItem(this.SK)||'null')};C.sS=function(d){sessionStorage.setItem(this.SK,JSON.stringify(d))};C.c=function(){sessionStorage.removeItem(this.SK);const o=document.getElementById(this.ID);if(o)o.remove()};C.r=function(i,v){const m=this.M[i];return(m.f==='code:description'&&this.L[i])?this.L[i][v]||v:v};C.gA=function(e,i){return e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorAdd"]')};C.gR=function(e,i){return e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]')};C.gV=function(e,m){if(!e)return'';if(m.t==='duallist')return Array.from(e.options).map(o=>o.text).join(',');if(m.t==='select')return e.options[e.selectedIndex]?.text.trim()||e.value;return e.value};C.sh=function(total,completed,nextAction){this.c();const h='<div id="'+this.ID+'" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(0,0,0,0.7);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;"><div style="font-size:2rem; padding: 1rem 0;">Loading...</div><h2 style="font-size:2rem;margin:0.5em 0;">Processing Action...</h2><p style="background:rgba(0,0,0,0.5);padding:0.5em 1em;border-radius:6px;font-size:1.2rem;">Action '+(completed+1)+' of '+total+'</p><p style="font-size:1.5rem;font-weight:bold;margin:0.5em 0;">'+nextAction.c.toUpperCase()+': '+nextAction.i+'</p><p style="margin-top:2em;">After page reloads, click bookmarklet again to continue.</p><button onclick="window._caim_filler.c()" style="margin-top:1em;padding:0.5em 1em;border:1px solid white;background:transparent;color:white;border-radius:6px;cursor:pointer;">Cancel & Clear Session</button></div>';document.body.insertAdjacentHTML('beforeend',h)};C.plan=function(merged){const nonDest=[],dest=[],CLR=['DELETE','CLEAR','REMOVE',''];for(const f in merged){const m=this.M[f],e=getEl(f);if(!m||!e)continue;const pVRaw=merged[f],isClr=CLR.includes(String(pVRaw).toUpperCase()),cV=this.gV(e,m).trim();if(isClr){if(cV!==''){const a={i:f,c:'clear'};if(m.t==='duallist')dest.push(a);else nonDest.push(a)}}else{const pV=String(pVRaw);if(m.t==='duallist'){const cVs=cV?cV.split(',').map(s=>s.trim()):[],pVNorm=this.r(f,pV).split(':')[0].trim();if(!cVs.some(cv=>cv===pVNorm||cv.startsWith(pVNorm+':'))){if(cVs.length>0&&cVs[0]!==''){dest.push({i:f,c:'clear'})}dest.push({i:f,c:'set',v:pV})}}else if(this.r(f,pV).trim()!==cV){nonDest.push({i:f,c:'set',v:pV})}}}return{nonDest,dest}};C.exec=function(a){const e=getEl(a.i),m=this.M[a.i];if(!e)return;if(a.c==='clear'){if(m.t==='duallist'){const r=this.gR(e,a.i);if(r&&e.options.length>0){Array.from(e.options).forEach(o=>o.selected=true);r.click()}}else{e.value='';trigger(e,'input');trigger(e,'change')}}else if(a.c==='set'){if(m.t==='duallist'){const sEl=getEl(m.s||(a.i+'.Options')),btn=this.gA(e,a.i);if(!sEl||!btn)return;const v=this.r(a.i,a.v);Array.from(sEl.options).forEach(o=>{o.selected=o.text.trim()===v||o.text.trim().startsWith(v+':')});btn.click()}else if(m.t==='select'){const rV=this.r(a.i,a.v),opt=Array.from(e.options).find(o=>o.text.trim()===rV||o.text.trim().startsWith(rV));if(opt)e.value=opt.value;else e.value=rV;trigger(e,'change')}else{e.value=this.r(a.i,a.v);trigger(e,'input');trigger(e,'change')}}};C._modal=function(cfg){return new Promise(r=>{const d=document.createElement('div');d.id=this.ID;d.style.cssText=this.MS;let buttonsHtml='';if(cfg.btns){cfg.btns.forEach(b=>{buttonsHtml+='<button id="_'+b.v+'" style="padding:8px 16px;background:'+(b.c||'#6b7280')+';color:white;border:none;border-radius:6px;cursor:pointer;margin-right:8px;">'+b.t+'</button>'});}d.innerHTML='<h3 style="margin:0 0 16px;font-size:18px;">'+cfg.title+'</h3>'+cfg.body+'<div>'+buttonsHtml+'</div>';document.body.appendChild(d);if(cfg.btns){cfg.btns.forEach(b=>{d.querySelector('#_'+b.v).onclick=()=>{d.remove();r(b.v)}})}})};C.run=async function(){const s=this.gS(),curUserEl=getEl('USAccountName'),curUser=curUserEl?curUserEl.value:null;let sels,isResume=!1;if(s&&s.u===curUser&&s.sels){console.log('Resuming:',curUser);sels=s.sels;isResume=!0}else{console.log('New session');if(this.P.groups.length===1&&Object.keys(this.P.groups[0].data).length===1){sels=[Object.keys(this.P.groups[0].data)[0]]}else{let selects='';this.P.groups.forEach((g,i)=>{selects+='<div style="margin-bottom:12px;"><label style="display:block;font-size:14px;color:#333;margin-bottom:4px;">'+g.name+':</label><select id="_g'+i+'" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;"><option value="">--</option>'+Object.keys(g.data).map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n.replace(/</g,'&lt;')+'</option>').join('')+'</select></div>'});const res=await this._modal({title:'Form Filler',body:selects,btns:[{t:'Cancel',v:null},{t:'Scan & Continue',v:'ok',c:'#3b82f6'}]});if(res!=='ok'){return}sels=Array.from(document.querySelectorAll('[id^=_g]')).map(el=>el.value);}if(!sels)return;this.sS({u:curUser,sels:sels})}let merged={...this.P.defaults};this.P.groups.forEach((g,i)=>{const sel=sels[i];if(sel&&g.data[sel]){merged={...merged,...g.data[sel]}}});const plan=this.plan(merged),total=plan.nonDest.length+plan.dest.length;if(total===0){this.c();await this._modal({title:'All Set',body:'<p style="white-space:pre-wrap;margin-bottom:16px;">All fields already match presets.</p>',btns:[{t:'OK',v:true,c:'#3b82f6'}]});return}if(!isResume){const msg=['Perform '+total+' actions?','','Standard: '+plan.nonDest.length,'Page-Reload: '+plan.dest.length,'','Click OK to begin.'].join('\\n');const ok=await this._modal({title:'Confirm Action',body:'<p style="white-space:pre-wrap;margin-bottom:16px;">'+msg+'</p>',btns:[{t:'Cancel',v:false},{t:'OK',v:true,c:'#3b82f6'}]});if(!ok){this.c();return}}for(const a of plan.nonDest){this.exec(a)}if(plan.dest.length>0){const a=plan.dest[0];console.log('Executing:',a);this.sh(total,plan.nonDest.length,a);this.exec(a);return}this.c();await this._modal({title:'Fill Complete!',body:'<p style="white-space:pre-wrap;margin-bottom:16px;">'+plan.nonDest.length+' fields updated.</p>',btns:[{t:'OK',v:true,c:'#3b82f6'}]})};try{C.run()}catch(e){console.error(e);C._modal({title:'Error',body:e.message||'Unknown',btns:[{t:'OK',v:true,c:'#d9534f'}]})}window._caim_filler=C;`,
     
     BUILDER_TOOL: {
         getMinifiedScript() { return this.BUILDER_LOGIC.replace(/\s+/g, ' ').trim(); },
@@ -549,10 +558,10 @@ const app = {
                 function setM(m){S.mode=m;document.body.style.cursor=m?'crosshair':'default';upd()}
                 function scan(){let c=0;document.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=image]), select:not([name$=".Options"]), textarea').forEach(e=>{const i=gId(e);if(i&&!i.endsWith('.Options')){const t=e.tagName==='SELECT'?'select':'text';if(add(i,[],'text',i,t))c++}});alert('Added '+c+' new simple fields.');upd()}
                 function hMO(e){if(!S.mode)return;const t=e.target.closest('input,select,textarea,img');if(!t)return;S.lH=t;t.style.outline='2px solid red'}
-                function hMOu(e){if(S.lH)S.lH.style.outline=''}
+                function hMOu(e){if(S.llH)S.lH.style.outline=''}
                 function sty(){document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});S.m.forEach(m=>{const dEl=gEl(m.destinations[0].id);if(dEl){dEl.style.backgroundColor='#e6fffa';dEl.style.border='2px solid #38a169';dEl.setAttribute('data-caim-mapped','true')}})}
                 function hC(e){if(!S.mode)return;e.preventDefault();e.stopPropagation();if(S.lH)S.lH.style.outline='';const t=e.target.closest('input,select,textarea,img');if(!t)return;const i=gId(t);if(!i)return alert('Element has no ID or name.');if(S.mode==='simple'){const type=t.tagName==='SELECT'?'select':'text';if(!add(i,[],'text',i,type))alert('Field already mapped.');}else if(S.mode==='duallist'){const p=t.closest('td > table');if(!p)return alert('Could not find duallist parent table.');const src=p.querySelector('select[name$=".Options"]'),dest=p.querySelector('select:not([name$=".Options"])');if(!src||!dest)return alert('Could not find source/destination pair.');const sId=gId(src),dId=gId(dest);const sO=Array.from(src.options).map(o=>o.text.trim()).filter(Boolean);const fmt=aF(sO);if(!add(sId,sO,fmt,dId,'duallist'))alert('Field already mapped.');}upd();setM(null)}
-                function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+(m.sId===m.destinations[0].id?m.sId:m.sId+' &rarr; '+m.destinations[0].id)+'</b></span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';r.innerHTML='<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v7.0</div><div style="padding:16px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;"><button onclick="window._m.setM(\\'simple\\')" class="m-btn '+(S.mode==='simple'?'act':'')+'">Map Simple</button><button onclick="window._m.setM(\\'duallist\\')" class="m-btn '+(S.mode==='duallist'?'act':'')+'">Map Duallist</button></div><button onclick="window._m.scan()" class="m-btn" style="width:100%;margin-bottom:10px;background:#38a169;color:white;">Scan All Simple Fields</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:200px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">'+mH+'</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._m.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;width:100%;}.m-btn.act{background:#3182ce;color:white;}</style>';sty()}
+                function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+(m.sId===m.destinations[0].id?m.sId:m.sId+' &rarr; '+m.destinations[0].id)+'</b></span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';r.innerHTML='<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v7.6</div><div style="padding:16px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;"><button onclick="window._m.setM(\\'simple\\')" class="m-btn '+(S.mode==='simple'?'act':'')+'">Map Simple</button><button onclick="window._m.setM(\\'duallist\\')" class="m-btn '+(S.mode==='duallist'?'act':'')+'">Map Duallist</button></div><button onclick="window._m.scan()" class="m-btn" style="width:100%;margin-bottom:10px;background:#38a169;color:white;">Scan All Simple Fields</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:200px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">'+mH+'</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._m.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;width:100%;}.m-btn.act{background:#3182ce;color:white;}</style>';sty()}
                 function gJ(){const j=JSON.stringify(S.m,null,2);navigator.clipboard.writeText(j).then(()=>alert('JSON copied!'),()=>alert('Copy failed'));}
                 function rM(i){S.m.splice(i,1);upd()}function destroy(){if(S.lH)S.lH.style.outline='';document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});document.removeEventListener('mouseover',hMO);document.removeEventListener('mouseout',hMOu);document.removeEventListener('click',hC,true);document.getElementById('mUI').remove()}
                 const r=document.createElement('div');r.id='mUI';r.style.cssText='position:fixed;top:20px;right:20px;z-index:10001;width:350px;background:#f7fafc;border:1px solid #ccc;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);font-family:sans-serif;font-size:14px;';document.body.appendChild(r);upd();document.addEventListener('mouseover',hMO);document.addEventListener('mouseout',hMOu);document.addEventListener('click',hC,true);window._m={setM,scan,gJ,rM,destroy};

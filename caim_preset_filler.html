@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler v6.2 (Optimized)</title>
+    <title>CA IM Preset Form Filler v6.5 (Live Highlighting)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -60,12 +60,12 @@
                 </h2>
                 <div class="p-6 bg-blue-50 border border-blue-200 rounded-lg mb-6">
                     <p class="text-blue-800 text-sm leading-relaxed">
-                        Drag the bookmarklet to your bookmarks bar. On your target form, run the tool to visually map fields. This generates the JSON needed for the next step.
+                        Drag the bookmarklet to your bookmarks bar. The Smart Mapper now visually highlights captured fields in green directly on the page.
                     </p>
                 </div>
                 <div class="text-center py-8">
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        🔧 Field Mapper Tool v6.2
+                        🔧 Field Mapper Tool v6.5
                     </a>
                 </div>
                 <div class="mt-8 flex justify-end">
@@ -132,24 +132,24 @@
                     <h4>Overview</h4>
                     <p>This tool creates a single, powerful "Form Filler" bookmarklet to automate complex forms using hierarchical "Preset Groups".</p>
                     <h4>Phase 1: Field Mapping</h4>
-                    <p>Use the "Field Mapper Tool" on your target form to generate a JSON configuration. This tells the filler what fields exist and what type they are.</p>
+                    <p>Use the "Field Mapper Tool" on your target form. The new Smart Mapper has two main modes:</p>
+                     <ul class="list-disc pl-5 mt-2">
+                        <li><b>Scan All Simple Fields:</b> This button automatically finds and maps all standard text boxes, text areas, and simple dropdowns. This should be your first step.</li>
+                        <li><b>Map Duallist Pair:</b> Activate this mode, then click once anywhere inside a complex duallist field (the two boxes with arrows). The tool will automatically identify both the source and destination lists and map them correctly.</li>
+                        <li>As you map fields, they will be highlighted in green on the page for easy tracking.</li>
+                    </ul>
                     <h4>Phase 2: Configuration & Generation</h4>
                     <ol>
-                        <li><strong>Load Mappings:</strong> Paste the JSON into the text area.</li>
-                        <li><strong>Import Preset Groups:</strong> Import Excel files. For each file, you'll be asked how to treat blank cells:
-                            <ul class="list-disc pl-5 mt-2">
-                                <li><b>Ignore Blanks (Default):</b> Blank cells in your Excel will not affect the corresponding form fields.</li>
-                                <li><b>Blanks Mean 'Clear':</b> A blank cell is an explicit instruction to empty the corresponding form field.</li>
-                            </ul>
-                        </li>
+                        <li><strong>Load Mappings:</strong> Paste the JSON from the mapper tool.</li>
+                        <li><strong>Import Preset Groups:</strong> Import Excel files. For each file, you'll be asked how to treat blank cells.</li>
                         <li><strong>Set Hierarchy:</strong> Drag and drop the imported groups to set their merge priority.</li>
                         <li><strong>Generate Bookmarklet:</strong> Create the final "Form Filler" bookmarklet.</li>
                     </ol>
                     <h4>How to Use the Form Filler Bookmarklet</h4>
                     <p>The generated bookmarklet is intelligent and handles page reloads caused by the form.</p>
                     <ol>
-                        <li>Click the bookmarklet. A modal will appear allowing you to select from your preset groups (e.g., a "Location" preset, a "Role" preset).</li>
-                        <li>After you make your selections and click "Fill", the tool scans the form and builds an optimized list of necessary changes. Simple additions are prioritized to run first.</li>
+                        <li>Click the bookmarklet. A modal will appear allowing you to select from your preset groups.</li>
+                        <li>After you make selections and click "Fill", the tool builds an optimized list of necessary changes.</li>
                         <li>It then begins applying changes. If a change causes a page reload, a progress screen will appear.</li>
                         <li>**After the page reloads, simply click the bookmarklet again.** It will automatically resume where it left off.</li>
                         <li>Repeat until you see the "Fill Complete!" message.</li>
@@ -189,7 +189,7 @@
     </template>
 
 <script>
-// App v6.2: Optimized bookmarklet queue to prioritize additions before changes.
+// App v6.5: Added live highlighting to Smart Mapper.
 const app = {
     // STATE
     state: {
@@ -364,7 +364,7 @@ const app = {
                     if (data.length === 0) throw new Error('Spreadsheet has no data rows.');
                     if (!data[0].Name && !data[0].name) throw new Error('Spreadsheet is missing "Name" column.');
                     
-                    const [groupName, blankBehavior] = await this.showModal({
+                    const result = await this.showModal({
                         title: 'Import Preset Group',
                         message: `Importing ${data.length} presets. Give this group a name and choose how to handle blank cells.`,
                         inputs: [ 
@@ -377,8 +377,10 @@ const app = {
                         buttons: [{ text: 'Cancel', value: null }, { text: 'Import', value: 'import', class: 'bg-amber-600 text-white' }]
                     });
 
-                    if (groupName) {
+                    if (result && result.length > 0 && result[0]) {
+                        const [groupName, blankBehavior] = result;
                         if (this.state.presets.groups.some(g => g.name === groupName)) return this.showError(`A group named "${groupName}" already exists.`);
+                        await new Promise(resolve => setTimeout(resolve, 350));
                         this.processImport(groupName, data, blankBehavior === 'clear');
                     }
                 }, 'File Read');
@@ -388,9 +390,12 @@ const app = {
     },
 
     async processImport(groupName, importData, blanksAsClear) {
+        this.showModal({ title: '⏳ Importing...', message: `Preparing to import ${importData.length} presets...`, buttons: [] });
+        await new Promise(resolve => setTimeout(resolve, 50));
+
         await this.safely(async () => {
             const groupData = {};
-            for (const row of importData) {
+            for (const [i, row] of importData.entries()) {
                 const presetName = row.Name || row.name;
                 if (!presetName) continue;
                 const preset = {};
@@ -400,7 +405,7 @@ const app = {
                     if (mapping) {
                         const val = row[fieldId];
                         if (val === null || val === undefined || val === '') {
-                             if(blanksAsClear) preset[fieldId] = ''; // Explicit clear
+                             if(blanksAsClear) preset[fieldId] = '';
                         } else {
                             preset[fieldId] = (mapping.format === 'code:description') 
                                 ? String(val).split(':')[0].trim() 
@@ -409,11 +414,19 @@ const app = {
                     }
                 }
                 groupData[presetName] = preset;
+
+                if (i > 0 && i % 50 === 0) {
+                    this.ui.modalText.textContent = `Processing row ${i} of ${importData.length}...`;
+                    await new Promise(resolve => setTimeout(resolve, 0));
+                }
             }
             this.state.presets.groups.push({ name: groupName, data: groupData, blanksAsClear });
             this.rerenderGroupsUI();
             this.saveState();
             this.ui.fileInput.value = '';
+            
+            this.hideModal(); 
+            await new Promise(resolve => setTimeout(resolve, 350));
             this.showSuccess(`Group "${groupName}" imported.`);
         }, "Import Processing");
     },
@@ -525,20 +538,21 @@ const app = {
         BUILDER_LOGIC: `
             (function(){
                 if(document.getElementById('mUI'))return;
-                const S={m:[],cS:null,cD:null,mode:null,lH:null};
+                const S={m:[],mode:null,lH:null};
                 function gId(e){return e.id||e.name}
+                function gEl(i){return document.getElementById(i)||document.getElementsByName(i)[0]}
                 function aF(o){if(!o?.length)return'text';const c=o.filter(p=>!/Enter one|Select one|Almost every/.test(p));if(c.length===0)return'text';if(c.filter(p=>/^\\d+:/.test(p.trim())).length/c.length>0.7)return'code:description';return'text'}
-                function scrS(e){const i=gId(e);if(!i)return alert('No ID/name');const s={sId:i,sO:[],fmt:'unknown'};if(e.tagName==='SELECT'){s.sO=Array.from(e.options).map(o=>o.text.trim()).filter(Boolean);s.fmt=aF(s.O)}S.cS=s;upd()}
-                function scrD(e){const i=gId(e);if(!i)return alert('No ID/name');if(i.endsWith('.Options'))return alert('Cannot use .Options as destination.');const d={id:i,type:'text'};if(e.tagName==='SELECT')d.type=document.querySelector('[name="'+i+'.Options"]')?'duallist':'select';S.cD=d;upd()}
-                function cMap(){if(!S.cS||!S.cD)return alert('Select source & destination.');if(S.m.find(m=>m.destinations[0].id===S.cD.id))return alert('Destination field already mapped.');S.m.push({sId:S.cS.sId,sO:S.cS.sO,fmt:S.cS.fmt,destinations:[S.cD]});S.cS=null;S.cD=null;S.mode=null;document.body.style.cursor='default';upd()}
-                function setM(m){S.mode=m;document.body.style.cursor='crosshair';upd()}
-                function hMO(e){const t=e.target.closest('select,input,textarea');if(!S.mode||!t)return;S.lH=t;t.style.outline='2px solid red'}
+                function add(sId,sO,fmt,dId,dType){if(S.m.find(m=>m.destinations[0].id===dId))return false;S.m.push({sId:sId,sO:sO,fmt:fmt,destinations:[{id:dId,type:dType}]});return true}
+                function setM(m){S.mode=m;document.body.style.cursor=m?'crosshair':'default';upd()}
+                function scan(){let c=0;document.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=image]), select:not([name$=".Options"]), textarea').forEach(e=>{const i=gId(e);if(i&&!i.endsWith('.Options')){const t=e.tagName==='SELECT'?'select':'text';if(add(i,[],'text',i,t))c++}});alert('Added '+c+' new simple fields.');upd()}
+                function hMO(e){if(!S.mode)return;const t=e.target.closest('input,select,textarea,img');if(!t)return;S.lH=t;t.style.outline='2px solid red'}
                 function hMOu(e){if(S.lH)S.lH.style.outline=''}
-                function hC(e){if(!S.mode)return;const t=e.target.closest('select,input,textarea');if(!t)return;e.preventDefault();e.stopPropagation();if(S.lH)S.lH.style.outline='';if(S.mode==='source')scrS(t);else scrD(t);S.mode=null;document.body.style.cursor='default'}
-                function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+m.sId+'</b> &rarr; <b>'+m.destinations[0].id+'</b></span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';const sT=S.cS?S.cS.sId+' ('+S.cS.fmt+')':'None',dT=S.cD?S.cD.id+' ('+S.cD.type+')':'None';r.innerHTML='<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v6.2</div><div style="padding:16px;"><div style="display:flex;gap:10px;margin-bottom:10px;"><button onclick="window._m.setM(\\'source\\')" class="m-btn '+(S.mode==='source'?'act':'')+'">1. Select Source</button><button onclick="window._m.setM(\\'destination\\')" class="m-btn '+(S.mode==='destination'?'act':'')+'">2. Select Dest</button></div><div style="font-size:12px;padding:8px;background:#edf2f7;border-radius:4px;"><b>Src:</b> '+sT+'<br><b>Dest:</b> '+dT+'</div><button onclick="window._m.cMap()" class="m-btn" style="background:#38a169;color:white;width:100%;margin-top:10px;">3. Commit</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:150px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">'+mH+'</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._m.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;flex-grow:1;}.m-btn.act{background:#3182ce;color:white;}</style>'}
+                function sty(){document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});S.m.forEach(m=>{const dEl=gEl(m.destinations[0].id);if(dEl){dEl.style.backgroundColor='#e6fffa';dEl.style.border='2px solid #38a169';dEl.setAttribute('data-caim-mapped','true')}})}
+                function hC(e){if(!S.mode)return;e.preventDefault();e.stopPropagation();if(S.lH)S.lH.style.outline='';const t=e.target.closest('input,select,textarea,img');if(!t)return;const i=gId(t);if(!i)return alert('Element has no ID or name.');if(S.mode==='simple'){const type=t.tagName==='SELECT'?'select':'text';if(!add(i,[],'text',i,type))alert('Field already mapped.');}else if(S.mode==='duallist'){const p=t.closest('td > table');if(!p)return alert('Could not find duallist parent table.');const src=p.querySelector('select[name$=".Options"]'),dest=p.querySelector('select:not([name$=".Options"])');if(!src||!dest)return alert('Could not find source/destination pair.');const sId=gId(src),dId=gId(dest);const sO=Array.from(src.options).map(o=>o.text.trim()).filter(Boolean);const fmt=aF(sO);if(!add(sId,sO,fmt,dId,'duallist'))alert('Field already mapped.');}upd();setM(null)}
+                function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+(m.sId===m.destinations[0].id?m.sId:m.sId+' &rarr; '+m.destinations[0].id)+'</b></span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';r.innerHTML='<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v6.5</div><div style="padding:16px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;"><button onclick="window._m.setM(\\'simple\\')" class="m-btn '+(S.mode==='simple'?'act':'')+'">Map Simple</button><button onclick="window._m.setM(\\'duallist\\')" class="m-btn '+(S.mode==='duallist'?'act':'')+'">Map Duallist</button></div><button onclick="window._m.scan()" class="m-btn" style="width:100%;margin-bottom:10px;background:#38a169;color:white;">Scan All Simple Fields</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:200px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">'+mH+'</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._m.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;width:100%;}.m-btn.act{background:#3182ce;color:white;}</style>';sty()}
                 function gJ(){const j=JSON.stringify(S.m,null,2);navigator.clipboard.writeText(j).then(()=>alert('JSON copied!'),()=>alert('Copy failed'));}
-                function rM(i){S.m.splice(i,1);upd()}function destroy(){if(S.lH)S.lH.style.outline='';document.removeEventListener('mouseover',hMO);document.removeEventListener('mouseout',hMOu);document.removeEventListener('click',hC,true);document.getElementById('mUI').remove()}
-                const r=document.createElement('div');r.id='mUI';r.style.cssText='position:fixed;top:20px;right:20px;z-index:10001;width:350px;background:#f7fafc;border:1px solid #ccc;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);font-family:sans-serif;font-size:14px;';document.body.appendChild(r);upd();document.addEventListener('mouseover',hMO);document.addEventListener('mouseout',hMOu);document.addEventListener('click',hC,true);window._m={setM,cMap,gJ,rM,destroy};
+                function rM(i){S.m.splice(i,1);upd()}function destroy(){if(S.lH)S.lH.style.outline='';document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});document.removeEventListener('mouseover',hMO);document.removeEventListener('mouseout',hMOu);document.removeEventListener('click',hC,true);document.getElementById('mUI').remove()}
+                const r=document.createElement('div');r.id='mUI';r.style.cssText='position:fixed;top:20px;right:20px;z-index:10001;width:350px;background:#f7fafc;border:1px solid #ccc;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);font-family:sans-serif;font-size:14px;';document.body.appendChild(r);upd();document.addEventListener('mouseover',hMO);document.addEventListener('mouseout',hMOu);document.addEventListener('click',hC,true);window._m={setM,scan,gJ,rM,destroy};
             })()`
     }
 };

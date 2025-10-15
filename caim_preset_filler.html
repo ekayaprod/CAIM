@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CA IM Preset Form Filler v7.7 (Aggressive Minification)</title>
+    <title>CA IM Preset Form Filler v8.1 (Optimized)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -65,7 +65,7 @@
                 </div>
                 <div class="text-center py-8">
                     <a href="" id="builder-bookmarklet-link" class="inline-block px-8 py-3 bg-blue-600 text-white font-semibold rounded-lg shadow-md hover:bg-blue-700 transition-colors">
-                        🔧 Field Mapper Tool v7.7
+                        🔧 Field Mapper Tool v8.1
                     </a>
                 </div>
                 <div class="mt-8 flex justify-end">
@@ -187,7 +187,7 @@
     </template>
 
 <script>
-// App v7.7: Implemented more aggressive minification by shortening internal var names.
+// App v8.1: Applied final minification to bookmarklet logic.
 const app = {
     // STATE
     state: {
@@ -198,7 +198,7 @@ const app = {
     ui: {},
     modalResolve: null,
     draggedItem: null,
-    STORAGE_KEY: 'caimPresetFillerState_v7',
+    STORAGE_KEY: 'caimPresetFillerState_v7', // Keep v7 key for backward compatibility
     CSS: {
         BTN_PRIMARY: 'bg-blue-600 text-white',
         BTN_DANGER: 'bg-red-600 text-white',
@@ -240,21 +240,53 @@ const app = {
         this.ui.steps.forEach((step, index) => step.classList.toggle('active', index + 1 === stepNumber));
     },
 
-    renderPresetUI(isFromLoad = false) {
-        const task = () => {
+    async renderPresetUI(isFromLoad = false) {
+        const task = async () => {
             const jsonInput = this.ui.mappingsJson.value;
             if (!jsonInput) {
                 if (!isFromLoad) this.showError('Please paste the mappings JSON first.');
                 return;
             }
-            this.state.mappings = JSON.parse(jsonInput);
+
+            if (!isFromLoad && this.state.presets.groups.length > 0) {
+                const confirmed = await this.confirmAction(
+                    'Loading new mappings will clear all existing preset groups. Are you sure you want to continue?',
+                    'Yes, Clear Presets'
+                );
+                if (!confirmed) return;
+                this.state.presets.groups = [];
+                this.rerenderGroupsUI();
+            }
+            
+            const newMappings = JSON.parse(jsonInput);
+
+            const seenIds = new Set();
+            const duplicates = [];
+            for (const m of newMappings) {
+                const id = this._fieldId(m);
+                if (seenIds.has(id)) {
+                    duplicates.push(id);
+                }
+                seenIds.add(id);
+            }
+
+            if (duplicates.length > 0) {
+                this.showError(`Your mappings JSON contains duplicate destination IDs, which is not allowed. Please correct the following duplicates:\n\n- ${[...new Set(duplicates)].join('\n- ')}`);
+                return;
+            }
+
+            this.state.mappings = newMappings;
             this.state.mappingsByField = Object.fromEntries(this.state.mappings.map(m => [this._fieldId(m), m]));
             this.ui.presetsConfigSection.style.display = 'block';
             this.rerenderGroupsUI();
             if (!isFromLoad) this.saveState();
         };
-        if (isFromLoad) task();
-        else this.safely(task, 'JSON Parse');
+
+        if (isFromLoad) {
+            this.safely(() => { task(); }, 'JSON Parse');
+        } else {
+            await this.safely(task, 'JSON Parse');
+        }
     },
     
     // STATE PERSISTENCE
@@ -535,7 +567,7 @@ const app = {
                 .replace(/\s*\)\s*/g, ")")
                 .replace(/ {2,}/g, ' ');
 
-            const script = 'javascript:(function(){' + encodeURIComponent(minifiedLogic) + '})()';
+            const script = 'javascript:' + encodeURIComponent('(function(){' + minifiedLogic + '})()');
             
             document.getElementById('final-bookmarklet-link-container').innerHTML = `<a href="${script.replace(/"/g, '&quot;')}" class="inline-block px-8 py-3 bg-purple-600 text-white font-semibold rounded-lg shadow-md hover:bg-purple-700">${this.escapeHtml(name)}</a>`;
             document.getElementById('final-output').style.display = 'block';
@@ -543,7 +575,7 @@ const app = {
     },
 
     BOOKMARKLET_UTILITIES: `function getEl(i){return document.getElementById(i)||document.getElementsByName(i)[0]}function trigger(e,v){if(!e)return;e.dispatchEvent(new Event(v,{bubbles:true}))}`,
-    FILLER_LOGIC: `const C={L:__LOOKUP_DATA__,M:__FIELDMETA_DATA__,P:__PRESETS_DATA__,SK:'_caim_fill_s',ID:'_caim_fill_o',MS:'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:white;padding:24px;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.3);font-family:sans-serif;min-width:320px;max-width:90vw;'};C.gS=function(){return JSON.parse(sessionStorage.getItem(this.SK)||'null')};C.sS=function(d){sessionStorage.setItem(this.SK,JSON.stringify(d))};C.c=function(){sessionStorage.removeItem(this.SK);const o=document.getElementById(this.ID);if(o)o.remove()};C.r=function(i,v){const m=this.M[i];return(m.f==='code:description'&&this.L[i])?this.L[i][v]||v:v};C.gA=function(e,i){return e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorAdd"]')};C.gR=function(e,i){return e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]')};C.gV=function(e,m){if(!e)return'';if(m.t==='duallist')return Array.from(e.options).map(o=>o.text).join(',');if(m.t==='select')return e.options[e.selectedIndex]?.text.trim()||e.value;return e.value};C.sh=function(total,done,nA){this.c();const h='<div id="'+this.ID+'" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(0,0,0,0.7);color:white;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;text-align:center;"><div style="font-size:2rem; padding: 1rem 0;">Loading...</div><h2 style="font-size:2rem;margin:0.5em 0;">Processing Action...</h2><p style="background:rgba(0,0,0,0.5);padding:0.5em 1em;border-radius:6px;font-size:1.2rem;">Action '+(done+1)+' of '+total+'</p><p style="font-size:1.5rem;font-weight:bold;margin:0.5em 0;">'+nA.c.toUpperCase()+': '+nA.i+'</p><p style="margin-top:2em;">After page reloads, click bookmarklet again to continue.</p><button onclick="window._caim_filler.c()" style="margin-top:1em;padding:0.5em 1em;border:1px solid white;background:transparent;color:white;border-radius:6px;cursor:pointer;">Cancel & Clear Session</button></div>';document.body.insertAdjacentHTML('beforeend',h)};C.plan=function(MGD){const nD=[],D=[],CLR=['DELETE','CLEAR','REMOVE',''];for(const f in MGD){const m=this.M[f],e=getEl(f);if(!m||!e)continue;const pVRaw=MGD[f],isClr=CLR.includes(String(pVRaw).toUpperCase()),cV=this.gV(e,m).trim();if(isClr){if(cV!==''){const a={i:f,c:'clear'};if(m.t==='duallist')D.push(a);else nD.push(a)}}else{const pV=String(pVRaw);if(m.t==='duallist'){const cVs=cV?cV.split(',').map(s=>s.trim()):[],pVNorm=this.r(f,pV).split(':')[0].trim();if(!cVs.some(cv=>cv===pVNorm||cv.startsWith(pVNorm+':'))){if(cVs.length>0&&cVs[0]!==''){D.push({i:f,c:'clear'})}D.push({i:f,c:'set',v:pV})}}else if(this.r(f,pV).trim()!==cV){nD.push({i:f,c:'set',v:pV})}}}return{nD,D}};C.exec=function(a){const e=getEl(a.i),m=this.M[a.i];if(!e)return;if(a.c==='clear'){if(m.t==='duallist'){const r=this.gR(e,a.i);if(r&&e.options.length>0){Array.from(e.options).forEach(o=>o.selected=true);r.click()}}else{e.value='';trigger(e,'input');trigger(e,'change')}}else if(a.c==='set'){if(m.t==='duallist'){const sEl=getEl(m.s||(a.i+'.Options')),btn=this.gA(e,a.i);if(!sEl||!btn)return;const v=this.r(a.i,a.v);Array.from(sEl.options).forEach(o=>{o.selected=o.text.trim()===v||o.text.trim().startsWith(v+':')});btn.click()}else if(m.t==='select'){const rV=this.r(a.i,a.v),opt=Array.from(e.options).find(o=>o.text.trim()===rV||o.text.trim().startsWith(rV));if(opt)e.value=opt.value;else e.value=rV;trigger(e,'change')}else{e.value=this.r(a.i,a.v);trigger(e,'input');trigger(e,'change')}}};C._modal=function(cfg){return new Promise(r=>{const d=document.createElement('div');d.id=this.ID;d.style.cssText=this.MS;let bH='';if(cfg.btns){cfg.btns.forEach(b=>{bH+='<button id="_'+b.v+'" style="padding:8px 16px;background:'+(b.c||'#6b7280')+';color:white;border:none;border-radius:6px;cursor:pointer;margin-right:8px;">'+b.t+'</button>'});}d.innerHTML='<h3 style="margin:0 0 16px;font-size:18px;">'+cfg.title+'</h3>'+cfg.body+'<div>'+bH+'</div>';document.body.appendChild(d);if(cfg.btns){cfg.btns.forEach(b=>{d.querySelector('#_'+b.v).onclick=()=>{d.remove();r(b.v)}})}})};C.run=async function(){const s=this.gS(),uEl=getEl('USAccountName'),cU=uEl?uEl.value:null;let Sels,isR=!1;if(s&&s.u===cU&&s.sels){console.log('Resuming:',cU);Sels=s.sels;isR=!0}else{console.log('New session');if(this.P.groups.length===1&&Object.keys(this.P.groups[0].data).length===1){Sels=[Object.keys(this.P.groups[0].data)[0]]}else{let SelHTML='';this.P.groups.forEach((g,i)=>{SelHTML+='<div style="margin-bottom:12px;"><label style="display:block;font-size:14px;color:#333;margin-bottom:4px;">'+g.name+':</label><select id="_g'+i+'" style="width:100%;padding:8px;border:1px solid #ccc;border-radius:4px;"><option value="">--</option>'+Object.keys(g.data).map(n=>'<option value="'+n.replace(/"/g,'&quot;')+'">'+n.replace(/</g,'&lt;')+'</option>').join('')+'</select></div>'});const R=await this._modal({title:'Form Filler',body:SelHTML,btns:[{t:'Cancel',v:null},{t:'Scan & Continue',v:'ok',c:'#3b82f6'}]});if(R!=='ok'){return}Sels=Array.from(document.querySelectorAll('[id^=_g]')).map(el=>el.value);}if(!Sels)return;this.sS({u:cU,sels:Sels})}let MGD={...this.P.defaults};this.P.groups.forEach((g,i)=>{const sel=Sels[i];if(sel&&g.data[sel]){MGD={...MGD,...g.data[sel]}}});const PL=this.plan(MGD),T=PL.nD.length+PL.D.length;if(T===0){this.c();await this._modal({title:'All Set',body:'<p style="white-space:pre-wrap;margin-bottom:16px;">All fields already match presets.</p>',btns:[{t:'OK',v:true,c:'#3b82f6'}]});return}if(!isR){const msg=['Perform '+T+' actions?','','Standard: '+PL.nD.length,'Page-Reload: '+PL.D.length,'','Click OK to begin.'].join('\\n');const ok=await this._modal({title:'Confirm Action',body:'<p style="white-space:pre-wrap;margin-bottom:16px;">'+msg+'</p>',btns:[{t:'Cancel',v:false},{t:'OK',v:true,c:'#3b82f6'}]});if(!ok){this.c();return}}for(const a of PL.nD){this.exec(a)}if(PL.D.length>0){const a=PL.D[0];console.log('Executing:',a);this.sh(T,PL.nD.length,a);this.exec(a);return}this.c();await this._modal({title:'Fill Complete!',body:'<p style="white-space:pre-wrap;margin-bottom:16px;">'+PL.nD.length+' fields updated.</p>',btns:[{t:'OK',v:true,c:'#3b82f6'}]})};try{C.run()}catch(e){console.error(e);C._modal({title:'Error',body:e.message||'Unknown',btns:[{t:'OK',v:true,c:'#d9534f'}]})}window._caim_filler=C;`,
+    FILLER_LOGIC: `const C={L:__LOOKUP_DATA__,M:__FIELDMETA_DATA__,P:__PRESETS_DATA__,SK:'_caim_fill_s',ID:'_caim_fill_o',MS:'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:99999;background:#fff;padding:20px;font-family:sans-serif;'};C.gS=function(){return JSON.parse(sessionStorage.getItem(this.SK)||'null')};C.sS=function(d){sessionStorage.setItem(this.SK,JSON.stringify(d))};C.c=function(){sessionStorage.removeItem(this.SK);const o=document.getElementById(this.ID);if(o)o.remove()};C.render=function(i,v){const m=this.M[i];return(m.f==='code:description'&&this.L[i])?this.L[i][v]||v:v};C.gA=function(e,i){return e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorAdd"]')};C.gR=function(e,i){return e.closest('td,div')?.parentElement?.querySelector('input[name="action.'+i+'.OptionSelectorRemove"]')};C.gV=function(e,m){if(!e)return'';if(m.t==='duallist')return Array.from(e.options).map(o=>o.text).join(',');if(m.t==='select')return e.options[e.selectedIndex]?.text.trim()||e.value;return e.value};C.sh=function(){this.c();document.body.insertAdjacentHTML('beforeend','<div id="'+this.ID+'" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:99999;background:rgba(0,0,0,0.8);color:#fff;display:flex;align-items:center;justify-content:center;font-size:2rem;">Loading...</div>')};C.pl=function(M){const nD=[],D=[],CLR=[''];for(const f in M){const m=this.M[f],e=getEl(f);if(!m||!e)continue;const pVRaw=M[f],isClr=CLR.includes(String(pVRaw).toUpperCase()),cV=this.gV(e,m).trim();if(isClr){if(cV!==''){const a={i:f,c:'clear'};if(m.t==='duallist')D.push(a);else nD.push(a)}}else{const pV=String(pVRaw);if(m.t==='duallist'){const cVs=cV?cV.split(',').map(s=>s.trim()):[],pVNorm=this.render(f,pV).split(':')[0].trim();if(!cVs.some(cv=>cv===pVNorm||cv.startsWith(pVNorm+':'))){if(cVs.length>0&&cVs[0]!==''){D.push({i:f,c:'clear'})}D.push({i:f,c:'set',v:pV})}}else if(this.render(f,pV).trim()!==cV){nD.push({i:f,c:'set',v:pV})}}}return{nD,D}};C.x=function(a){const e=getEl(a.i),m=this.M[a.i];if(!e)return;if(a.c==='clear'){if(m.t==='duallist'){const r=this.gR(e,a.i);if(r&&e.options.length>0){Array.from(e.options).forEach(o=>o.selected=true);r.click()}}else{e.value='';trigger(e,'input');trigger(e,'change')}}else if(a.c==='set'){if(m.t==='duallist'){const sEl=getEl(m.s||(a.i+'.Options')),btn=this.gA(e,a.i);if(!sEl||!btn)return;const v=this.render(a.i,a.v);Array.from(sEl.options).forEach(o=>{o.selected=o.text.trim()===v||o.text.trim().startsWith(v+':')});btn.click()}else if(m.t==='select'){const rV=this.render(a.i,a.v),opt=Array.from(e.options).find(o=>o.text.trim()===rV||o.text.trim().startsWith(rV));if(opt)e.value=opt.value;else e.value=rV;trigger(e,'change')}else{e.value=this.render(a.i,a.v);trigger(e,'input');trigger(e,'change')}}};C.sel=function(){return new Promise(r=>{let h='<div id="'+this.ID+'" style="'+this.MS+'"><h3>Select Presets</h3>';this.P.groups.forEach((g,i)=>{h+='<select id="_g'+i+'"><option value="">--</option>';Object.keys(g.data).forEach(n=>h+='<option>'+n+'</option>');h+='</select>'});h+='<button id="_ok">OK</button><button id="_x">Cancel</button></div>';document.body.insertAdjacentHTML('beforeend',h);const d=document.getElementById(this.ID);d.querySelector('#_ok').onclick=()=>{r(Array.from(d.querySelectorAll('select')).map(s=>s.value));d.remove()};d.querySelector('#_x').onclick=()=>{r(null);d.remove()};})};C.cf=function(msg){return new Promise(r=>{const d=document.createElement('div');d.id=this.ID;d.style.cssText=this.MS;d.innerHTML='<p>'+msg+'</p><button id="_ok">OK</button><button id="_x">Cancel</button>';document.body.appendChild(d);d.querySelector('#_ok').onclick=()=>{d.remove();r(1)};d.querySelector('#_x').onclick=()=>{d.remove();r(0)};})};C.done=function(msg){const d=document.createElement('div');d.id=this.ID;d.style.cssText=this.MS;d.innerHTML='<p>'+msg+'</p><button onclick="this.parentElement.remove()">OK</button>';document.body.appendChild(d)};C.r=async function(){const s=this.gS();let S,R=!1;if(s&&s.sels){S=s.sels;R=!0}else{if(this.P.groups.length===1&&Object.keys(this.P.groups[0].data).length===1){S=[Object.keys(this.P.groups[0].data)[0]]}else{S=await this.sel()}if(!S)return;this.sS({sels:S})}let M={...this.P.defaults};this.P.groups.forEach((g,i)=>{const sel=S[i];if(sel&&g.data[sel]){M={...M,...g.data[sel]}}});const P=this.pl(M),T=P.nD.length+P.D.length;if(T===0){this.c();this.done('All fields already match presets.');return}if(!R){const msg=['Perform '+T+' actions?','','Standard: '+P.nD.length,'Page-Reload: '+P.D.length,'','Click OK to begin.'].join('\\n');const ok=await this.cf(msg);if(!ok){this.c();return}}for(const a of P.nD){this.x(a)}if(P.D.length>0){const a=P.D[0];this.sh();this.x(a);return}this.c();this.done(P.nD.length+' fields updated.')};try{C.r()}catch(e){C.done(e.message||'Unknown')}window._caim_filler=C;`,
     
     BUILDER_TOOL: {
         getMinifiedScript() { return this.BUILDER_LOGIC.replace(/\s+/g, ' ').trim(); },
@@ -558,10 +590,10 @@ const app = {
                 function setM(m){S.mode=m;document.body.style.cursor=m?'crosshair':'default';upd()}
                 function scan(){let c=0;document.querySelectorAll('input:not([type=hidden]):not([type=submit]):not([type=image]), select:not([name$=".Options"]), textarea').forEach(e=>{const i=gId(e);if(i&&!i.endsWith('.Options')){const t=e.tagName==='SELECT'?'select':'text';if(add(i,[],'text',i,t))c++}});alert('Added '+c+' new simple fields.');upd()}
                 function hMO(e){if(!S.mode)return;const t=e.target.closest('input,select,textarea,img');if(!t)return;S.lH=t;t.style.outline='2px solid red'}
-                function hMOu(e){if(S.llH)S.lH.style.outline=''}
+                function hMOu(e){if(S.lH)S.lH.style.outline=''}
                 function sty(){document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});S.m.forEach(m=>{const dEl=gEl(m.destinations[0].id);if(dEl){dEl.style.backgroundColor='#e6fffa';dEl.style.border='2px solid #38a169';dEl.setAttribute('data-caim-mapped','true')}})}
                 function hC(e){if(!S.mode)return;e.preventDefault();e.stopPropagation();if(S.lH)S.lH.style.outline='';const t=e.target.closest('input,select,textarea,img');if(!t)return;const i=gId(t);if(!i)return alert('Element has no ID or name.');if(S.mode==='simple'){const type=t.tagName==='SELECT'?'select':'text';if(!add(i,[],'text',i,type))alert('Field already mapped.');}else if(S.mode==='duallist'){const p=t.closest('td > table');if(!p)return alert('Could not find duallist parent table.');const src=p.querySelector('select[name$=".Options"]'),dest=p.querySelector('select:not([name$=".Options"])');if(!src||!dest)return alert('Could not find source/destination pair.');const sId=gId(src),dId=gId(dest);const sO=Array.from(src.options).map(o=>o.text.trim()).filter(Boolean);const fmt=aF(sO);if(!add(sId,sO,fmt,dId,'duallist'))alert('Field already mapped.');}upd();setM(null)}
-                function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+(m.sId===m.destinations[0].id?m.sId:m.sId+' &rarr; '+m.destinations[0].id)+'</b></span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';r.innerHTML='<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v7.7</div><div style="padding:16px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;"><button onclick="window._m.setM(\\'simple\\')" class="m-btn '+(S.mode==='simple'?'act':'')+'">Map Simple</button><button onclick="window._m.setM(\\'duallist\\')" class="m-btn '+(S.mode==='duallist'?'act':'')+'">Map Duallist</button></div><button onclick="window._m.scan()" class="m-btn" style="width:100%;margin-bottom:10px;background:#38a169;color:white;">Scan All Simple Fields</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:200px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">'+mH+'</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._m.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;width:100%;}.m-btn.act{background:#3182ce;color:white;}</style>';sty()}
+                function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+(m.sId===m.destinations[0].id?m.sId:m.sId+' &rarr; '+m.destinations[0].id)+'</b></span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';r.innerHTML='<div style="background:#2d3748;color:white;padding:12px;font-weight:bold;">Mapper v8.1</div><div style="padding:16px;"><div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;"><button onclick="window._m.setM(\\'simple\\')" class="m-btn '+(S.mode==='simple'?'act':'')+'">Map Simple</button><button onclick="window._m.setM(\\'duallist\\')" class="m-btn '+(S.mode==='duallist'?'act':'')+'">Map Duallist</button></div><button onclick="window._m.scan()" class="m-btn" style="width:100%;margin-bottom:10px;background:#38a169;color:white;">Scan All Simple Fields</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:8px;"><b>Mappings</b><div style="max-height:200px;overflow-y:auto;border:1px solid #ccc;background:white;margin-top:4px;">'+mH+'</div></div></div><div style="padding:12px;background:#edf2f7;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#dd6b20;color:white;width:100%;font-weight:bold;">Generate & Copy JSON</button><button onclick="window._m.destroy()" style="background:none;border:none;color:#718096;font-size:12px;cursor:pointer;margin-top:4px;width:100%;">Close</button></div><style>.m-btn{padding:8px;border:1px solid #ccc;background:white;border-radius:4px;cursor:pointer;width:100%;}.m-btn.act{background:#3182ce;color:white;}</style>';sty()}
                 function gJ(){const j=JSON.stringify(S.m,null,2);navigator.clipboard.writeText(j).then(()=>alert('JSON copied!'),()=>alert('Copy failed'));}
                 function rM(i){S.m.splice(i,1);upd()}function destroy(){if(S.lH)S.lH.style.outline='';document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});document.removeEventListener('mouseover',hMO);document.removeEventListener('mouseout',hMOu);document.removeEventListener('click',hC,true);document.getElementById('mUI').remove()}
                 const r=document.createElement('div');r.id='mUI';r.style.cssText='position:fixed;top:20px;right:20px;z-index:10001;width:350px;background:#f7fafc;border:1px solid #ccc;border-radius:8px;box-shadow:0 5px 15px rgba(0,0,0,0.2);font-family:sans-serif;font-size:14px;';document.body.appendChild(r);upd();document.addEventListener('mouseover',hMO);document.addEventListener('mouseout',hMOu);document.addEventListener('click',hC,true);window._m={setM,scan,gJ,rM,destroy};
@@ -573,4 +605,3 @@ document.addEventListener('DOMContentLoaded', () => { window.app = app; app.init
 </script>
 </body>
 </html>
-

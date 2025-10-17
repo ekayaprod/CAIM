@@ -266,6 +266,24 @@ const app = {
                 return;
             }
 
+            // --- APPLIED CHANGE from Mode M Review (Fix 1) ---
+            // 1. Parse and validate the new mappings *before* asking to clear existing data.
+            const newMappings = JSON.parse(jsonInput);
+
+            // Validate for duplicate IDs before proceeding. This logic is duplicated
+            // from _applyMappings to prevent state mutation before confirmation.
+            const seenIds = new Set();
+            const duplicates = [];
+            for (const m of newMappings) {
+                const id = this._fieldId(m);
+                if (seenIds.has(id)) { duplicates.push(id); }
+                seenIds.add(id);
+            }
+            if (duplicates.length > 0) {
+                throw new Error(`Your mappings JSON contains duplicate destination IDs, which is not allowed. Please correct the following duplicates:\n\n- ${[...new Set(duplicates)].join('\n- ')}`);
+            }
+            
+            // 2. Now that the data is valid, ask for confirmation if there's data to lose.
             if (this.state.presets.groups.length > 0 || Object.keys(this.state.fieldConfigs).length > 0) {
                 const confirmed = await this.confirmAction(
                     'Loading new mappings will clear all existing preset groups and field configurations. Are you sure you want to continue?',
@@ -274,15 +292,15 @@ const app = {
                 if (!confirmed) return;
                 this.state.presets.groups = [];
                 this.state.fieldConfigs = {};
-                this.rerenderGroupsUI();
             }
             
-            const newMappings = JSON.parse(jsonInput);
+            // 3. Apply the validated mappings and save state.
             this._applyMappings(newMappings);
             this.saveState();
+            // --- END OF CHANGE ---
         };
         
-        await this.safely(task, 'JSON Parse');
+        await this.safely(task, 'JSON Parse & Validate');
     },
     
     // STATE PERSISTENCE
@@ -304,8 +322,10 @@ const app = {
                 return true;
             }
         } catch (e) {
-            console.error("Failed to load state:", e);
-            localStorage.removeItem(this.STORAGE_KEY);
+            // --- APPLIED CHANGE from Mode M Review (Fix 2) ---
+            // Do not silently delete corrupted state. Log the error and let the user decide.
+            console.error("Failed to load corrupted state from localStorage:", e);
+            // --- END OF CHANGE ---
         }
         return false;
     },

@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Page title is professional -->
     <title>CA Identity Manager Suite</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -30,7 +31,8 @@
             <main class="bg-white p-10 rounded-3xl shadow-xl">
                 <h2 class="text-2xl font-semibold text-slate-800 mb-8 text-center">Choose Your Tool</h2>
                 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Updated grid to 2 columns as Discovery Tool is removed -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <!-- Preset Form Filler -->
                     <a href="caim_preset_filler.html" class="card-hover group block p-8 border-2 border-slate-200 rounded-2xl hover:border-blue-400 hover:bg-blue-50/50 transition-all duration-200 no-underline">
                         <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
@@ -38,6 +40,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                             </svg>
                         </div>
+                        <!-- Card description is factual -->
                         <h3 class="font-bold text-xl text-slate-800 mb-3 group-hover:text-blue-600 transition-colors">Preset Form Filler</h3>
                         <p class="text-slate-600 text-sm leading-relaxed mb-4">Create intelligent form fillers with location and role presets. Build once, use everywhere.</p>
                         <div class="flex items-center text-blue-600 text-sm font-semibold">
@@ -55,6 +58,7 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
                             </svg>
                         </div>
+                         <!-- Card description is factual -->
                         <h3 class="font-bold text-xl text-slate-800 mb-3 group-hover:text-green-600 transition-colors">Quick Bookmarklets</h3>
                         <p class="text-slate-600 text-sm leading-relaxed mb-4">Ready-to-use utilities for common tasks: search, unlock, auto-fill, and data extraction.</p>
                         <div class="flex items-center text-green-600 text-sm font-semibold">
@@ -65,22 +69,7 @@
                         </div>
                     </a>
 
-                    <!-- Discovery Tool -->
-                    <a href="caim_discovery_tool.html" class="card-hover group block p-8 border-2 border-slate-200 rounded-2xl hover:border-purple-400 hover:bg-purple-50/50 transition-all duration-200 no-underline">
-                        <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center mb-5 group-hover:scale-110 transition-transform">
-                            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                            </svg>
-                        </div>
-                        <h3 class="font-bold text-xl text-slate-800 mb-3 group-hover:text-purple-600 transition-colors">Discovery Tool</h3>
-                        <p class="text-slate-600 text-sm leading-relaxed mb-4">One-time setup tool to analyze your CA IM environment and generate PowerShell configuration.</p>
-                        <div class="flex items-center text-purple-600 text-sm font-semibold">
-                            <span>Setup Tool</span>
-                            <svg class="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                            </svg>
-                        </div>
-                    </a>
+                    <!-- Discovery Tool card block removed as per instructions -->
                 </div>
 
                 <div class="mt-12 p-6 bg-slate-50 rounded-xl border border-slate-200">
@@ -93,15 +82,17 @@
                     <ul class="text-sm text-slate-600 space-y-2 ml-7">
                         <li><strong>New User?</strong> Start with <strong>Quick Bookmarklets</strong> for immediate productivity gains</li>
                         <li><strong>Need Automation?</strong> Use <strong>Preset Form Filler</strong> to build custom form automation tools</li>
-                        <li><strong>PowerShell Setup?</strong> Run <strong>Discovery Tool</strong> once to generate your environment configuration</li>
+                        <!-- Discovery Tool list item removed -->
                     </ul>
                 </div>
             </main>
 
             <footer class="text-center mt-8 text-slate-500 text-sm">
+                <!-- Footer text is professional -->
                 <p>CA Identity Manager Suite | Browser-based automation tools</p>
             </footer>
         </div>
     </div>
 </body>
 </html>
+

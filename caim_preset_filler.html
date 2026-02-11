@@ -439,6 +439,16 @@ const app = {
         };
         reader.readAsArrayBuffer(this.ui.fileInput.files[0]);
     },
+    /**
+     * Processes imported Excel data and updates the preset state.
+     *
+     * This function normalizes the imported data, handling field ID matching,
+     * `code:description` format parsing, and optional clearing of unspecified fields.
+     *
+     * @param {string} groupName - The name of the preset group being imported.
+     * @param {Array<Object>} importData - Array of row objects parsed from the Excel file.
+     * @param {boolean} clearUnspecified - If true, fields not present in a preset row will be cleared during execution.
+     */
     async processImport(groupName, importData, clearUnspecified) {
         this.showModal({ title: 'Importing...', message: `Preparing to import ${importData.length} presets...`, buttons: [] });
         await new Promise(resolve => setTimeout(resolve, 50));

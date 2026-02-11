@@ -604,6 +604,18 @@ const app = {
     },
 
     // BOOKMARKLET GENERATION
+    /**
+     * Constructs and displays the final self-contained bookmarklet.
+     *
+     * This function implements the core "meta-builder" pattern:
+     * 1. Aggregates current configuration (mappings, presets, field behaviors)
+     * 2. builds optimized metadata (`fieldMeta`) and lookup tables (`lookup`)
+     * 3. Injects this state into the template strings (`FILLER_LOGIC`)
+     * 4. Minifies and URI-encodes the result into a `javascript:` link
+     *
+     * The resulting bookmarklet is completely standalone, containing all logic
+     * and data needed to execute the form filling automation.
+     */
     async generateFinalBookmarklet() {
         await this.safely(async () => {
             if (!this.state.mappings) return this.showError('Load mappings first.');

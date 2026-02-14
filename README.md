@@ -4,6 +4,8 @@
 
 The CA Identity Manager (CAIM) Tools Suite is a browser-based automation toolkit designed to streamline identity management workflows. The suite consists of standalone HTML applications that generate bookmarklets—JavaScript-based browser tools that can be dragged to the bookmarks bar and executed on any CAIM web page.
 
+To get started, open [`index.html`](index.html) in your browser.
+
 All tools run entirely client-side in the browser with no external dependencies beyond CDN-hosted libraries (Tailwind CSS, SheetJS). No data is transmitted to external servers.
 
 ## Project Architecture
@@ -633,16 +635,9 @@ This version includes:
 - Drag-and-drop preset group prioritization
 - Dark mode support in preset selection modal
 
-## Future Considerations
+## Roadmap
 
-Potential enhancements for future development:
-
-- **Export/Import Configuration**: Allow users to export entire preset filler configuration (mappings + presets) as single JSON file for backup or sharing
-- **Preset Validation**: Pre-execution validation that checks if all mapped fields exist on current page
-- **Action Preview**: Dry-run mode that shows what actions will be taken without executing them
-- **Conditional Logic**: Support for conditional field filling based on other field values
-- **Multi-Page Workflows**: Extend stateful execution to handle multi-step form wizards
-- **Bookmarklet Version Detection**: Add version checking to warn users if using outdated bookmarklets
+See [ROADMAP.md](ROADMAP.md) for the current status of features and future plans.
 
 ## License and Attribution
 

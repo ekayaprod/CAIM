@@ -186,8 +186,38 @@
     </template>
 
 <script>
+/**
+ * @typedef {Object} FieldMapping
+ * @property {string} sourceId
+ * @property {string[]} sourceOptions
+ * @property {string} format
+ * @property {Array<{id: string, type: string}>} destinations
+ */
+
+/**
+ * @typedef {Object} PresetGroup
+ * @property {string} name
+ * @property {boolean} clearUnspecified
+ * @property {Object.<string, Object.<string, string>>} data
+ */
+
+/**
+ * @typedef {Object} FieldConfig
+ * @property {boolean} [isAddAll]
+ */
+
+/**
+ * @typedef {Object} AppState
+ * @property {FieldMapping[]|null} mappings
+ * @property {string|null} keyField
+ * @property {Object.<string, FieldMapping>|null} mappingsByField
+ * @property {{groups: PresetGroup[]}} presets
+ * @property {Object.<string, FieldConfig>} fieldConfigs
+ */
+
 const app = {
     // STATE
+    /** @type {AppState} */
     state: {
         mappings: null,
         keyField: null,
@@ -205,6 +235,9 @@ const app = {
     },
 
     // CORE APP LOGIC
+    /**
+     * Initializes the application, caching UI references and loading saved state.
+     */
     init() {
         this.ui = {
             steps: Array.from({length: 3}, (_, i) => document.getElementById(`step${i+1}`)),
@@ -239,10 +272,20 @@ const app = {
         this.ui.clearStateButton.onclick = () => this.clearState();
     },
 
+    /**
+     * Switches the view to the specified step number.
+     * @param {number} stepNumber - The step number (1, 2, or 3).
+     */
     showStep(stepNumber) {
         this.ui.steps.forEach((step, index) => step.classList.toggle('active', index + 1 === stepNumber));
     },
 
+    /**
+     * Validates and applies field mappings to the application state.
+     * @param {FieldMapping[]} mappings - Array of field mapping objects.
+     * @param {string} keyField - ID of the key field used for session validation.
+     * @throws {Error} If duplicate destination IDs are found.
+     */
     _applyMappings(mappings, keyField) {
         const seenIds = new Set();
         const duplicates = [];
@@ -265,6 +308,10 @@ const app = {
         this.rerenderGroupsUI();
     },
 
+    /**
+     * Parses the mappings JSON and updates the UI and state.
+     * Checks for duplicates and prompts the user before overwriting existing data.
+     */
     async renderPresetUI() {
         const task = async () => {
             const jsonInput = this.ui.mappingsJson.value;
@@ -306,12 +353,19 @@ const app = {
     },
     
     // STATE PERSISTENCE
+    /**
+     * Persists the current application state to localStorage.
+     */
     saveState() {
         try {
             localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.state));
         } catch (e) { console.error("Failed to save state:", e); }
     },
 
+    /**
+     * Loads application state from localStorage.
+     * @returns {boolean} True if state was successfully loaded, false otherwise.
+     */
     loadState() {
         try {
             const savedState = localStorage.getItem(this.STORAGE_KEY);
@@ -329,6 +383,9 @@ const app = {
         return false;
     },
 
+    /**
+     * Clears all application data from localStorage and reloads the page.
+     */
     async clearState() {
         if (await this.confirmAction('Are you sure you want to clear all mappings, preset groups, and field configs? This action cannot be undone.')) {
             localStorage.removeItem(this.STORAGE_KEY);
@@ -410,6 +467,9 @@ const app = {
         XLSX.utils.book_append_sheet(wb, ws, 'Presets');
         XLSX.writeFile(wb, 'Preset_Template.xlsx');
     },
+    /**
+     * Reads the uploaded Excel file and initiates the import process.
+     */
     async handleImportClick() {
         if (!this.ui.fileInput.files?.length) return this.showError('Please select a file to import.');
         const reader = new FileReader();
@@ -494,6 +554,9 @@ const app = {
     },
 
     // PRESET GROUP UI
+    /**
+     * Updates the UI to reflect the current list of preset groups.
+     */
     rerenderGroupsUI() {
         this.ui.presetGroupsContainer.innerHTML = '';
         if (this.state.presets.groups.length === 0) {
@@ -511,6 +574,11 @@ const app = {
             this.ui.presetGroupsContainer.appendChild(groupEl);
         });
     },
+
+    /**
+     * Displays a modal with the details of a specific preset group.
+     * @param {number} index - Index of the group to view.
+     */
     async viewGroupPresets(index) {
         const group = this.state.presets.groups[index];
         if (!group) return;
@@ -526,6 +594,11 @@ const app = {
         content += `</div>`;
         await this.showModal({ title: `Presets in "${group.name}"`, message: content });
     },
+
+    /**
+     * Deletes a preset group after confirmation.
+     * @param {number} index - Index of the group to delete.
+     */
     async deleteGroup(index) {
         if (await this.confirmAction(`Delete the "${this.state.presets.groups[index]?.name}" group?`)) {
             this.state.presets.groups.splice(index, 1);
@@ -576,6 +649,9 @@ const app = {
     },
 
     // FIELD CONFIG UI
+    /**
+     * Renders configuration options for specific fields (e.g., "Add All" for duallists).
+     */
     renderFieldConfigsUI() {
         const duallistFields = this.state.mappings.filter(m => m.destinations[0].type === 'duallist');
         

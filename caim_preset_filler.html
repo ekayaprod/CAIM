@@ -433,7 +433,6 @@ const app = {
     },
     msg: (title, message) => app.showModal({title: title, message: message}),
     showError: (msg, title = 'Error') => app.msg(title, msg),
-    showSuccess: (msg, title = 'Success') => app.msg(title, msg),
     async confirmAction(message, confirmText = 'Confirm') {
         return await this.showModal({
             title: 'Confirm Action',

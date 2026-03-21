@@ -161,9 +161,9 @@
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const buildBookmarklet = (linkId, sourceId) => {
+                const link = document.getElementById(linkId);
                 try {
                     const srcEl = document.getElementById(sourceId);
-                    const link = document.getElementById(linkId);
                     if (!srcEl || !link) return;
 
                     let code = srcEl.textContent || srcEl.innerText || '';
@@ -173,7 +173,6 @@
                     link.setAttribute('href', bookmarklet);
                 } catch (err) {
                     console.error('Failed to build bookmarklet for ' + linkId, err);
-                    const link = document.getElementById(linkId);
                     if (link) {
                         link.style.opacity = '0.5';
                         link.style.cursor = 'not-allowed';

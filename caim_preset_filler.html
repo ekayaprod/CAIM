@@ -186,6 +186,24 @@
     </template>
 
 <script>
+class StateStorageError extends Error {
+    constructor(message, payloadSize, cause) {
+        super(message);
+        this.name = 'StateStorageError';
+        this.payloadSize = payloadSize;
+        this.cause = cause;
+    }
+}
+
+class StateCorruptionError extends Error {
+    constructor(message, rawData, cause) {
+        super(message);
+        this.name = 'StateCorruptionError';
+        this.rawData = rawData;
+        this.cause = cause;
+    }
+}
+
 /**
  * @typedef {Object} FieldMapping
  * @property {string} sourceId
@@ -357,9 +375,20 @@ const app = {
      * Persists the current application state to localStorage.
      */
     saveState() {
+        let payloadSize = 0;
         try {
-            localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.state));
-        } catch (e) { console.error("Failed to save state:", e); }
+            const serialized = JSON.stringify(this.state);
+            payloadSize = serialized.length;
+            localStorage.setItem(this.STORAGE_KEY, serialized);
+        } catch (e) {
+            console.error("Failed to save state. State size:", payloadSize, e);
+            if (typeof this.showError === 'function') {
+                this.showError(`Failed to save application state: ${e.message}`);
+            } else if (typeof app !== 'undefined' && typeof app.showError === 'function') {
+                app.showError(`Failed to save application state: ${e.message}`);
+            }
+            throw new StateStorageError("Failed to persist state to localStorage", payloadSize, e);
+        }
     },
 
     /**
@@ -367,10 +396,11 @@ const app = {
      * @returns {boolean} True if state was successfully loaded, false otherwise.
      */
     loadState() {
+        let rawData = null;
         try {
-            const savedState = localStorage.getItem(this.STORAGE_KEY);
-            if (savedState) {
-                const parsedState = JSON.parse(savedState);
+            rawData = localStorage.getItem(this.STORAGE_KEY);
+            if (rawData) {
+                const parsedState = JSON.parse(rawData);
                 this.state.mappings = parsedState.mappings || null;
                 this.state.keyField = parsedState.keyField || null;
                 this.state.presets = parsedState.presets || { groups: [] };
@@ -378,7 +408,13 @@ const app = {
                 return true;
             }
         } catch (e) {
-            console.error("Failed to load corrupted state from localStorage:", e);
+            console.error("Failed to load corrupted state from localStorage. Raw data:", rawData, e);
+            if (typeof this.showError === 'function') {
+                this.showError("Failed to load saved state due to corruption. You may need to clear your state.");
+            } else if (typeof app !== 'undefined' && typeof app.showError === 'function') {
+                app.showError("Failed to load saved state due to corruption. You may need to clear your state.");
+            }
+            throw new StateCorruptionError("Failed to parse state from localStorage", rawData, e);
         }
         return false;
     },

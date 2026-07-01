@@ -36,3 +36,20 @@ Implementing this suite has fundamentally transformed my daily workflow, yieldin
 * **Radical Time Compression:** Multi-step provisioning processes that historically required upwards of 5-10 minutes of manual clicking have been condensed into a continuous, ~5-second automated sequence.
 * **Error Elimination:** By mapping inputs directly to structured `.xlsx` templates and enforcing automated execution, transcription errors and missed fields have been completely eradicated from my workflow.
 * **Throughput Multiplier:** Tools like the Page Data Extractor and Bulk Action Form have increased my auditing and bulk-update throughput by over 400%, allowing me to process large batches of user accounts without breaking flow state.
+
+## 6. The Toolkit (Feature Matrix)
+
+This localized toolkit features a suite of strictly derived utilities separated into two distinct architectural categories: quick, static bookmarklets and the stateful meta-builder.
+
+### Quick Utilities (`caim_bookmarklets.html`)
+These bookmarklets rely heavily on native APIs like `TreeWalker` and fast DOM traversal heuristics.
+* **User Search Helper:** Injects a high-velocity, floating search panel to quickly isolate and visually highlight specific usernames across densely populated interfaces.
+* **Bulk Action Form:** Accepts a localized list of targets and automatically compiles an actionable checklist for executing batch operations (e.g., mass unlocks, password resets).
+* **Password Expiry Scanner:** Leverages rapid regex scanning via `TreeWalker` to extract and evaluate date strings, explicitly highlighting impending password expirations within a 30-day window while utilizing explicit `try/catch` boundaries for malformed formats.
+* **Page Data Extractor:** Parses complex, nested DOM tables and text nodes to extract critical identities and structured data grids, outputting a clean log for localized analysis and export.
+* **Quick Actions Panel:** Provides a floating command interface for immediate diagnostic overlays, including form boundary highlighting, structural element discovery (buttons/inputs), and localized page state extraction.
+* **Form Auto-Filler:** Bypasses manual entry by executing a high-speed traversal across standard `input` and `select` nodes, force-injecting predefined targets (e.g., username) and behaviors (e.g., reset, unlock) instantly.
+
+### The Meta-Builder (`caim_preset_filler.html`)
+This is the heavy machinery designed for complex, cross-reload workflows.
+* **Preset Form Filler:** An advanced compilation engine that serializes complex Excel data (`.xlsx` via SheetJS) and user-defined UI mappings into a unified payload. It explicitly utilizes `sessionStorage` to maintain state across destructive, legacy duallist full-page reloads, guaranteeing uninterrupted automation execution.

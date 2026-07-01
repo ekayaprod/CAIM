@@ -1,55 +1,54 @@
-# CA Identity Manager (CAIM) Local Automation Suite
+# ⚡ CA Identity Manager (CAIM) Tools Suite
+[![Architecture: Serverless](https://img.shields.io/badge/architecture-serverless-brightgreen)](#)
+[![Stack: Vanilla JS / HTML](https://img.shields.io/badge/stack-vanilla_js-blue)](#)
+[![Build: Zero Config](https://img.shields.io/badge/build-zero_config-orange)](#)
 
-## 1. Project Title & Brief Description
+The **CA Identity Manager Tools Suite** is a ruthlessly efficient, zero-dependency browser automation toolkit. We drop the bloat. We eliminate build steps. We generate self-contained, high-performance bookmarklets that inject directly into your CAIM administrative workflows.
 
-A personal, serverless web utility suite containing browser bookmarklets that
-I built to automate my repetitive data entry tasks within CA Identity Manager.
-It generates self-contained scripts that run locally in the browser to instantly
-map, fill, and process complex identity forms.
+Run it locally. Run it anywhere. Open [`index.html`](index.html) and start automating.
 
-## 2. The Operational Bottleneck
+## 🏗️ The Meta-Builder Architecture
 
-I created this tool because navigating CA Identity Manager manually was a
-massive drain on my time. My daily workflow involved heavy manual processing
-and clicking through complex duallist fields that constantly required full-page
-reloads. This slow, repetitive data entry not only bottlenecked my productivity
-but also introduced a high risk of human error during repetitive account
-provisions and audits.
+This is not a Node project. There is no `package.json`. There are no Webpack bundles.
+This repository leverages a **meta-builder pattern**: static HTML files that serve as both the Configuration UI and the Code Generator.
 
-## 3. Tech Stack & Architecture
+1. **You configure the tool visually** using the Tailwind-powered UI.
+2. **The meta-builder serializes and minifies** the internal logic.
+3. **A self-contained `javascript:` URI is generated**—ready to be dragged to your bookmarks bar.
 
-* **HTML5 & Vanilla JavaScript:** Core logic and UI, operating purely
-  client-side with no build steps or backend servers.
-* **Browser Bookmarklets (`javascript:` URIs):** Used as the delivery
-  mechanism to inject my automation scripts directly into the active CAIM
-  session.
-* **Tailwind CSS (via CDN):** For quickly styling the configuration interfaces.
-* **SheetJS / XLSX (via CDN):** To parse my Excel preset files locally for bulk
-  data processing.
-* **Native DOM APIs:** Leveraging `TreeWalker` and `sessionStorage` for fast
-  DOM parsing and state persistence across page reloads.
+Everything runs entirely client-side. No data ever leaves your browser.
 
-## 4. Key Features & Workflow
+## 🧰 The Arsenal
 
-* **Instant Configuration:** I open the local `index.html` file, select either
-  the Quick Utilities or the Preset Form Filler, and configure my mapping
-  options.
-* **Bookmarklet Generation:** The tool compresses my configuration into a single,
-  draggable bookmarklet.
-* **Automated Form Execution:** When I click the bookmarklet in CAIM, it uses
-  a heuristic payload to auto-detect fields, highlights them in green, and
-  maps my preset data to inputs.
-* **Stateful Continuity:** For complex tasks, the tool uses session storage
-  to remember where it left off, surviving CAIM's mandatory full-page reloads
-  and executing actions sequentially until complete.
-* **Quick Diagnostics:** I included utilities to instantly extract page data
-  into CSV format, highlight expiring passwords, and process bulk checklists.
+### 1. The Quick Utilities (`caim_bookmarklets.html`)
+Pre-compiled, instantly deployable bookmarklets for immediate CAIM automation. These target isolated, high-friction tasks to get you in and out instantly.
+* **User Search Helper:** Injects a persistent floating search panel. Utilizes the native `TreeWalker` API for ultra-fast DOM traversal to execute real-time regex matching and dynamic highlighting across massive text nodes without blocking the main thread.
+* **Bulk Action Form:** Renders a floating checklist panel for batch operations. Paste a block of newline-separated usernames, select your target operation (unlock, reset, or dual-action), and power through bulk provisioning without clicking through repetitive sub-menus.
+* **Password Expiry Scanner:** Scans the active DOM against complex date formats (`\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}`). Automatically flags and applies a hard visual alert (orange background) to any expiry date falling within a critical 30-day window.
+* **Page Data Extractor:** Radically accelerates auditing. Executes pattern-matching to scrape usernames, emails, and full names, then serializes all active HTML `<table>` elements into a clean, pipe-delimited text format ready for instant terminal or CSV piping.
+* **Quick Actions Panel:** Provides instantaneous DOM manipulation. Includes features to temporarily outline all forms in red (for quick structural mapping), grab hidden page metadata, spotlight all clickable elements with orange borders, and download serialized table data straight to disk.
+* **Form Auto-Filler:** A heuristic-driven payload that scans `name`, `placeholder`, and `id` attributes for identity-centric keywords ("user"). It maps hardcoded values directly to selects and inputs, flashing the mutated fields green for immediate visual confirmation.
 
-## 5. Localized Impact
+### 2. The Preset Form Filler (`caim_preset_filler.html`)
+The heavy artillery. An advanced, stateful automation engine featuring hierarchical preset support and Excel-based bulk import via SheetJS. Built specifically to survive hostile, multi-page reload workflows.
 
-Building this personal utility radically optimized my day-to-day operations.
-It completely eliminated my manual data entry errors, reduced my ticket
-resolution time from minutes per user to mere seconds, and allowed me to
-effortlessly handle massive bulk account provisions without clicking through
-endless sub-menus. It transformed a tedious administrative chore into a fast,
-single-click operation.
+* **Phase 1: Field Mapping (The Recon):** Injects a targeted scanner directly onto the CAIM page. It discovers complex form structures, auto-detects `select[name$=".Options"]` duallists, and designates primary keys (e.g., username) to establish absolute session validation. Every mapped field is highlighted green.
+* **Phase 2: Preset Generation (The Build):** Download generated `.xlsx` templates. Fill them with matrixed preset data. Upload the sheets directly to the builder (parsed client-side by SheetJS). The builder handles conditional states like "Clear Unspecified" and "Add All" for complex duallists, then stacks the presets hierarchically via a drag-and-drop UI for deterministic override priorities.
+* **Phase 3: Stateful Execution (The Strike):** The final, compressed bookmarklet encodes the entire configuration matrix inline. Once executed, it maintains strict cross-reload tracking via `sessionStorage`, mapping current page state against intended preset values. It executes actions sequentially, safely surviving CAIM's mandatory full-page reloads when interacting with duallist components, until the entire matrix is resolved.
+
+## 🚀 Execution & Automation Flow
+
+1. Open `index.html` in your browser.
+2. Select your weapon (Quick Utilities or Preset Filler).
+3. Follow the UI to drag the generated bookmarklet to your bookmarks bar.
+4. Navigate to your CA Identity Manager instance.
+5. Click the bookmarklet to inject and execute the automation payload.
+
+## 🛠️ Stack & Dependencies
+Zero local dependencies. We rely exclusively on battle-tested CDN libraries to maintain an ephemeral, client-side footprint:
+* **Tailwind CSS** (`cdn.tailwindcss.com`)
+* **Google Fonts - Inter**
+* **SheetJS / XLSX** (v0.18.5)
+
+## 🔮 Roadmap
+Track active development and future architectural variations in [ROADMAP.md](ROADMAP.md).

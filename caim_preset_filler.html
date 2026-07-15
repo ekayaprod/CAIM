@@ -1,21 +1,567 @@
-Good context — that reframes a couple of things. Quick corrections to my own earlier notes:
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CA IM Form Filler Builder</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8fafc; }
+        .step { display: none; opacity: 0; transition: opacity 0.3s ease; }
+        .step.active { display: block; opacity: 1; }
+        .preset-card { background: white; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 1rem; margin-top: 0.75rem; }
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+            display: flex; justify-content: center; align-items: center; z-index: 10000; 
+            opacity: 0; visibility: hidden; transition: all 0.2s ease-out;
+        }
+        .modal-backdrop.visible { opacity: 1; visibility: visible; }
+        .modal-content {
+            background: white; padding: 2rem; border-radius: 1rem;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            width: 90%; max-width: 550px; transform: scale(0.95) translateY(10px); 
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-backdrop.visible .modal-content { transform: scale(1) translateY(0); }
+        .group-item {
+            background-color: white; border: 1px solid #e2e8f0; padding: 1rem 1.25rem;
+            margin-bottom: 0.75rem; border-radius: 0.75rem; display: flex;
+            justify-content: space-between; align-items: center; cursor: grab;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: box-shadow 0.2s;
+        }
+        .group-item:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .group-item.dragging { opacity: 0.5; background: #f1f5f9; box-shadow: none; }
+        
+        /* Toggle Switch CSS */
+        .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
+    </style>
+</head>
+<body class="text-slate-800">
+    <div class="container max-w-5xl mx-auto p-4 sm:p-8">
+        
+        <header class="mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-slate-200 pb-6">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight text-slate-900">Preset Form Filler</h1>
+                <p class="text-slate-500 mt-1">Build stateful, zero-touch automation bookmarklets</p>
+            </div>
+            <div class="flex items-center gap-3">
+                <button onclick="document.getElementById('project-upload').click()" class="text-sm px-4 py-2 bg-white border border-slate-300 rounded-md hover:bg-slate-50 font-medium text-slate-700 transition-colors flex items-center shadow-sm">
+                    <svg class="w-4 h-4 mr-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+                    Import Workspace
+                </button>
+                <input type="file" id="project-upload" accept=".json" class="hidden" onchange="app.importProject(event)">
+                
+                <button onclick="app.exportProject()" class="text-sm px-4 py-2 bg-white border border-slate-300 rounded-md hover:bg-slate-50 font-medium text-slate-700 transition-colors flex items-center shadow-sm">
+                    <svg class="w-4 h-4 mr-2 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                    Save Workspace
+                </button>
+                <button onclick="app.clearState()" class="text-sm px-4 py-2 text-red-600 hover:bg-red-50 rounded-md font-medium transition-colors">Clear</button>
+            </div>
+        </header>
 
-1. The `dragover` handler isn't touching modals — it's the reorder logic for the "Active Payload Groups" list (the draggable `group-item` template), which lets you set which imported dataset "wins" when fields conflict. Given it's a small number of groups being dragged interactively by a human, my performance concern there is basically moot — that's normal, appropriately-scoped code for what it does.
-2. Makes sense — the sessionStorage round-trip through refresh is core to the mechanism, not an inefficiency.
-3. Understood — the duallist/non-standard field handling is necessary complexity, not overreach.
+        <main class="bg-white p-6 sm:p-10 rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100">
+            
+            <div id="step1" class="step active">
+                <div class="flex items-center mb-6">
+                    <div class="flex-shrink-0 w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold text-sm shadow-md">1</div>
+                    <h2 class="text-xl font-semibold ml-3 text-slate-800">Map the Target Form</h2>
+                </div>
+                
+                <div class="bg-blue-50/50 border border-blue-100 rounded-xl p-6 mb-8 text-sm text-slate-600 leading-relaxed">
+                    <p class="mb-3"><strong class="text-blue-900">What is this?</strong> Before automating data entry, the system needs to know the exact HTML structure of your target page.</p>
+                    <ol class="list-decimal list-inside space-y-2 ml-1">
+                        <li>Drag the <span class="font-semibold text-blue-700">Field Mapper Tool</span> button below to your browser's bookmarks bar.</li>
+                        <li>Navigate to your target CA IM profile page.</li>
+                        <li>Click the bookmarklet to open the scanning interface. Select your target inputs and designate your "Key Field" (usually the Username box) for session tracking.</li>
+                        <li>Click "Generate & Copy JSON".</li>
+                    </ol>
+                </div>
 
-So, refocusing on **structural refactors to shrink and simplify the HTML/JS itself**, here's what I actually see as the real levers, roughly in order of impact:
+                <div class="text-center py-6 bg-slate-50 rounded-xl border border-dashed border-slate-300">
+                    <a href="" id="builder-bookmarklet-link" class="inline-flex items-center px-6 py-3 bg-blue-600 text-white font-medium rounded-lg shadow-sm hover:bg-blue-700 hover:shadow transition-all">
+                        <svg class="w-5 h-5 mr-2 opacity-80" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+                        Field Mapper Tool
+                    </a>
+                    <p class="text-xs text-slate-400 mt-3">Drag to bookmarks bar</p>
+                </div>
 
-**1. The `FILLER_LOGIC`, `BOOKMARKLET_UTILITIES`, and `BUILDER_TOOL.BUILDER_LOGIC` strings are hand-pre-minified**
-These are authored as single-line strings with single-letter variable names (`C.L`, `C.M`, `C.gV`, etc.) baked directly into the source. But you already have a minification step (`generateFinalBookmarklet` does `.replace(/[\n\r\t]/g,'')...`) that crunches whitespace at compile time. That means the source doesn't need to be pre-crunched at all — you could write this logic as normal, readable, multi-line JS with real function/variable names, and let the existing minify pass compact it for the actual bookmarklet output. This is by far the biggest "manageable" win: the compiled output stays the same size, but the source you're editing goes from a monstrous single-line blob to normal code.
+                <div class="mt-8 flex justify-end">
+                    <button onclick="app.showStep(2)" class="px-6 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium shadow-sm transition-all flex items-center">
+                        Configure Automation <svg class="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path></svg>
+                    </button>
+                </div>
+            </div>
 
-**2. `C.sel`, `C.sum`, and `C.fin` duplicate a lot of overlay/CSS scaffolding**
-All three build a full-screen positioned overlay with near-identical inline CSS (position, colors, border-radius, button styling), just with different content and button sets. That's a good candidate for one shared "build overlay" helper that takes a title, body HTML, and button config, instead of three separately-inlined style blocks.
+            <div id="step2" class="step">
+                <div class="flex items-center justify-between mb-8 border-b border-slate-100 pb-4">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 w-8 h-8 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold text-sm shadow-md">2</div>
+                        <h2 class="text-xl font-semibold ml-3 text-slate-800">Build the Automation Logic</h2>
+                    </div>
+                    <button onclick="app.showStep(1)" class="text-sm text-slate-500 hover:text-slate-800 flex items-center">
+                        <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg> Back
+                    </button>
+                </div>
 
-**3. The modal CSS in `#_caim_fill_o` and the overlay markup in `sum`/`fin` repeat the same color tokens as literal strings** (`#0f172a`, `#e2e8f0`, `#64748b`, etc.) scattered throughout instead of being defined once. Could centralize as a small constants object referenced by all three builder functions.
+                <section class="mb-10">
+                    <h3 class="text-base font-semibold text-slate-800 mb-3">A. Ingest Form Schema</h3>
+                    
+                    <div id="schema-input-state">
+                        <textarea id="mappings-json" rows="4" class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-lg font-mono text-sm text-slate-600 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-shadow" placeholder="Paste the JSON copied from the Field Mapper Tool..."></textarea>
+                        <button onclick="app.renderPresetUI()" class="mt-3 px-5 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 text-sm font-medium shadow-sm transition-colors">Parse Schema</button>
+                    </div>
 
-**4. Two nearly-parallel systems**: the "Field Mapper Tool" (`BUILDER_LOGIC`) and the "Automation" tool (`FILLER_LOGIC`) both reimplement `getEl`/`gEl`, overlay-building, and clipboard-copy patterns independently, since they have to ship as two separate standalone bookmarklets. There's not much to unify there structurally (they run in different contexts at different times), but it's worth naming as the reason the file feels so large — you're maintaining two full mini-programs inside one file.
+                    <div id="schema-visual-state" style="display: none;" class="bg-emerald-50 border border-emerald-100 rounded-lg p-5">
+                        <div class="flex items-center justify-between mb-4">
+                            <div class="flex items-center text-emerald-800 font-medium">
+                                <svg class="w-5 h-5 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                Schema Validated
+                            </div>
+                            <button onclick="app.resetSchema()" class="text-xs text-emerald-600 hover:text-emerald-800 underline">Edit Raw JSON</button>
+                        </div>
+                        <div class="text-sm text-slate-700">
+                            <span class="block mb-2 font-medium">Tracking Session Key: <code id="preview-key-field" class="bg-white px-2 py-0.5 rounded text-emerald-700 border border-emerald-200"></code></span>
+                            <span class="block mb-2 font-medium">Captured Endpoints:</span>
+                            <div id="preview-mappings-list" class="flex flex-wrap gap-2 mt-2"></div>
+                        </div>
+                    </div>
+                </section>
 
-**5. The builder app's own code (`app.*` methods)** is comparatively fine — normal readable JS, reasonably organized into sections. Not much bloat there.
+                <div id="presets-config-section" style="display: none; animation: fadeIn 0.4s ease-out;">
+                    
+                    <section id="field-configs-section" class="mb-10 pt-6 border-t border-slate-100">
+                        <h3 class="text-base font-semibold text-slate-800 mb-2">B. Define Duallist Execution Rules</h3>
+                        <p class="text-sm text-slate-500 mb-4">Identify arrays where the payload should select "Add All" based on a single boolean trigger in the spreadsheet.</p>
+                        <div id="field-configs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                    </section>
 
-Given your note about not touching code without a go-ahead: do you want me to prioritize #1 (de-minifying the bookmarklet source for readability, keeping compiled output identical), or would you rather start with #2/#3 (extracting shared overlay/CSS helpers to cut duplication)? They're somewhat independent efforts and I can scope either first.
+                    <section class="mb-10 pt-6 border-t border-slate-100">
+                        <div class="flex flex-col md:flex-row md:items-end justify-between mb-4 gap-4">
+                            <div>
+                                <h3 class="text-base font-semibold text-slate-800 mb-1">C. Import Preset Payloads</h3>
+                                <p class="text-sm text-slate-500">Inject tabular data to construct automation templates.</p>
+                            </div>
+                            <button onclick="app.downloadXlsxTemplate()" class="text-sm px-4 py-2 bg-white border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 shadow-sm transition-colors flex items-center">
+                                <svg class="w-4 h-4 mr-2 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                Generate .XLSX Template
+                            </button>
+                        </div>
+                        
+                        <div class="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center bg-slate-50 hover:bg-slate-100 transition-colors relative">
+                            <input type="file" id="bulk-file-upload" accept=".xlsx, .xls, .csv" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" onchange="if(this.files.length) app.handleImportClick()">
+                            <svg class="mx-auto h-10 w-10 text-slate-400 mb-3" stroke="currentColor" fill="none" viewBox="0 0 48 48" aria-hidden="true">
+                                <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                            <p class="text-sm font-medium text-slate-700">Drag spreadsheet here or click to browse</p>
+                            <p class="text-xs text-slate-500 mt-1">Accepts .xlsx, .csv. Use <code class="text-pink-600 bg-pink-50 px-1 rounded">__CLEAR__</code> in a cell to explicitly wipe a target input.</p>
+                        </div>
+
+                        <div id="presets-ui-container" class="mt-6">
+                            <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-sm font-semibold text-slate-700">Active Payload Groups</h4>
+                                <span class="text-xs text-slate-400">Drag to establish execution priority (bottom overrides top)</span>
+                            </div>
+                            <div id="preset-groups-container" class="min-h-[4rem] space-y-2"></div>
+                        </div>
+                    </section>
+
+                    <section class="pt-6 border-t border-slate-100 bg-slate-50 -mx-6 sm:-mx-10 px-6 sm:px-10 pb-6 rounded-b-2xl">
+                         <h3 class="text-lg font-semibold text-slate-800 mb-4">Compile Artifact</h3>
+                        <div class="flex flex-col sm:flex-row gap-4 items-end">
+                            <div class="flex-grow w-full">
+                                <label for="final-bookmarklet-name" class="block text-sm font-medium text-slate-700 mb-1">Bookmarklet Label</label>
+                                <input type="text" id="final-bookmarklet-name" class="w-full px-4 py-2.5 bg-white border border-slate-300 rounded-lg shadow-sm focus:ring-2 focus:ring-slate-800 focus:border-slate-800 sm:text-sm" value="IM Automation Profile">
+                            </div>
+                            <button onclick="app.generateFinalBookmarklet()" class="w-full sm:w-auto px-8 py-2.5 bg-slate-800 text-white rounded-lg hover:bg-slate-900 font-medium shadow-md transition-colors whitespace-nowrap">
+                                Compile Script
+                            </button>
+                        </div>
+                        
+                        <div id="final-output" style="display: none;" class="mt-8 p-6 bg-white border border-slate-200 rounded-xl shadow-sm text-center animation-pop">
+                            <p class="text-sm font-medium text-slate-600 mb-4 uppercase tracking-wider">Deployment Ready</p>
+                            <div id="final-bookmarklet-link-container" class="inline-block transform transition-transform hover:scale-105"></div>
+                            <p class="text-xs text-slate-500 mt-4">Drag this button directly to your browser's bookmarks bar.</p>
+                        </div>
+                    </section>
+                </div>
+            </div>
+
+            <div id="step3" class="step">
+                <h2 class="text-2xl font-semibold text-slate-800 mb-6 border-b pb-4">Help & Documentation</h2>
+                <div class="mt-8"><button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium">← Back to Start</button></div>
+            </div>
+        </main>
+    </div>
+    
+    <div id="app-modal" class="modal-backdrop">
+        <div class="modal-content">
+            <h3 id="modal-title" class="text-xl font-bold text-slate-900 mb-2"></h3>
+            <div id="modal-text" class="text-sm text-slate-600 mb-6 whitespace-pre-wrap leading-relaxed"></div>
+            <div id="modal-fields" class="space-y-4"></div>
+            <div id="modal-buttons" class="mt-8 flex justify-end gap-3"></div>
+        </div>
+    </div>
+
+    <template id="preset-group-template">
+        <div class="group-item" draggable="true">
+            <div class="flex items-center gap-4 flex-grow">
+                <div class="cursor-move text-slate-300 hover:text-slate-500">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
+                </div>
+                <div>
+                    <strong data-name class="block text-slate-800 text-sm font-semibold"></strong>
+                    <span data-count class="text-xs text-slate-500"></span>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-6 ml-4">
+                <label class="flex items-center cursor-pointer">
+                    <div class="relative">
+                        <input type="checkbox" data-clear-toggle class="sr-only">
+                        <div class="block bg-slate-200 w-10 h-6 rounded-full transition-colors toggle-label"></div>
+                        <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform transform"></div>
+                    </div>
+                    <div class="ml-2 text-xs font-medium text-slate-600 w-24">Clear Unmapped</div>
+                </label>
+                
+                <div class="flex items-center gap-3 border-l border-slate-200 pl-4">
+                    <button data-action="view" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">Inspect</button>
+                    <button data-action="delete" class="text-sm font-medium text-red-600 hover:text-red-800 transition-colors p-1 rounded hover:bg-red-50" title="Remove Group">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <style>
+            input:checked ~ .dot { transform: translateX(100%); }
+            input:checked ~ .toggle-label { background-color: #0f172a; }
+        </style>
+    </template>
+
+<script>
+// Keep custom Error classes
+class StateStorageError extends Error { constructor(m, p, c) { super(m); this.name = 'StateStorageError'; this.payloadSize = p; this.cause = c; } }
+class StateCorruptionError extends Error { constructor(m, r, c) { super(m); this.name = 'StateCorruptionError'; this.rawData = r; this.cause = c; } }
+
+const app = {
+    state: { mappings: null, keyField: null, mappingsByField: null, presets: { groups: [] }, fieldConfigs: {} },
+    ui: {}, modalResolve: null, draggedItem: null, STORAGE_KEY: 'caimPresetFillerState_v11',
+    CSS: { BTN_PRIMARY: 'bg-slate-800 text-white hover:bg-slate-900 shadow-sm border-transparent', INPUT: 'w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500' },
+
+    init() {
+        this.ui = {
+            steps: Array.from({length: 3}, (_, i) => document.getElementById(`step${i+1}`)),
+            mappingsJson: document.getElementById('mappings-json'),
+            presetsConfigSection: document.getElementById('presets-config-section'),
+            presetGroupsContainer: document.getElementById('preset-groups-container'),
+            fieldConfigsContainer: document.getElementById('field-configs-container'),
+            modal: document.getElementById('app-modal'),
+            fileInput: document.getElementById('bulk-file-upload'),
+            schemaInputState: document.getElementById('schema-input-state'),
+            schemaVisualState: document.getElementById('schema-visual-state')
+        };
+        const builderScript = this.BUILDER_TOOL.getMinifiedScript();
+        document.getElementById('builder-bookmarklet-link').href = 'javascript:' + encodeURIComponent(builderScript);
+        
+        if (this.loadState() && this.state.mappings) {
+            this.ui.mappingsJson.value = JSON.stringify({ keyField: this.state.keyField, mappings: this.state.mappings }, null, 2);
+            this.safely(() => this._applyMappings(this.state.mappings, this.state.keyField), "Apply Loaded Mappings");
+        }
+        this.showStep(1); this.addDragDropListeners();
+    },
+
+    showStep(n) { this.ui.steps.forEach((s, i) => s.classList.toggle('active', i + 1 === n)); },
+
+    // --- Workspace Import / Export ---
+    exportProject() {
+        const dataStr = JSON.stringify(this.state, null, 2);
+        const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
+        const exportFileDefaultName = 'caim_automation_workspace.json';
+        const linkElement = document.createElement('a');
+        linkElement.setAttribute('href', dataUri);
+        linkElement.setAttribute('download', exportFileDefaultName);
+        linkElement.click();
+    },
+
+    importProject(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            try {
+                const importedState = JSON.parse(e.target.result);
+                if (!importedState.mappings) throw new Error("Invalid workspace file.");
+                
+                const confirmed = await this.confirmAction("Importing a workspace will overwrite your current configuration. Continue?", "Import Workspace");
+                if(!confirmed) { event.target.value = ''; return; }
+
+                this.state = importedState;
+                this.saveState();
+                location.reload(); // Hard reload to instantiate cleanly
+            } catch (err) {
+                this.showError("Failed to read workspace file: " + err.message);
+            }
+            event.target.value = '';
+        };
+        reader.readAsText(file);
+    },
+
+    // --- Schema Management ---
+    async renderPresetUI() {
+        await this.safely(async () => {
+            const jsonInput = this.ui.mappingsJson.value;
+            if (!jsonInput) return this.showError('Please paste the mappings JSON first.');
+            const parsed = JSON.parse(jsonInput);
+            
+            // Validate duplicates
+            const seen = new Set(), duplicates = [];
+            (parsed.mappings || []).forEach(m => { const id = this._fieldId(m); seen.has(id) ? duplicates.push(id) : seen.add(id); });
+            if (duplicates.length) throw new Error(`Duplicate IDs detected: ${[...new Set(duplicates)].join(', ')}`);
+            
+            if (this.state.presets.groups.length > 0) {
+                const ok = await this.confirmAction('Reloading schema will clear your imported datasets. Continue?', 'Clear & Reload');
+                if (!ok) return;
+                this.state.presets.groups = []; this.state.fieldConfigs = {};
+            }
+            this._applyMappings(parsed.mappings || [], parsed.keyField || null);
+            this.saveState();
+        }, 'Schema Parse');
+    },
+
+    _applyMappings(mappings, keyField) {
+        this.state.mappings = mappings; this.state.keyField = keyField;
+        this.state.mappingsByField = Object.fromEntries(mappings.map(m => [this._fieldId(m), m]));
+        
+        // UI Toggles
+        this.ui.schemaInputState.style.display = 'none';
+        this.ui.schemaVisualState.style.display = 'block';
+        document.getElementById('preview-key-field').textContent = keyField || 'None Configured';
+        
+        const list = document.getElementById('preview-mappings-list');
+        list.innerHTML = mappings.map(m => `<span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">${this._fieldId(m)} <span class="ml-1 opacity-50 font-normal">(${m.destinations[0].type})</span></span>`).join('');
+        
+        this.ui.presetsConfigSection.style.display = 'block';
+        this.renderFieldConfigsUI(); this.rerenderGroupsUI();
+    },
+
+    resetSchema() {
+        this.ui.schemaVisualState.style.display = 'none';
+        this.ui.schemaInputState.style.display = 'block';
+    },
+
+    // --- Persistence & Modals ---
+    saveState() { try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.state)); } catch (e) { console.error(e); } },
+    loadState() {
+        try { const r = localStorage.getItem(this.STORAGE_KEY); if(r) { Object.assign(this.state, JSON.parse(r)); return true; } } catch(e) {} return false;
+    },
+    async clearState() { if (await this.confirmAction('Clear entire workspace? Cannot be undone.', 'Clear Data')) { localStorage.removeItem(this.STORAGE_KEY); location.reload(); } },
+    
+    async showModal(c) {
+        return new Promise(res => {
+            this.modalResolve = res; document.getElementById('modal-title').textContent = c.title || '';
+            document.getElementById('modal-text').innerHTML = c.message || ''; document.getElementById('modal-text').style.display = c.message ? 'block' : 'none';
+            document.getElementById('modal-fields').innerHTML = c.inputs ? c.inputs.map((inpt, i) => this._generateModalFieldHtml(i, inpt)).join('') : '';
+            document.getElementById('modal-buttons').innerHTML = (c.buttons || [{ text: 'OK', value: true, class: this.CSS.BTN_PRIMARY }]).map(b => `<button class="px-5 py-2 rounded-md font-medium text-sm transition-colors ${b.class || 'bg-slate-100 text-slate-700 hover:bg-slate-200'}" onclick="app.hideModal(${JSON.stringify(b.value)}, ${!!c.inputs})">${b.text}</button>`).join('');
+            this.ui.modal.classList.add('visible');
+        });
+    },
+    hideModal(val = null, hasInputs = false) {
+        this.ui.modal.classList.remove('visible');
+        const res = hasInputs ? Array.from(document.getElementById('modal-fields').querySelectorAll('input, select')).map(e => e.type==='checkbox'?e.checked:e.value) : val;
+        if (this.modalResolve) { this.modalResolve(res); this.modalResolve = null; }
+    },
+    _generateModalFieldHtml(i, c) {
+        const id = `mi-${i}`;
+        if(c.type === 'checkbox') return `<label class="flex items-center"><input type="checkbox" id="${id}" class="rounded border-slate-300 text-blue-600 focus:ring-blue-500 mr-2"><span class="text-sm text-slate-700">${c.label}</span></label>`;
+        return `<div><label class="block text-sm font-medium text-slate-700 mb-1">${c.label}</label><input type="text" id="${id}" placeholder="${c.placeholder||''}" class="${this.CSS.INPUT}"></div>`;
+    },
+    showError: (m) => app.showModal({title: 'Error', message: m, buttons: [{text:'Close', value:null, class:'bg-red-600 text-white'}]}),
+    async confirmAction(m, btn='Confirm') { return await this.showModal({title:'Confirmation', message:m, buttons:[{text:'Cancel', value:false},{text:btn, value:true, class:this.CSS.BTN_PRIMARY}]}); },
+    async safely(fn, ctx) { try { return await fn(); } catch (e) { await this.showError(`${ctx}: ${e.message}`); return null; } },
+    _fieldId: m => m.destinations[0].id, _normalize: s => String(s||'').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim(), escapeHtml: s => String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])),
+
+    // --- Excel Core ---
+    downloadXlsxTemplate() {
+        if (!this.state.mappings) return this.showError('Load schema first.');
+        const ws = XLSX.utils.aoa_to_sheet([['Name', ...this.state.mappings.map(this._fieldId)]]);
+        const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Presets');
+        XLSX.writeFile(wb, 'Automation_Template.xlsx');
+    },
+    
+    async handleImportClick() {
+        if (!this.ui.fileInput.files?.length) return;
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+            await this.safely(async () => {
+                const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+                const rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                
+                // Trim headers
+                const data = rawData.map(r => { const c = {}; for(let k in r) c[k.trim()] = r[k]; return c; });
+                if (!data.length) throw new Error('Spreadsheet empty.');
+                if (!data[0].Name && !data[0].name) throw new Error('Missing "Name" header column.');
+
+                const res = await this.showModal({
+                    title: 'Name Payload Group',
+                    message: `Found ${data.length} records. How should this dataset be labeled in the tool?`,
+                    inputs: [{ label: 'Group Name', placeholder: 'e.g., Facility Access Roles' }],
+                    buttons: [{ text: 'Cancel', value: null }, { text: 'Import Data', value: 'import', class: this.CSS.BTN_PRIMARY }]
+                });
+                
+                if (res && res[0]) {
+                    const gName = res[0];
+                    if (this.state.presets.groups.some(g => g.name === gName)) return this.showError(`Group "${gName}" exists.`);
+                    
+                    // Default to false on import, user can toggle in UI
+                    this.processImport(gName, data, false); 
+                }
+            }, 'File Parse');
+        };
+        reader.readAsArrayBuffer(this.ui.fileInput.files[0]);
+    },
+
+    async processImport(gName, importData, clearUnspecified) {
+        this.showModal({ title: 'Processing Payload...', message: 'Structuring datasets...', buttons: [] });
+        await new Promise(r => setTimeout(r, 50)); // Render tick
+        
+        await this.safely(async () => {
+            const gData = {};
+            for (const row of importData) {
+                let pName = this._normalize(row.Name || row.name);
+                if (!pName) continue;
+                const preset = clearUnspecified ? { '__clearUnspecified': true } : {};
+                
+                for (const fId in row) {
+                    const normId = this._normalize(fId);
+                    if (normId.toLowerCase() === 'name') continue;
+                    const map = this.state.mappingsByField[normId];
+                    if (!map || row[fId] == null) continue;
+                    
+                    const strVal = String(row[fId]).trim();
+                    if (strVal === '') continue;
+                    
+                    if (strVal === '__CLEAR__') preset[normId] = '';
+                    else preset[normId] = (map.format === 'code:description') ? strVal.split(':')[0] : String(row[fId]);
+                }
+                gData[pName] = preset;
+            }
+            this.state.presets.groups.push({ name: gName, data: gData, clearUnspecified });
+            this.rerenderGroupsUI(); this.saveState(); this.ui.fileInput.value = '';
+            this.hideModal();
+        }, "Compilation Error");
+    },
+
+    // --- Dynamic Group UI ---
+    rerenderGroupsUI() {
+        const c = this.ui.presetGroupsContainer; c.innerHTML = '';
+        if (!this.state.presets.groups.length) { c.innerHTML = '<p class="text-sm text-slate-400 italic">No datasets imported yet.</p>'; return; }
+        
+        this.state.presets.groups.forEach((g, i) => {
+            const tpl = document.getElementById('preset-group-template').content.cloneNode(true);
+            const el = tpl.querySelector('.group-item');
+            el.dataset.originalIndex = i;
+            el.querySelector('[data-name]').textContent = g.name;
+            el.querySelector('[data-count]').textContent = `${Object.keys(g.data).length} presets configured`;
+            
+            const toggle = el.querySelector('[data-clear-toggle]');
+            toggle.checked = g.clearUnspecified;
+            toggle.onchange = (e) => {
+                this.state.presets.groups[i].clearUnspecified = e.target.checked;
+                // Sync data object flag
+                Object.keys(this.state.presets.groups[i].data).forEach(k => {
+                   if(e.target.checked) this.state.presets.groups[i].data[k]['__clearUnspecified'] = true;
+                   else delete this.state.presets.groups[i].data[k]['__clearUnspecified'];
+                });
+                this.saveState();
+            };
+
+            el.querySelector('[data-action="view"]').onclick = () => this.viewGroupPresets(i);
+            el.querySelector('[data-action="delete"]').onclick = () => this.deleteGroup(i);
+            c.appendChild(el);
+        });
+    },
+
+    async viewGroupPresets(i) {
+        const g = this.state.presets.groups[i]; if (!g) return;
+        let h = `<div class="max-h-96 overflow-y-auto pr-2">`;
+        Object.entries(g.data).forEach(([pName, vals]) => {
+            h += `<div class="bg-slate-50 border border-slate-200 rounded p-3 mb-3"><strong class="block text-slate-800 text-sm mb-2 border-b border-slate-200 pb-1">${this.escapeHtml(pName)}</strong><div class="grid grid-cols-2 gap-2 text-xs font-mono">`;
+            Object.entries(vals).forEach(([f, v]) => {
+                if (f === '__clearUnspecified') return;
+                h += `<div class="truncate" title="${this.escapeHtml(f)}: ${this.escapeHtml(v)}"><span class="text-slate-500">${this.escapeHtml(f)}:</span> <span class="text-slate-900">${this.escapeHtml(v === '' ? '[CLEAR]' : v)}</span></div>`;
+            });
+            h += `</div></div>`;
+        });
+        await this.showModal({ title: `Payload: ${g.name}`, message: h + `</div>` });
+    },
+    async deleteGroup(i) { if (await this.confirmAction(`Remove the "${this.state.presets.groups[i]?.name}" dataset?`, 'Remove')) { this.state.presets.groups.splice(i, 1); this.rerenderGroupsUI(); this.saveState(); } },
+    
+    addDragDropListeners() {
+        const c = this.ui.presetGroupsContainer;
+        c.addEventListener('dragstart', e => { if(e.target.classList.contains('group-item')) { this.draggedItem = e.target; setTimeout(() => e.target.classList.add('dragging'), 0); } });
+        c.addEventListener('dragend', () => { if (this.draggedItem) { this.draggedItem.classList.remove('dragging'); this.draggedItem = null; } });
+        c.addEventListener('dragover', e => {
+            e.preventDefault(); const after = [...c.querySelectorAll('.group-item:not(.dragging)')].reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = e.clientY - box.top - box.height / 2; return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest; }, { offset: Number.NEGATIVE_INFINITY }).element;
+            const current = document.querySelector('.dragging'); if (!current) return;
+            after == null ? c.appendChild(current) : c.insertBefore(current, after);
+        });
+        c.addEventListener('drop', () => {
+            if (!this.draggedItem) return;
+            this.state.presets.groups = Array.from(c.querySelectorAll('.group-item')).map(el => this.state.presets.groups[parseInt(el.dataset.originalIndex, 10)]);
+            this.rerenderGroupsUI(); this.saveState();
+        });
+    },
+
+    // --- Field Behaviors ---
+    renderFieldConfigsUI() {
+        const dl = this.state.mappings.filter(m => m.destinations[0].type === 'duallist');
+        if (!dl.length) { document.getElementById('field-configs-section').style.display = 'none'; return; }
+        
+        const c = this.ui.fieldConfigsContainer; c.innerHTML = '';
+        dl.forEach(m => {
+            const id = this._fieldId(m); const chk = this.state.fieldConfigs[id]?.isAddAll || false;
+            c.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg shadow-sm"><span class="text-sm font-medium text-slate-700 truncate mr-2" title="${id}">${id}</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" class="sr-only peer" ${chk ? 'checked' : ''} onchange="app.updateFieldConfig('${id}', 'isAddAll', this.checked)"><div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div><span class="ml-2 text-xs font-medium text-slate-500">Add All</span></label></div>`);
+        });
+    },
+    updateFieldConfig(id, k, v) { if (!this.state.fieldConfigs[id]) this.state.fieldConfigs[id] = {}; this.state.fieldConfigs[id][k] = v; this.saveState(); },
+
+    // --- Meta-Builder ---
+    async generateFinalBookmarklet() {
+        await this.safely(async () => {
+            if (!this.state.mappings || !this.state.keyField) return this.showError('Valid schema and Key Field required.');
+            const fieldMeta = {}, lookup = {};
+            this.state.mappings.forEach(m => {
+                const id = this._fieldId(m), isAll = this.state.fieldConfigs[id]?.isAddAll || false;
+                fieldMeta[id] = { t: m.destinations[0].type, f: m.format || 'text', s: m.sourceId, a: isAll };
+                if (!isAll && m.format === 'code:description' && m.sourceOptions?.length) {
+                    lookup[id] = {}; m.sourceOptions.forEach(o => { const [c] = o.split(':'); if (c?.trim()) lookup[id][c.trim()] = o; });
+                }
+            });
+            
+            const rawLogic = this.BOOKMARKLET_UTILITIES + this.FILLER_LOGIC
+                .replace('__LOOKUP_DATA__', JSON.stringify(lookup)).replace('__FIELDMETA_DATA__', JSON.stringify(fieldMeta))
+                .replace('__PRESETS_DATA__', JSON.stringify(this.state.presets)).replace('__KEY_FIELD_ID__', JSON.stringify(this.state.keyField));
+                
+            const name = document.getElementById('final-bookmarklet-name').value.trim() || 'IM Tool';
+            const script = 'javascript:' + encodeURIComponent('(function(){' + rawLogic.replace(/[\n\r\t]/g, '').replace(/\s{2,}/g, ' ').trim() + '})()');
+            
+            document.getElementById('final-bookmarklet-link-container').innerHTML = `<a href="${script.replace(/"/g, '&quot;')}" class="inline-flex items-center px-8 py-3 bg-slate-900 text-white font-semibold rounded-lg shadow-lg hover:bg-black hover:shadow-xl transition-all"><svg class="w-5 h-5 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> ${this.escapeHtml(name)}</a>`;
+            document.getElementById('final-output').style.display = 'block';
+        });
+    },
+
+    BOOKMARKLET_UTILITIES: `function getEl(i){return document.getElementById(i)||document.querySelector(\`select[name="\${i}"],input[name="\${i}"],textarea[name="\${i}"],div[name="\${i}"]\`)}function trigger(e,v){if(!e)return;e.dispatchEvent(new Event(v,{bubbles:true}))}`,
+    
+    FILLER_LOGIC: `const C={L:__LOOKUP_DATA__,M:__FIELDMETA_DATA__,P:__PRESETS_DATA__,K:__KEY_FIELD_ID__,SK:"_caim_fill_s",ID:"_caim_fill_o",SID:"_caim_fill_y"};C.gS=function(){return JSON.parse(sessionStorage.getItem(this.SK)||"null")};C.sS=function(d){sessionStorage.setItem(this.SK,JSON.stringify(d))};C.c=function(){sessionStorage.removeItem(this.SK);const o=document.getElementById(this.ID);if(o)o.remove()};C.render=function(i,v){const m=this.M[i];const val=m.f==="code:description"&&this.L[i]?this.L[i][v]||v:v;return String(val).replace(/\\s+/g,' ').trim()};C.gA=function(e,i){return e.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${i}.OptionSelectorAdd"]\`)};C.gAA=function(e,i){return e.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${i}.OptionSelectorAddAll"]\`)};C.gR=function(e,i){return e.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${i}.OptionSelectorRemove"]\`)};C.gV=function(e,m){if(!e)return"";if(m.t==="duallist"){if(!e.options.length)return"";return Array.from(e.options).map(o=>o.text.replace(/\\s+/g,' ').trim()).join(",")}return m.t==="select"?e.options[e.selectedIndex]?.text.replace(/\\s+/g,' ').trim()||e.value:e.value};C.sh=function(n){this.c();let t='<div style="font-size:5rem;">⏳</div><div style="font-size:2rem;font-weight:700;">'+n+" more action"+(n===1?"":"s")+'</div>';document.body.insertAdjacentHTML("beforeend",\`<div id="\${this.ID}" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background:rgba(0,0,0,0.75);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;gap:24px;">\${t}<div style="font-size:1.3rem;opacity:0.85;max-width:400px;text-align:center;line-height:1.5;">Click bookmarklet again after page reloads</div></div>\`)};C.pl=function(M){const nD=[],D=[];if(M.__clearUnspecified){for(const f in this.M){const e=getEl(f),m=this.M[f];if(e&&this.gV(e,m)!==""){const a={i:f,c:'clear',cv:this.gV(e,m)};(m.t==="duallist")?D.push(a):nD.push(a)}}}for(const f in M){if(f==='__clearUnspecified')continue;const m=this.M[f],e=getEl(f);if(!m||!e)continue;const pv=String(M[f]),cv=this.gV(e,m);if(m.t==='duallist'){if(m.a){D.push({i:f,c:'set',v:'__ADDALL__',cv:cv})}else{const vs=cv?cv.split(',').map(s=>s.trim()):[],pn=this.render(f,pv).split(':')[0].trim();if(!vs.some(v=>v===pn||v.startsWith(pn+':'))){if(vs.length&&vs[0]!==''){D.push({i:f,c:'clear',cv:cv})}D.push({i:f,c:'set',v:pv,cv:vs.length&&vs[0]!==''?'Empty':cv})}}}else{if(this.render(f,pv)!==cv){const a={i:f,c:'set',v:pv,cv:cv};(m.t==="duallist")?D.push(a):nD.push(a)}}}for(const f in this.M){const m=this.M[f];if(m.a&&m.t==='duallist'){const e=getEl(f);if(e){const cv=this.gV(e,m);if(cv===''){D.push({i:f,c:'set',v:'__ADDALL__',cv:cv})}}}}return{nD,D}};C.x=function(a){const e=getEl(a.i),m=this.M[a.i];if(!e)return;if(a.c==="clear"){if(m.t==="duallist"){const r=this.gR(e,a.i);if(r&&e.options.length){Array.from(e.options).forEach(o=>o.selected=true);r.click()}}else{e.value="";trigger(e,"input");trigger(e,"change")}}else if(a.c==="set"){if(m.t==="duallist"){if(m.a){const btn=this.gAA(e,a.i);if(btn)btn.click()}else{const sEl=getEl(m.s||a.i+".Options"),btn=this.gA(e,a.i);if(!sEl||!btn)return;const v=this.render(a.i,a.v);Array.from(sEl.options).forEach(o=>{o.selected=o.text.split(':')[0].trim()===v.split(':')[0].trim()});btn.click()}}else if(m.t==="select"){const targetVal=String(a.v).trim();let matched=false;for(let i=0;i<e.options.length;i++){if(String(e.options[i].value).trim()===targetVal||String(e.options[i].text).trim()===targetVal){e.value=e.options[i].value;matched=true;break}}if(!matched){e.value=targetVal}trigger(e,"change")}else{e.value=this.render(a.i,a.v);trigger(e,"input");trigger(e,"change")}}} ;C.sel=function(){return new Promise(r=>{if(!document.getElementById(this.SID)){const s=\`<style id=\${this.SID}>#_caim_fill_o{--b:#fff;--t:#1f2937;--brd:#d1d5db;--bb:#0f172a;--bt:#fff;--cbg:#fff;--ct:#374151;--crd:#f8fafc;background:var(--b);color:var(--t);position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;padding:32px;max-width:480px;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25)}@media(prefers-color-scheme:dark){#_caim_fill_o{--b:#1e293b;--t:#f8fafc;--brd:#334155;--bb:#3b82f6;--cbg:#1e293b;--ct:#cbd5e1;--crd:#0f172a}}.h{margin:0 0 24px;font-size:20px;font-weight:600}.l{display:block;font-size:13px;margin-bottom:6px;font-weight:500;color:var(--t)}.s{width:100%;padding:10px 14px;border:1px solid var(--brd);border-radius:6px;font-size:14px;color:var(--t);background:var(--crd);appearance:none}.bf{display:flex;gap:12px;margin-top:32px}.b{flex:1;padding:12px;font-size:14px;font-weight:600;border:none;border-radius:6px;cursor:pointer;transition:all 0.2s}.ok{background:var(--bb);color:var(--bt)}.can{background:var(--cbg);color:var(--ct);border:1px solid var(--brd)}</style>\`;document.head.insertAdjacentHTML('beforeend',s)}let h=\`<div id="\${this.ID}"><h3 class="h">Select Profile Target</h3><div style="display:flex;flex-direction:column;gap:16px;">\`;this.P.groups.forEach((g,i)=>{h+=\`<div><label class="l">\${g.name}</label><select id="_g\${i}" class="s"><option value="">-- Unchanged --</option>\`;const pN=Object.keys(g.data);const iS=pN.length===1;pN.forEach(n=>{const sA=iS?' selected':'';h+=\`<option\${sA}>\${n}</option>\`});h+="</select></div>"});h+=\`</div><div class="bf"><button id="_x" class="b can">Abort</button><button id="_ok" class="b ok">Initialize Automation</button></div></div>\`;document.body.insertAdjacentHTML("beforeend",h);document.getElementById("_x").onclick=()=>this.c();document.getElementById("_ok").onclick=()=>{const d={};this.P.groups.forEach((g,i)=>{const v=document.getElementById(\`_g\${i}\`).value;if(v&&g.data[v])Object.assign(d,g.data[v])});r(d);this.c()}})};C.sum=function(n,D){this.c();const A=[...n,...D];if(!A.length){alert("Target profile already matches parameter baseline.");return}let h=\`<div id="\${this.ID}" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;background:var(--b,#fff);color:var(--t,#1f2937);padding:28px;width:90%;max-width:550px;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:85vh;display:flex;flex-direction:column;font-family:sans-serif;"><h3 style="margin:0 0 16px;font-size:18px;font-weight:600;border-bottom:1px solid var(--brd,#e2e8f0);padding-bottom:12px;">Validation Queue</h3><div style="overflow-y:auto;flex:1;margin-bottom:16px;padding-right:8px;">\`;A.forEach(a=>{const c=a.cv||"Empty",v=a.c==="clear"?"Empty":(a.v==="__ADDALL__"?"All Options":this.render(a.i,a.v)),k=a.c==="clear"?"#ef4444":"#10b981";h+=\`<div style="margin-bottom:10px;padding:12px;background:var(--crd,#f8fafc);border-left:4px solid \${k};border-radius:6px;font-size:13px;"><strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--t,#0f172a);">\${a.i}</strong><div style="display:flex;gap:12px;align-items:center;color:#64748b;"><span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${c.replace(/"/g,'&quot;')}">\${c}</span><svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg><span style="color:var(--t,#0f172a);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${v.replace(/"/g,'&quot;')}">\${v}</span></div></div>\`});h+=\`</div><div class="bf" style="margin-top:0;border-top:1px solid var(--brd,#e2e8f0);padding-top:20px;display:flex;gap:12px;"><button id="_cS" style="flex:1;padding:10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;">Abort</button><button id="_eS" style="flex:1;padding:10px;border-radius:6px;border:none;background:#0f172a;color:#fff;font-weight:600;cursor:pointer;">Execute Pipeline</button></div></div>\`;document.body.insertAdjacentHTML("beforeend",h);document.getElementById("_cS").onclick=()=>this.c();document.getElementById("_eS").onclick=()=>{this.exec(n,D)}};C.fin=function(L){this.c();if(!L||!L.length){return}let t="Target Profile: "+(getEl(this.K)?.value||"Unknown")+"\\n\\nParameter Injections ("+L.length+"):\\n";let h=\`<div id="\${this.ID}" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;background:var(--b,#fff);color:var(--t,#1f2937);padding:28px;width:90%;max-width:550px;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:85vh;display:flex;flex-direction:column;font-family:sans-serif;"><h3 style="margin:0 0 16px;font-size:18px;font-weight:600;border-bottom:1px solid var(--brd,#e2e8f0);padding-bottom:12px;color:#10b981;display:flex;align-items:center;"><svg style="width:20px;height:20px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Execution Finalized</h3><div style="overflow-y:auto;flex:1;margin-bottom:16px;padding-right:8px;">\`;L.forEach(a=>{const c=a.cv||"Empty",v=a.c==="clear"?"Empty":(a.v==="__ADDALL__"?"All Options":this.render(a.i,a.v));t+=\`- \${a.i}: \${c} -> \${v}\\n\`;h+=\`<div style="margin-bottom:10px;padding:12px;background:var(--crd,#f8fafc);border-left:4px solid #10b981;border-radius:6px;font-size:13px;"><strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--t,#0f172a);">\${a.i}</strong><div style="display:flex;gap:12px;align-items:center;color:#64748b;"><span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${c}</span><svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg><span style="color:var(--t,#0f172a);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${v}</span></div></div>\`});h+=\`</div><div class="bf" style="margin-top:0;border-top:1px solid var(--brd,#e2e8f0);padding-top:20px;display:flex;gap:12px;"><button id="_cC" style="flex:2;padding:10px;border-radius:6px;border:none;background:#3b82f6;color:#fff;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg> Copy Telemetry</button><button id="_cD" style="flex:1;padding:10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;">Dismiss</button></div></div>\`;document.body.insertAdjacentHTML("beforeend",h);document.getElementById("_cD").onclick=()=>this.c();document.getElementById("_cC").onclick=()=>{const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();const s=document.execCommand("copy");document.body.removeChild(ta);if(s){const b=document.getElementById("_cC");b.innerHTML=\`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied\`;b.style.background="#10b981";setTimeout(()=>{b.innerHTML=\`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg> Copy Telemetry\`;b.style.background="#3b82f6"},2000)}}};C.w=function(a,cb){let t=Date.now();const p=()=>{if(getEl(a.i)){cb()}else if(Date.now()-t<10000){requestAnimationFrame(p)}else{console.error('Timeout waiting for '+a.i)}};requestAnimationFrame(p)};C.exec=function(nD,D,log=[]){this.c();const kEl=getEl(this.K);if(nD.length){nD.forEach(a=>{this.x(a);log.push(a)})}if(D.length){const a=D.shift();log.push(a);const kV=kEl?kEl.value:null;this.sS({D:D,kV:kV,log:log,fin:D.length===0});this.sh(D.length+1);this.w(a,()=>this.x(a))}else{this.fin(log)}};C.proc=function(d){if(!Object.keys(d).length)return;const{nD,D}=this.pl(d);if(!nD.length&&!D.length){this.c();alert('Profile aligns with target baseline. No execution required.');return}this.sum(nD,D)};const kEl=getEl(C.K);const S=C.gS();if(S&&S.fin){C.fin(S.log)}else{const isValidState=S&&kEl&&S.kV===kEl.value;if(isValidState){if(S.D&&S.D.length){const a=S.D.shift();S.log.push(a);C.sS({D:S.D,kV:S.kV,log:S.log,fin:S.D.length===0});C.sh(S.D.length+1);C.w(a,()=>C.x(a))}}else{C.c();const allOne=C.P.groups.length>0&&C.P.groups.every(g=>Object.keys(g.data).length===1);if(allOne){const d={};C.P.groups.forEach(g=>{const pN=Object.keys(g.data)[0];Object.assign(d,g.data[pN])});C.proc(d)}else{C.sel().then(d=>C.proc(d))}}}`,
+
+    BUILDER_TOOL: { getMinifiedScript() { return this.BUILDER_LOGIC.replace(/\s+/g, ' ').trim(); }, BUILDER_LOGIC: ` (function(){ if(document.getElementById('mUI'))return; const S={m:[],k:null,mode:null,lH:null}; function gId(e){return e.id||e.name} function gEl(i){return document.getElementById(i)||(document.querySelector('select[name="'+i+'"],input[name="'+i+'"],textarea[name="'+i+'"]'))} function aF(o){if(!o?.length)return'text';const c=o.filter(p=>!/Enter one|Select one|Almost every/.test(p));if(c.length===0)return'text';if(c.filter(p=>/^\\d+:/.test(p.trim())).length/c.length>0.7)return'code:description';return'text'} function add(sId,sO,fmt,dId,dType){if(S.m.find(m=>m.destinations[0].id===dId))return false;S.m.push({sId:sId,sourceOptions:sO,format:fmt,destinations:[{id:dId,type:dType}]});return true} function setM(m){S.mode=m;document.body.style.cursor=m?'crosshair':'default';upd()} function scanDuallists(){let c=0;document.querySelectorAll('select[name$=".Options"]').forEach(src=>{const p=src.closest('td,div');if(!p)return;const dest=p.parentElement?.querySelector('select:not([name$=".Options"])');if(!dest)return;const sId=gId(src),dId=gId(dest);const sO=Array.from(src.options).map(o=>o.text.trim()).filter(Boolean);const fmt=aF(sO);if(add(sId,sO,fmt,dId,'duallist'))c++});alert('Found and mapped '+c+' new duallist fields.');upd()} function hMO(e){if(!S.mode)return;const t=e.target.closest('input,select,textarea,img');if(!t)return;S.lH=t;t.style.outline='2px solid red'} function hMOu(e){if(S.lH)S.lH.style.outline=''} function sty(){document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});if(S.k&&gEl(S.k))gEl(S.k).style.border='2px solid #dd6b20';S.m.forEach(m=>{const dEl=gEl(m.destinations[0].id);if(dEl){dEl.style.backgroundColor='#e6fffa';dEl.style.border='2px solid #38a169';dEl.setAttribute('data-caim-mapped','true')}})} function hC(e){if(!S.mode)return;e.preventDefault();e.stopPropagation();if(S.lH)S.lH.style.outline='';const t=e.target.closest('input,select,textarea,img');if(!t)return;const i=gId(t);if(!i)return alert('Element has no ID or name.');if(S.mode==='simple'){const type=t.tagName==='SELECT'?'select':'text';if(!add(i,[],'text',i,type))alert('Field already mapped.');}else if(S.mode==='constant'){S.k=i;alert('Set '+i+' as the key field.');}else if(S.mode==='duallist'){const p=t.closest('td, div');if(!p)return alert('Could not find duallist parent.');const src=p.parentElement?.querySelector('select[name$=".Options"]'),dest=p.parentElement?.querySelector('select:not([name$=".Options"])');if(!src||!dest)return alert('Could not find source/destination pair.');const sId=gId(src),dId=gId(dest);const sO=Array.from(src.options).map(o=>o.text.trim()).filter(Boolean);const fmt=aF(sO);if(!add(sId,sO,fmt,dId,'duallist'))alert('Field already mapped.');}upd();setM(null)} function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+(m.sId===m.destinations[0].id?m.sId:m.sId+' &rarr; '+m.destinations[0].id)+'</b></span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';r.innerHTML='<div style="background:#0f172a;color:white;padding:12px;font-weight:bold;display:flex;justify-content:space-between;"><span>IM Mapper</span><span style="font-size:10px;opacity:0.7">v10</span></div><div style="padding:16px;"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;"><button onclick="window._m.setM(\\'simple\\')" class="m-btn '+(S.mode==='simple'?'act':'')+'">Standard</button><button onclick="window._m.setM(\\'duallist\\')" class="m-btn '+(S.mode==='duallist'?'act':'')+'">Duallist</button><button onclick="window._m.setM(\\'constant\\')" class="m-btn '+(S.mode==='constant'?'act':'')+'" style="background:#fef08a;border-color:#fde047;color:#854d0e;">Key Field</button></div><button onclick="window._m.scanDuallists()" class="m-btn" style="width:100%;margin-bottom:12px;background:#10b981;color:white;border-color:#059669;">Auto-Scan Duallists</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:13px;"><b style="color:#475569;">Session Key:</b> <span style="font-family:monospace;background:#f1f5f9;padding:2px 4px;border-radius:4px;">'+(S.k||'Unassigned')+'</span></div><div style="margin-top:12px;font-size:13px;"><b style="color:#475569;">Endpoints ('+S.m.length+')</b><div style="max-height:200px;overflow-y:auto;border:1px solid #cbd5e1;border-radius:4px;background:white;margin-top:6px;">'+mH+'</div></div></div><div style="padding:16px;background:#f8fafc;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#0f172a;color:white;width:100%;font-weight:bold;margin-bottom:8px;">Copy Schema JSON</button><button onclick="window._m.destroy()" style="background:none;border:1px solid #cbd5e1;color:#475569;cursor:pointer;width:100%;padding:6px;border-radius:4px;font-weight:500;">Terminate Tool</button></div><style>.m-btn{padding:8px;border:1px solid #cbd5e1;background:white;border-radius:4px;cursor:pointer;width:100%;font-size:13px;font-weight:500;transition:all 0.15s;}.m-btn:hover{background:#f1f5f9;}.m-btn.act{background:#3b82f6;color:white;border-color:#2563eb;}</style>';sty()} function gJ(){const j=JSON.stringify({keyField:S.k,mappings:S.m},null,2);navigator.clipboard.writeText(j).then(()=>alert('Schema Copied to Clipboard'),()=>alert('Clipboard Access Denied'))} function rM(i){S.m.splice(i,1);upd()}function destroy(){if(S.lH)S.lH.style.outline='';document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});if(S.k&&gEl(S.k))gEl(S.k).style.border='';document.removeEventListener('mouseover',hMO);document.removeEventListener('mouseout',hMOu);document.removeEventListener('click',hC,true);document.getElementById('mUI').remove()} const r=document.createElement('div');r.id='mUI';r.style.cssText='position:fixed;top:20px;right:20px;z-index:100000;width:340px;background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 8px 10px -6px rgba(0,0,0,0.1);font-family:sans-serif;overflow:hidden;';document.body.appendChild(r);upd();document.addEventListener('mouseover',hMO);document.addEventListener('mouseout',hMOu);document.addEventListener('click',hC,true);window._m={setM,scanDuallists,gJ,rM,destroy}; })()` }
+};
+
+document.addEventListener('DOMContentLoaded', () => { window.app = app; app.init(); });
+</script>
+</body>
+</html>

@@ -35,7 +35,6 @@
         .group-item:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
         .group-item.dragging { opacity: 0.5; background: #f1f5f9; box-shadow: none; }
         
-        /* Toggle Switch CSS */
         .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
         .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
     </style>
@@ -192,6 +191,21 @@
 
             <div id="step3" class="step">
                 <h2 class="text-2xl font-semibold text-slate-800 mb-6 border-b pb-4">Help & Documentation</h2>
+                <div class="prose max-w-none text-slate-700">
+                    <h4>Overview</h4>
+                    <p>This tool creates a single, powerful "Form Filler" bookmarklet to automate complex forms using hierarchical "Preset Groups".</p>
+                    <h4>Phase 1: Field Mapping</h4>
+                     <p>Use the "Field Mapper Tool" on your target form. As you map fields, they will be highlighted in green on the page for easy tracking.</p>
+                     <p>The updated mapper tool now includes a **"Scan Duallists"** button to automatically map all duallist fields, and a **"Map Key Field"** button to identify the constant field (like a username) used for session validation.</p>
+                    <h4>Phase 2: Configuration & Generation</h4>
+                    <ol>
+                        <li><strong>Load Mappings:</strong> Paste the JSON from the mapper tool.</li>
+                        <li><strong>Configure Behaviors:</strong> Mark any `duallist` field as "Add All". When the final bookmarklet runs, if your Excel preset has *any* value for this field (e.g., "Yes"), it will add all available options instead of searching for a specific one.</li>
+                        <li><strong>Import Preset Groups:</strong> Import Excel files. You can now check a box to **"Clear any fields not specified in this file"**, which is useful for presets that only set a few values while clearing all others.</li>
+                        <li><strong>Set Hierarchy:</strong> Drag and drop the imported groups to set their merge priority.</li>
+                        <li><strong>Generate Bookmarklet:</strong> Create the final "Form Filler" bookmarklet.</li>
+                    </ol>
+                </div>
                 <div class="mt-8"><button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium">← Back to Start</button></div>
             </div>
         </main>
@@ -243,7 +257,6 @@
     </template>
 
 <script>
-// Keep custom Error classes
 class StateStorageError extends Error { constructor(m, p, c) { super(m); this.name = 'StateStorageError'; this.payloadSize = p; this.cause = c; } }
 class StateCorruptionError extends Error { constructor(m, r, c) { super(m); this.name = 'StateCorruptionError'; this.rawData = r; this.cause = c; } }
 
@@ -276,7 +289,6 @@ const app = {
 
     showStep(n) { this.ui.steps.forEach((s, i) => s.classList.toggle('active', i + 1 === n)); },
 
-    // --- Workspace Import / Export ---
     exportProject() {
         const dataStr = JSON.stringify(this.state, null, 2);
         const dataUri = 'data:application/json;charset=utf-8,'+ encodeURIComponent(dataStr);
@@ -301,7 +313,7 @@ const app = {
 
                 this.state = importedState;
                 this.saveState();
-                location.reload(); // Hard reload to instantiate cleanly
+                location.reload(); 
             } catch (err) {
                 this.showError("Failed to read workspace file: " + err.message);
             }
@@ -310,14 +322,12 @@ const app = {
         reader.readAsText(file);
     },
 
-    // --- Schema Management ---
     async renderPresetUI() {
         await this.safely(async () => {
             const jsonInput = this.ui.mappingsJson.value;
             if (!jsonInput) return this.showError('Please paste the mappings JSON first.');
             const parsed = JSON.parse(jsonInput);
             
-            // Validate duplicates
             const seen = new Set(), duplicates = [];
             (parsed.mappings || []).forEach(m => { const id = this._fieldId(m); seen.has(id) ? duplicates.push(id) : seen.add(id); });
             if (duplicates.length) throw new Error(`Duplicate IDs detected: ${[...new Set(duplicates)].join(', ')}`);
@@ -336,7 +346,6 @@ const app = {
         this.state.mappings = mappings; this.state.keyField = keyField;
         this.state.mappingsByField = Object.fromEntries(mappings.map(m => [this._fieldId(m), m]));
         
-        // UI Toggles
         this.ui.schemaInputState.style.display = 'none';
         this.ui.schemaVisualState.style.display = 'block';
         document.getElementById('preview-key-field').textContent = keyField || 'None Configured';
@@ -353,7 +362,6 @@ const app = {
         this.ui.schemaInputState.style.display = 'block';
     },
 
-    // --- Persistence & Modals ---
     saveState() { try { localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.state)); } catch (e) { console.error(e); } },
     loadState() {
         try { const r = localStorage.getItem(this.STORAGE_KEY); if(r) { Object.assign(this.state, JSON.parse(r)); return true; } } catch(e) {} return false;
@@ -384,7 +392,6 @@ const app = {
     async safely(fn, ctx) { try { return await fn(); } catch (e) { await this.showError(`${ctx}: ${e.message}`); return null; } },
     _fieldId: m => m.destinations[0].id, _normalize: s => String(s||'').replace(/\u00A0/g, ' ').replace(/\s+/g, ' ').trim(), escapeHtml: s => String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])),
 
-    // --- Excel Core ---
     downloadXlsxTemplate() {
         if (!this.state.mappings) return this.showError('Load schema first.');
         const ws = XLSX.utils.aoa_to_sheet([['Name', ...this.state.mappings.map(this._fieldId)]]);
@@ -400,7 +407,6 @@ const app = {
                 const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
                 const rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
                 
-                // Trim headers
                 const data = rawData.map(r => { const c = {}; for(let k in r) c[k.trim()] = r[k]; return c; });
                 if (!data.length) throw new Error('Spreadsheet empty.');
                 if (!data[0].Name && !data[0].name) throw new Error('Missing "Name" header column.');
@@ -415,8 +421,6 @@ const app = {
                 if (res && res[0]) {
                     const gName = res[0];
                     if (this.state.presets.groups.some(g => g.name === gName)) return this.showError(`Group "${gName}" exists.`);
-                    
-                    // Default to false on import, user can toggle in UI
                     this.processImport(gName, data, false); 
                 }
             }, 'File Parse');
@@ -426,7 +430,7 @@ const app = {
 
     async processImport(gName, importData, clearUnspecified) {
         this.showModal({ title: 'Processing Payload...', message: 'Structuring datasets...', buttons: [] });
-        await new Promise(r => setTimeout(r, 50)); // Render tick
+        await new Promise(r => setTimeout(r, 50)); 
         
         await this.safely(async () => {
             const gData = {};
@@ -455,7 +459,6 @@ const app = {
         }, "Compilation Error");
     },
 
-    // --- Dynamic Group UI ---
     rerenderGroupsUI() {
         const c = this.ui.presetGroupsContainer; c.innerHTML = '';
         if (!this.state.presets.groups.length) { c.innerHTML = '<p class="text-sm text-slate-400 italic">No datasets imported yet.</p>'; return; }
@@ -471,7 +474,6 @@ const app = {
             toggle.checked = g.clearUnspecified;
             toggle.onchange = (e) => {
                 this.state.presets.groups[i].clearUnspecified = e.target.checked;
-                // Sync data object flag
                 Object.keys(this.state.presets.groups[i].data).forEach(k => {
                    if(e.target.checked) this.state.presets.groups[i].data[k]['__clearUnspecified'] = true;
                    else delete this.state.presets.groups[i].data[k]['__clearUnspecified'];
@@ -516,7 +518,6 @@ const app = {
         });
     },
 
-    // --- Field Behaviors ---
     renderFieldConfigsUI() {
         const dl = this.state.mappings.filter(m => m.destinations[0].type === 'duallist');
         if (!dl.length) { document.getElementById('field-configs-section').style.display = 'none'; return; }
@@ -529,7 +530,6 @@ const app = {
     },
     updateFieldConfig(id, k, v) { if (!this.state.fieldConfigs[id]) this.state.fieldConfigs[id] = {}; this.state.fieldConfigs[id][k] = v; this.saveState(); },
 
-    // --- Meta-Builder ---
     async generateFinalBookmarklet() {
         await this.safely(async () => {
             if (!this.state.mappings || !this.state.keyField) return this.showError('Valid schema and Key Field required.');
@@ -543,8 +543,10 @@ const app = {
             });
             
             const rawLogic = this.BOOKMARKLET_UTILITIES + this.FILLER_LOGIC
-                .replace('__LOOKUP_DATA__', JSON.stringify(lookup)).replace('__FIELDMETA_DATA__', JSON.stringify(fieldMeta))
-                .replace('__PRESETS_DATA__', JSON.stringify(this.state.presets)).replace('__KEY_FIELD_ID__', JSON.stringify(this.state.keyField));
+                .replace('__LOOKUP_DATA__', JSON.stringify(lookup))
+                .replace('__FIELDMETA_DATA__', JSON.stringify(fieldMeta))
+                .replace('__PRESETS_DATA__', JSON.stringify(this.state.presets))
+                .replace('__KEY_FIELD_ID__', JSON.stringify(this.state.keyField));
                 
             const name = document.getElementById('final-bookmarklet-name').value.trim() || 'IM Tool';
             const script = 'javascript:' + encodeURIComponent('(function(){' + rawLogic.replace(/[\n\r\t]/g, '').replace(/\s{2,}/g, ' ').trim() + '})()');
@@ -554,11 +556,711 @@ const app = {
         });
     },
 
-    BOOKMARKLET_UTILITIES: `function getEl(i){return document.getElementById(i)||document.querySelector(\`select[name="\${i}"],input[name="\${i}"],textarea[name="\${i}"],div[name="\${i}"]\`)}function trigger(e,v){if(!e)return;e.dispatchEvent(new Event(v,{bubbles:true}))}`,
+    BOOKMARKLET_UTILITIES: "",
     
-    FILLER_LOGIC: `const C={L:__LOOKUP_DATA__,M:__FIELDMETA_DATA__,P:__PRESETS_DATA__,K:__KEY_FIELD_ID__,SK:"_caim_fill_s",ID:"_caim_fill_o",SID:"_caim_fill_y"};C.gS=function(){return JSON.parse(sessionStorage.getItem(this.SK)||"null")};C.sS=function(d){sessionStorage.setItem(this.SK,JSON.stringify(d))};C.c=function(){sessionStorage.removeItem(this.SK);const o=document.getElementById(this.ID);if(o)o.remove()};C.render=function(i,v){const m=this.M[i];const val=m.f==="code:description"&&this.L[i]?this.L[i][v]||v:v;return String(val).replace(/\\s+/g,' ').trim()};C.gA=function(e,i){return e.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${i}.OptionSelectorAdd"]\`)};C.gAA=function(e,i){return e.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${i}.OptionSelectorAddAll"]\`)};C.gR=function(e,i){return e.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${i}.OptionSelectorRemove"]\`)};C.gV=function(e,m){if(!e)return"";if(m.t==="duallist"){if(!e.options.length)return"";return Array.from(e.options).map(o=>o.text.replace(/\\s+/g,' ').trim()).join(",")}return m.t==="select"?e.options[e.selectedIndex]?.text.replace(/\\s+/g,' ').trim()||e.value:e.value};C.sh=function(n){this.c();let t='<div style="font-size:5rem;">⏳</div><div style="font-size:2rem;font-weight:700;">'+n+" more action"+(n===1?"":"s")+'</div>';document.body.insertAdjacentHTML("beforeend",\`<div id="\${this.ID}" style="position:fixed;top:0;left:0;width:100%;height:100%;z-index:100000;background:rgba(0,0,0,0.75);color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:sans-serif;gap:24px;">\${t}<div style="font-size:1.3rem;opacity:0.85;max-width:400px;text-align:center;line-height:1.5;">Click bookmarklet again after page reloads</div></div>\`)};C.pl=function(M){const nD=[],D=[];if(M.__clearUnspecified){for(const f in this.M){const e=getEl(f),m=this.M[f];if(e&&this.gV(e,m)!==""){const a={i:f,c:'clear',cv:this.gV(e,m)};(m.t==="duallist")?D.push(a):nD.push(a)}}}for(const f in M){if(f==='__clearUnspecified')continue;const m=this.M[f],e=getEl(f);if(!m||!e)continue;const pv=String(M[f]),cv=this.gV(e,m);if(m.t==='duallist'){if(m.a){D.push({i:f,c:'set',v:'__ADDALL__',cv:cv})}else{const vs=cv?cv.split(',').map(s=>s.trim()):[],pn=this.render(f,pv).split(':')[0].trim();if(!vs.some(v=>v===pn||v.startsWith(pn+':'))){if(vs.length&&vs[0]!==''){D.push({i:f,c:'clear',cv:cv})}D.push({i:f,c:'set',v:pv,cv:vs.length&&vs[0]!==''?'Empty':cv})}}}else{if(this.render(f,pv)!==cv){const a={i:f,c:'set',v:pv,cv:cv};(m.t==="duallist")?D.push(a):nD.push(a)}}}for(const f in this.M){const m=this.M[f];if(m.a&&m.t==='duallist'){const e=getEl(f);if(e){const cv=this.gV(e,m);if(cv===''){D.push({i:f,c:'set',v:'__ADDALL__',cv:cv})}}}}return{nD,D}};C.x=function(a){const e=getEl(a.i),m=this.M[a.i];if(!e)return;if(a.c==="clear"){if(m.t==="duallist"){const r=this.gR(e,a.i);if(r&&e.options.length){Array.from(e.options).forEach(o=>o.selected=true);r.click()}}else{e.value="";trigger(e,"input");trigger(e,"change")}}else if(a.c==="set"){if(m.t==="duallist"){if(m.a){const btn=this.gAA(e,a.i);if(btn)btn.click()}else{const sEl=getEl(m.s||a.i+".Options"),btn=this.gA(e,a.i);if(!sEl||!btn)return;const v=this.render(a.i,a.v);Array.from(sEl.options).forEach(o=>{o.selected=o.text.split(':')[0].trim()===v.split(':')[0].trim()});btn.click()}}else if(m.t==="select"){const targetVal=String(a.v).trim();let matched=false;for(let i=0;i<e.options.length;i++){if(String(e.options[i].value).trim()===targetVal||String(e.options[i].text).trim()===targetVal){e.value=e.options[i].value;matched=true;break}}if(!matched){e.value=targetVal}trigger(e,"change")}else{e.value=this.render(a.i,a.v);trigger(e,"input");trigger(e,"change")}}} ;C.sel=function(){return new Promise(r=>{if(!document.getElementById(this.SID)){const s=\`<style id=\${this.SID}>#_caim_fill_o{--b:#fff;--t:#1f2937;--brd:#d1d5db;--bb:#0f172a;--bt:#fff;--cbg:#fff;--ct:#374151;--crd:#f8fafc;background:var(--b);color:var(--t);position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;padding:32px;max-width:480px;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25)}@media(prefers-color-scheme:dark){#_caim_fill_o{--b:#1e293b;--t:#f8fafc;--brd:#334155;--bb:#3b82f6;--cbg:#1e293b;--ct:#cbd5e1;--crd:#0f172a}}.h{margin:0 0 24px;font-size:20px;font-weight:600}.l{display:block;font-size:13px;margin-bottom:6px;font-weight:500;color:var(--t)}.s{width:100%;padding:10px 14px;border:1px solid var(--brd);border-radius:6px;font-size:14px;color:var(--t);background:var(--crd);appearance:none}.bf{display:flex;gap:12px;margin-top:32px}.b{flex:1;padding:12px;font-size:14px;font-weight:600;border:none;border-radius:6px;cursor:pointer;transition:all 0.2s}.ok{background:var(--bb);color:var(--bt)}.can{background:var(--cbg);color:var(--ct);border:1px solid var(--brd)}</style>\`;document.head.insertAdjacentHTML('beforeend',s)}let h=\`<div id="\${this.ID}"><h3 class="h">Select Profile Target</h3><div style="display:flex;flex-direction:column;gap:16px;">\`;this.P.groups.forEach((g,i)=>{h+=\`<div><label class="l">\${g.name}</label><select id="_g\${i}" class="s"><option value="">-- Unchanged --</option>\`;const pN=Object.keys(g.data);const iS=pN.length===1;pN.forEach(n=>{const sA=iS?' selected':'';h+=\`<option\${sA}>\${n}</option>\`});h+="</select></div>"});h+=\`</div><div class="bf"><button id="_x" class="b can">Abort</button><button id="_ok" class="b ok">Initialize Automation</button></div></div>\`;document.body.insertAdjacentHTML("beforeend",h);document.getElementById("_x").onclick=()=>this.c();document.getElementById("_ok").onclick=()=>{const d={};this.P.groups.forEach((g,i)=>{const v=document.getElementById(\`_g\${i}\`).value;if(v&&g.data[v])Object.assign(d,g.data[v])});r(d);this.c()}})};C.sum=function(n,D){this.c();const A=[...n,...D];if(!A.length){alert("Target profile already matches parameter baseline.");return}let h=\`<div id="\${this.ID}" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;background:var(--b,#fff);color:var(--t,#1f2937);padding:28px;width:90%;max-width:550px;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:85vh;display:flex;flex-direction:column;font-family:sans-serif;"><h3 style="margin:0 0 16px;font-size:18px;font-weight:600;border-bottom:1px solid var(--brd,#e2e8f0);padding-bottom:12px;">Validation Queue</h3><div style="overflow-y:auto;flex:1;margin-bottom:16px;padding-right:8px;">\`;A.forEach(a=>{const c=a.cv||"Empty",v=a.c==="clear"?"Empty":(a.v==="__ADDALL__"?"All Options":this.render(a.i,a.v)),k=a.c==="clear"?"#ef4444":"#10b981";h+=\`<div style="margin-bottom:10px;padding:12px;background:var(--crd,#f8fafc);border-left:4px solid \${k};border-radius:6px;font-size:13px;"><strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--t,#0f172a);">\${a.i}</strong><div style="display:flex;gap:12px;align-items:center;color:#64748b;"><span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${c.replace(/"/g,'&quot;')}">\${c}</span><svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg><span style="color:var(--t,#0f172a);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${v.replace(/"/g,'&quot;')}">\${v}</span></div></div>\`});h+=\`</div><div class="bf" style="margin-top:0;border-top:1px solid var(--brd,#e2e8f0);padding-top:20px;display:flex;gap:12px;"><button id="_cS" style="flex:1;padding:10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;">Abort</button><button id="_eS" style="flex:1;padding:10px;border-radius:6px;border:none;background:#0f172a;color:#fff;font-weight:600;cursor:pointer;">Execute Pipeline</button></div></div>\`;document.body.insertAdjacentHTML("beforeend",h);document.getElementById("_cS").onclick=()=>this.c();document.getElementById("_eS").onclick=()=>{this.exec(n,D)}};C.fin=function(L){this.c();if(!L||!L.length){return}let t="Target Profile: "+(getEl(this.K)?.value||"Unknown")+"\\n\\nParameter Injections ("+L.length+"):\\n";let h=\`<div id="\${this.ID}" style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:100000;background:var(--b,#fff);color:var(--t,#1f2937);padding:28px;width:90%;max-width:550px;border-radius:12px;box-shadow:0 25px 50px -12px rgba(0,0,0,0.25);max-height:85vh;display:flex;flex-direction:column;font-family:sans-serif;"><h3 style="margin:0 0 16px;font-size:18px;font-weight:600;border-bottom:1px solid var(--brd,#e2e8f0);padding-bottom:12px;color:#10b981;display:flex;align-items:center;"><svg style="width:20px;height:20px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg> Execution Finalized</h3><div style="overflow-y:auto;flex:1;margin-bottom:16px;padding-right:8px;">\`;L.forEach(a=>{const c=a.cv||"Empty",v=a.c==="clear"?"Empty":(a.v==="__ADDALL__"?"All Options":this.render(a.i,a.v));t+=\`- \${a.i}: \${c} -> \${v}\\n\`;h+=\`<div style="margin-bottom:10px;padding:12px;background:var(--crd,#f8fafc);border-left:4px solid #10b981;border-radius:6px;font-size:13px;"><strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--t,#0f172a);">\${a.i}</strong><div style="display:flex;gap:12px;align-items:center;color:#64748b;"><span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${c}</span><svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg><span style="color:var(--t,#0f172a);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${v}</span></div></div>\`});h+=\`</div><div class="bf" style="margin-top:0;border-top:1px solid var(--brd,#e2e8f0);padding-top:20px;display:flex;gap:12px;"><button id="_cC" style="flex:2;padding:10px;border-radius:6px;border:none;background:#3b82f6;color:#fff;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;"><svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg> Copy Telemetry</button><button id="_cD" style="flex:1;padding:10px;border-radius:6px;border:1px solid #e2e8f0;background:#fff;color:#475569;font-weight:600;cursor:pointer;">Dismiss</button></div></div>\`;document.body.insertAdjacentHTML("beforeend",h);document.getElementById("_cD").onclick=()=>this.c();document.getElementById("_cC").onclick=()=>{const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";document.body.appendChild(ta);ta.select();const s=document.execCommand("copy");document.body.removeChild(ta);if(s){const b=document.getElementById("_cC");b.innerHTML=\`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Copied\`;b.style.background="#10b981";setTimeout(()=>{b.innerHTML=\`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg> Copy Telemetry\`;b.style.background="#3b82f6"},2000)}}};C.w=function(a,cb){let t=Date.now();const p=()=>{if(getEl(a.i)){cb()}else if(Date.now()-t<10000){requestAnimationFrame(p)}else{console.error('Timeout waiting for '+a.i)}};requestAnimationFrame(p)};C.exec=function(nD,D,log=[]){this.c();const kEl=getEl(this.K);if(nD.length){nD.forEach(a=>{this.x(a);log.push(a)})}if(D.length){const a=D.shift();log.push(a);const kV=kEl?kEl.value:null;this.sS({D:D,kV:kV,log:log,fin:D.length===0});this.sh(D.length+1);this.w(a,()=>this.x(a))}else{this.fin(log)}};C.proc=function(d){if(!Object.keys(d).length)return;const{nD,D}=this.pl(d);if(!nD.length&&!D.length){this.c();alert('Profile aligns with target baseline. No execution required.');return}this.sum(nD,D)};const kEl=getEl(C.K);const S=C.gS();if(S&&S.fin){C.fin(S.log)}else{const isValidState=S&&kEl&&S.kV===kEl.value;if(isValidState){if(S.D&&S.D.length){const a=S.D.shift();S.log.push(a);C.sS({D:S.D,kV:S.kV,log:S.log,fin:S.D.length===0});C.sh(S.D.length+1);C.w(a,()=>C.x(a))}}else{C.c();const allOne=C.P.groups.length>0&&C.P.groups.every(g=>Object.keys(g.data).length===1);if(allOne){const d={};C.P.groups.forEach(g=>{const pN=Object.keys(g.data)[0];Object.assign(d,g.data[pN])});C.proc(d)}else{C.sel().then(d=>C.proc(d))}}}`,
+    FILLER_LOGIC: `
+        const Config = {
+            lookup: __LOOKUP_DATA__,
+            meta: __FIELDMETA_DATA__,
+            presets: __PRESETS_DATA__,
+            keyId: __KEY_FIELD_ID__,
+            storeKey: "_caim_fill_s",
+            uiId: "_caim_fill_o",
+            cssId: "_caim_fill_y"
+        };
 
-    BUILDER_TOOL: { getMinifiedScript() { return this.BUILDER_LOGIC.replace(/\s+/g, ' ').trim(); }, BUILDER_LOGIC: ` (function(){ if(document.getElementById('mUI'))return; const S={m:[],k:null,mode:null,lH:null}; function gId(e){return e.id||e.name} function gEl(i){return document.getElementById(i)||(document.querySelector('select[name="'+i+'"],input[name="'+i+'"],textarea[name="'+i+'"]'))} function aF(o){if(!o?.length)return'text';const c=o.filter(p=>!/Enter one|Select one|Almost every/.test(p));if(c.length===0)return'text';if(c.filter(p=>/^\\d+:/.test(p.trim())).length/c.length>0.7)return'code:description';return'text'} function add(sId,sO,fmt,dId,dType){if(S.m.find(m=>m.destinations[0].id===dId))return false;S.m.push({sId:sId,sourceOptions:sO,format:fmt,destinations:[{id:dId,type:dType}]});return true} function setM(m){S.mode=m;document.body.style.cursor=m?'crosshair':'default';upd()} function scanDuallists(){let c=0;document.querySelectorAll('select[name$=".Options"]').forEach(src=>{const p=src.closest('td,div');if(!p)return;const dest=p.parentElement?.querySelector('select:not([name$=".Options"])');if(!dest)return;const sId=gId(src),dId=gId(dest);const sO=Array.from(src.options).map(o=>o.text.trim()).filter(Boolean);const fmt=aF(sO);if(add(sId,sO,fmt,dId,'duallist'))c++});alert('Found and mapped '+c+' new duallist fields.');upd()} function hMO(e){if(!S.mode)return;const t=e.target.closest('input,select,textarea,img');if(!t)return;S.lH=t;t.style.outline='2px solid red'} function hMOu(e){if(S.lH)S.lH.style.outline=''} function sty(){document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});if(S.k&&gEl(S.k))gEl(S.k).style.border='2px solid #dd6b20';S.m.forEach(m=>{const dEl=gEl(m.destinations[0].id);if(dEl){dEl.style.backgroundColor='#e6fffa';dEl.style.border='2px solid #38a169';dEl.setAttribute('data-caim-mapped','true')}})} function hC(e){if(!S.mode)return;e.preventDefault();e.stopPropagation();if(S.lH)S.lH.style.outline='';const t=e.target.closest('input,select,textarea,img');if(!t)return;const i=gId(t);if(!i)return alert('Element has no ID or name.');if(S.mode==='simple'){const type=t.tagName==='SELECT'?'select':'text';if(!add(i,[],'text',i,type))alert('Field already mapped.');}else if(S.mode==='constant'){S.k=i;alert('Set '+i+' as the key field.');}else if(S.mode==='duallist'){const p=t.closest('td, div');if(!p)return alert('Could not find duallist parent.');const src=p.parentElement?.querySelector('select[name$=".Options"]'),dest=p.parentElement?.querySelector('select:not([name$=".Options"])');if(!src||!dest)return alert('Could not find source/destination pair.');const sId=gId(src),dId=gId(dest);const sO=Array.from(src.options).map(o=>o.text.trim()).filter(Boolean);const fmt=aF(sO);if(!add(sId,sO,fmt,dId,'duallist'))alert('Field already mapped.');}upd();setM(null)} function upd(){const r=document.getElementById('mUI');if(!r)return;const mH=S.m.map((m,i)=>'<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;"><span><b>'+(m.sId===m.destinations[0].id?m.sId:m.sId+' &rarr; '+m.destinations[0].id)+'</b></span><button onclick="window._m.rM('+i+')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button></div>').join('')||'<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';r.innerHTML='<div style="background:#0f172a;color:white;padding:12px;font-weight:bold;display:flex;justify-content:space-between;"><span>IM Mapper</span><span style="font-size:10px;opacity:0.7">v10</span></div><div style="padding:16px;"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;"><button onclick="window._m.setM(\\'simple\\')" class="m-btn '+(S.mode==='simple'?'act':'')+'">Standard</button><button onclick="window._m.setM(\\'duallist\\')" class="m-btn '+(S.mode==='duallist'?'act':'')+'">Duallist</button><button onclick="window._m.setM(\\'constant\\')" class="m-btn '+(S.mode==='constant'?'act':'')+'" style="background:#fef08a;border-color:#fde047;color:#854d0e;">Key Field</button></div><button onclick="window._m.scanDuallists()" class="m-btn" style="width:100%;margin-bottom:12px;background:#10b981;color:white;border-color:#059669;">Auto-Scan Duallists</button><div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:13px;"><b style="color:#475569;">Session Key:</b> <span style="font-family:monospace;background:#f1f5f9;padding:2px 4px;border-radius:4px;">'+(S.k||'Unassigned')+'</span></div><div style="margin-top:12px;font-size:13px;"><b style="color:#475569;">Endpoints ('+S.m.length+')</b><div style="max-height:200px;overflow-y:auto;border:1px solid #cbd5e1;border-radius:4px;background:white;margin-top:6px;">'+mH+'</div></div></div><div style="padding:16px;background:#f8fafc;border-top:1px solid #e2e8f0;"><button onclick="window._m.gJ()" class="m-btn" style="background:#0f172a;color:white;width:100%;font-weight:bold;margin-bottom:8px;">Copy Schema JSON</button><button onclick="window._m.destroy()" style="background:none;border:1px solid #cbd5e1;color:#475569;cursor:pointer;width:100%;padding:6px;border-radius:4px;font-weight:500;">Terminate Tool</button></div><style>.m-btn{padding:8px;border:1px solid #cbd5e1;background:white;border-radius:4px;cursor:pointer;width:100%;font-size:13px;font-weight:500;transition:all 0.15s;}.m-btn:hover{background:#f1f5f9;}.m-btn.act{background:#3b82f6;color:white;border-color:#2563eb;}</style>';sty()} function gJ(){const j=JSON.stringify({keyField:S.k,mappings:S.m},null,2);navigator.clipboard.writeText(j).then(()=>alert('Schema Copied to Clipboard'),()=>alert('Clipboard Access Denied'))} function rM(i){S.m.splice(i,1);upd()}function destroy(){if(S.lH)S.lH.style.outline='';document.querySelectorAll('[data-caim-mapped]').forEach(e=>{e.style.backgroundColor='';e.style.border='';e.removeAttribute('data-caim-mapped')});if(S.k&&gEl(S.k))gEl(S.k).style.border='';document.removeEventListener('mouseover',hMO);document.removeEventListener('mouseout',hMOu);document.removeEventListener('click',hC,true);document.getElementById('mUI').remove()} const r=document.createElement('div');r.id='mUI';r.style.cssText='position:fixed;top:20px;right:20px;z-index:100000;width:340px;background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 8px 10px -6px rgba(0,0,0,0.1);font-family:sans-serif;overflow:hidden;';document.body.appendChild(r);upd();document.addEventListener('mouseover',hMO);document.addEventListener('mouseout',hMOu);document.addEventListener('click',hC,true);window._m={setM,scanDuallists,gJ,rM,destroy}; })()` }
+        const DOM = {
+            get(id) {
+                return document.getElementById(id) || document.querySelector(\`select[name="\${id}"],input[name="\${id}"],textarea[name="\${id}"],div[name="\${id}"]\`);
+            },
+            trigger(el, eventType) {
+                if (el) el.dispatchEvent(new Event(eventType, { bubbles: true }));
+            },
+            getValue(el, meta) {
+                if (!el) return "";
+                if (meta.t === "duallist") {
+                    if (!el.options.length) return "";
+                    return Array.from(el.options).map(opt => opt.text.replace(/\\s+/g, ' ').trim()).join(",");
+                }
+                return meta.t === "select" ? (el.options[el.selectedIndex]?.text.replace(/\\s+/g, ' ').trim() || el.value) : el.value;
+            },
+            getAddBtn(el, id) {
+                return el.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${id}.OptionSelectorAdd"]\`);
+            },
+            getAddAllBtn(el, id) {
+                return el.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${id}.OptionSelectorAddAll"]\`);
+            },
+            getRemoveBtn(el, id) {
+                return el.closest("td, div")?.parentElement?.querySelector(\`input[name="action.\${id}.OptionSelectorRemove"]\`);
+            }
+        };
+
+        const Session = {
+            load() {
+                return JSON.parse(sessionStorage.getItem(Config.storeKey) || "null");
+            },
+            save(data) {
+                sessionStorage.setItem(Config.storeKey, JSON.stringify(data));
+            },
+            clear() {
+                sessionStorage.removeItem(Config.storeKey);
+            }
+        };
+
+        const Formatter = {
+            render(id, rawValue) {
+                const meta = Config.meta[id];
+                const display = (meta.f === "code:description" && Config.lookup[id]) ? (Config.lookup[id][rawValue] || rawValue) : rawValue;
+                return String(display).replace(/\\s+/g, ' ').trim();
+            }
+        };
+
+        const Theme = {
+            inject() {
+                if (document.getElementById(Config.cssId)) return;
+                const css = \`
+                    <style id="\${Config.cssId}">
+                        #_caim_fill_o { --b:#fff; --t:#1f2937; --brd:#e2e8f0; --bb:#0f172a; --bt:#fff; --cbg:#fff; --ct:#475569; --crd:#f8fafc; --ok:#10b981; --err:#ef4444; --link:#3b82f6; background:var(--b); color:var(--t); position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); z-index:100000; padding:28px; width:90%; max-width:550px; border-radius:12px; box-shadow:0 25px 50px -12px rgba(0,0,0,0.25); max-height:85vh; display:flex; flex-direction:column; font-family:sans-serif; box-sizing:border-box; }
+                        @media(prefers-color-scheme:dark) { #_caim_fill_o { --b:#1e293b; --t:#f8fafc; --brd:#334155; --bb:#3b82f6; --cbg:#1e293b; --ct:#cbd5e1; --crd:#0f172a; --ok:#10b981; } }
+                        #_caim_fill_o * { box-sizing:border-box; }
+                        ._caim_h { margin:0 0 16px; font-size:18px; font-weight:600; border-bottom:1px solid var(--brd); padding-bottom:12px; display:flex; align-items:center; }
+                        ._caim_body { overflow-y:auto; flex:1; margin-bottom:16px; padding-right:8px; display:flex; flex-direction:column; gap:16px; }
+                        ._caim_btn_row { margin-top:0; border-top:1px solid var(--brd); padding-top:20px; display:flex; gap:12px; }
+                        ._caim_btn { flex:1; padding:10px; border-radius:6px; font-weight:600; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.2s; border:none; }
+                        ._caim_btn_pri { background:var(--bb); color:var(--bt); }
+                        ._caim_btn_sec { background:var(--cbg); color:var(--ct); border:1px solid var(--brd); }
+                        ._caim_row { padding:12px; background:var(--crd); border-radius:6px; font-size:13px; }
+                        ._caim_row_ok { border-left:4px solid var(--ok); }
+                        ._caim_row_err { border-left:4px solid var(--err); }
+                        ._caim_lbl { display:block; font-size:13px; margin-bottom:6px; font-weight:500; color:var(--t); }
+                        ._caim_sel { width:100%; padding:10px 14px; border:1px solid var(--brd); border-radius:6px; font-size:14px; color:var(--t); background:var(--crd); appearance:none; }
+                        ._caim_fs { position:fixed; top:0; left:0; width:100%; height:100%; z-index:100000; background:rgba(0,0,0,0.75); color:#fff; display:flex; flex-direction:column; align-items:center; justify-content:center; font-family:sans-serif; gap:24px; text-align:center; box-sizing:border-box; }
+                    </style>
+                \`;
+                document.head.insertAdjacentHTML('beforeend', css);
+            }
+        };
+
+        const UI = {
+            clear() {
+                Session.clear();
+                const overlay = document.getElementById(Config.uiId);
+                if (overlay) overlay.remove();
+                const fs = document.getElementById(Config.uiId + "_fs");
+                if (fs) fs.remove();
+            },
+            buildModal(opts) {
+                this.clear();
+                Theme.inject();
+                
+                let html = \`<div id="\${Config.uiId}">\`;
+                if (opts.title) html += \`<h3 class="_caim_h">\${opts.icon || ''}\${opts.title}</h3>\`;
+                html += \`<div class="_caim_body">\${opts.body}</div>\`;
+                
+                if (opts.buttons) {
+                    html += \`<div class="_caim_btn_row">\`;
+                    opts.buttons.forEach((btn, i) => {
+                        const styleClass = btn.primary ? '_caim_btn_pri' : '_caim_btn_sec';
+                        const extraStyle = btn.color ? \`style="background:\${btn.color};color:#fff;"\` : '';
+                        html += \`<button id="_caim_btn_\${i}" class="_caim_btn \${styleClass}" \${extraStyle}>\${btn.icon || ''}\${btn.text}</button>\`;
+                    });
+                    html += \`</div>\`;
+                }
+                
+                html += \`</div>\`;
+                document.body.insertAdjacentHTML("beforeend", html);
+                
+                if (opts.buttons) {
+                    opts.buttons.forEach((btn, i) => {
+                        document.getElementById(\`_caim_btn_\${i}\`).onclick = btn.onClick;
+                    });
+                }
+            },
+            showCountdown(remaining) {
+                this.clear();
+                Theme.inject();
+                const html = \`
+                    <div id="\${Config.uiId}_fs" class="_caim_fs">
+                        <div style="font-size:5rem;">⏳</div>
+                        <div style="font-size:2rem;font-weight:700;">\${remaining} more action\${remaining === 1 ? '' : 's'}</div>
+                        <div style="font-size:1.3rem;opacity:0.85;max-width:400px;line-height:1.5;">Click bookmarklet again after page reloads</div>
+                    </div>
+                \`;
+                document.body.insertAdjacentHTML("beforeend", html);
+            },
+            showSelection() {
+                return new Promise(resolve => {
+                    let bodyHtml = '';
+                    Config.presets.groups.forEach((group, index) => {
+                        bodyHtml += \`<div><label class="_caim_lbl">\${group.name}</label><select id="_g\${index}" class="_caim_sel"><option value="">-- Unchanged --</option>\`;
+                        const presetNames = Object.keys(group.data);
+                        const isSingle = presetNames.length === 1;
+                        presetNames.forEach(name => {
+                            bodyHtml += \`<option\${isSingle ? ' selected' : ''}>\${name}</option>\`;
+                        });
+                        bodyHtml += \`</select></div>\`;
+                    });
+
+                    this.buildModal({
+                        title: "Select Profile Target",
+                        body: bodyHtml,
+                        buttons: [
+                            { text: "Abort", onClick: () => this.clear() },
+                            { text: "Initialize Automation", primary: true, onClick: () => {
+                                const selectedData = {};
+                                Config.presets.groups.forEach((group, index) => {
+                                    const val = document.getElementById(\`_g\${index}\`).value;
+                                    if (val && group.data[val]) Object.assign(selectedData, group.data[val]);
+                                });
+                                resolve(selectedData);
+                                this.clear();
+                            }}
+                        ]
+                    });
+                });
+            },
+            showSummary(nonReloadingActions, reloadingActions) {
+                const allActions = [...nonReloadingActions, ...reloadingActions];
+                let bodyHtml = '';
+                allActions.forEach(action => {
+                    const currentVal = action.cv || "Empty";
+                    const newVal = action.c === "clear" ? "Empty" : (action.v === "__ADDALL__" ? "All Options" : Formatter.render(action.i, action.v));
+                    const rowClass = action.c === "clear" ? "_caim_row_err" : "_caim_row_ok";
+                    
+                    bodyHtml += \`
+                        <div class="_caim_row \${rowClass}">
+                            <strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--t);">\${action.i}</strong>
+                            <div style="display:flex;gap:12px;align-items:center;color:var(--ct);">
+                                <span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${currentVal.replace(/"/g,'&quot;')}">\${currentVal}</span>
+                                <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                                <span style="color:var(--t);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${newVal.replace(/"/g,'&quot;')}">\${newVal}</span>
+                            </div>
+                        </div>
+                    \`;
+                });
+
+                this.buildModal({
+                    title: "Validation Queue",
+                    body: bodyHtml,
+                    buttons: [
+                        { text: "Abort", onClick: () => this.clear() },
+                        { text: "Execute Pipeline", primary: true, onClick: () => Executor.run(nonReloadingActions, reloadingActions) }
+                    ]
+                });
+            },
+            showCompletion(actionLog) {
+                if (!actionLog || !actionLog.length) return;
+                
+                let clipboardText = "Target Profile: " + (DOM.get(Config.keyId)?.value || "Unknown") + "\\n\\nParameter Injections (" + actionLog.length + "):\\n";
+                let bodyHtml = '';
+
+                actionLog.forEach(action => {
+                    const currentVal = action.cv || "Empty";
+                    const newVal = action.c === "clear" ? "Empty" : (action.v === "__ADDALL__" ? "All Options" : Formatter.render(action.i, action.v));
+                    clipboardText += \`- \${action.i}: \${currentVal} -> \${newVal}\\n\`;
+                    
+                    bodyHtml += \`
+                        <div class="_caim_row _caim_row_ok">
+                            <strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--t);">\${action.i}</strong>
+                            <div style="display:flex;gap:12px;align-items:center;color:var(--ct);">
+                                <span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${currentVal}</span>
+                                <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
+                                <span style="color:var(--t);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${newVal}</span>
+                            </div>
+                        </div>
+                    \`;
+                });
+
+                const copyIcon = \`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>\`;
+                const checkIcon = \`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>\`;
+
+                this.buildModal({
+                    title: "Execution Finalized",
+                    icon: \`<svg style="width:20px;height:20px;margin-right:8px;color:var(--ok);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>\`,
+                    body: bodyHtml,
+                    buttons: [
+                        { text: "Copy Telemetry", primary: true, icon: copyIcon, color: "var(--link)", onClick: function(e) {
+                            const btn = e.currentTarget;
+                            const textArea = document.createElement("textarea");
+                            textArea.value = clipboardText;
+                            textArea.style.position = "fixed";
+                            textArea.style.opacity = "0";
+                            document.body.appendChild(textArea);
+                            textArea.select();
+                            if (document.execCommand("copy")) {
+                                btn.innerHTML = checkIcon + " Copied";
+                                btn.style.background = "var(--ok)";
+                                setTimeout(() => {
+                                    btn.innerHTML = copyIcon + " Copy Telemetry";
+                                    btn.style.background = "var(--link)";
+                                }, 2000);
+                            }
+                            document.body.removeChild(textArea);
+                        }},
+                        { text: "Dismiss", onClick: () => UI.clear() }
+                    ]
+                });
+            }
+        };
+
+        const Planner = {
+            build(presetValues) {
+                const nonReloadingActions = [];
+                const reloadingActions = [];
+                
+                if (presetValues.__clearUnspecified) {
+                    for (const fieldId in Config.meta) {
+                        const el = DOM.get(fieldId);
+                        const meta = Config.meta[fieldId];
+                        if (el && DOM.getValue(el, meta) !== "") {
+                            const action = { i: fieldId, c: 'clear', cv: DOM.getValue(el, meta) };
+                            (meta.t === "duallist") ? reloadingActions.push(action) : nonReloadingActions.push(action);
+                        }
+                    }
+                }
+                
+                for (const fieldId in presetValues) {
+                    if (fieldId === '__clearUnspecified') continue;
+                    const meta = Config.meta[fieldId];
+                    const el = DOM.get(fieldId);
+                    
+                    if (!meta || !el) continue;
+                    const presetValue = String(presetValues[fieldId]);
+                    const currentValue = DOM.getValue(el, meta);
+                    
+                    if (meta.t === 'duallist') {
+                        if (meta.a) {
+                            reloadingActions.push({ i: fieldId, c: 'set', v: '__ADDALL__', cv: currentValue });
+                        } else {
+                            const currentValuesArray = currentValue ? currentValue.split(',').map(s => s.trim()) : [];
+                            const presetNameOnly = Formatter.render(fieldId, presetValue).split(':')[0].trim();
+                            
+                            if (!currentValuesArray.some(val => val === presetNameOnly || val.startsWith(presetNameOnly + ':'))) {
+                                if (currentValuesArray.length && currentValuesArray[0] !== '') {
+                                    reloadingActions.push({ i: fieldId, c: 'clear', cv: currentValue });
+                                }
+                                reloadingActions.push({ i: fieldId, c: 'set', v: presetValue, cv: currentValuesArray.length && currentValuesArray[0] !== '' ? 'Empty' : currentValue });
+                            }
+                        }
+                    } else {
+                        if (Formatter.render(fieldId, presetValue) !== currentValue) {
+                            const action = { i: fieldId, c: 'set', v: presetValue, cv: currentValue };
+                            (meta.t === "duallist") ? reloadingActions.push(action) : nonReloadingActions.push(action);
+                        }
+                    }
+                }
+                
+                for (const fieldId in Config.meta) {
+                    const meta = Config.meta[fieldId];
+                    if (meta.a && meta.t === 'duallist') {
+                        const el = DOM.get(fieldId);
+                        if (el) {
+                            const currentValue = DOM.getValue(el, meta);
+                            if (currentValue === '') {
+                                reloadingActions.push({ i: fieldId, c: 'set', v: '__ADDALL__', cv: currentValue });
+                            }
+                        }
+                    }
+                }
+                return { nonReloadingActions, reloadingActions };
+            }
+        };
+
+        const Executor = {
+            runAction(action) {
+                const el = DOM.get(action.i);
+                const meta = Config.meta[action.i];
+                if (!el) return;
+                
+                if (action.c === "clear") {
+                    if (meta.t === "duallist") {
+                        const removeBtn = DOM.getRemoveBtn(el, action.i);
+                        if (removeBtn && el.options.length) {
+                            Array.from(el.options).forEach(opt => opt.selected = true);
+                            removeBtn.click();
+                        }
+                    } else {
+                        el.value = "";
+                        DOM.trigger(el, "input");
+                        DOM.trigger(el, "change");
+                    }
+                } else if (action.c === "set") {
+                    if (meta.t === "duallist") {
+                        if (meta.a) {
+                            const addAllBtn = DOM.getAddAllBtn(el, action.i);
+                            if (addAllBtn) addAllBtn.click();
+                        } else {
+                            const sourceElement = DOM.get(meta.s || action.i + ".Options");
+                            const addBtn = DOM.getAddBtn(el, action.i);
+                            if (!sourceElement || !addBtn) return;
+                            
+                            const renderedValue = Formatter.render(action.i, action.v);
+                            Array.from(sourceElement.options).forEach(opt => {
+                                opt.selected = opt.text.split(':')[0].trim() === renderedValue.split(':')[0].trim();
+                            });
+                            addBtn.click();
+                        }
+                    } else if (meta.t === "select") {
+                        const targetVal = String(action.v).trim();
+                        let matched = false;
+                        for (let i = 0; i < el.options.length; i++) {
+                            if (String(el.options[i].value).trim() === targetVal || String(el.options[i].text).trim() === targetVal) {
+                                el.value = el.options[i].value;
+                                matched = true;
+                                break;
+                            }
+                        }
+                        if (!matched) el.value = targetVal;
+                        DOM.trigger(el, "change");
+                    } else {
+                        el.value = Formatter.render(action.i, action.v);
+                        DOM.trigger(el, "input");
+                        DOM.trigger(el, "change");
+                    }
+                }
+            },
+            wait(action, callback) {
+                let startTime = Date.now();
+                const poll = () => {
+                    if (DOM.get(action.i)) {
+                        callback();
+                    } else if (Date.now() - startTime < 10000) {
+                        requestAnimationFrame(poll);
+                    } else {
+                        console.error('Timeout waiting for ' + action.i);
+                    }
+                };
+                requestAnimationFrame(poll);
+            },
+            run(nonReloadingActions, reloadingActions, actionLog = []) {
+                UI.clear();
+                const keyElement = DOM.get(Config.keyId);
+                
+                if (nonReloadingActions.length) {
+                    nonReloadingActions.forEach(action => {
+                        this.runAction(action);
+                        actionLog.push(action);
+                    });
+                }
+                
+                if (reloadingActions.length) {
+                    const nextAction = reloadingActions.shift();
+                    actionLog.push(nextAction);
+                    const keyValue = keyElement ? keyElement.value : null;
+                    
+                    Session.save({
+                        D: reloadingActions,
+                        kV: keyValue,
+                        log: actionLog,
+                        fin: reloadingActions.length === 0
+                    });
+                    
+                    UI.showCountdown(reloadingActions.length + 1);
+                    this.wait(nextAction, () => this.runAction(nextAction));
+                } else {
+                    UI.showCompletion(actionLog);
+                }
+            }
+        };
+
+        const App = {
+            process(presetValues) {
+                if (!Object.keys(presetValues).length) return;
+                
+                const { nonReloadingActions, reloadingActions } = Planner.build(presetValues);
+                
+                if (!nonReloadingActions.length && !reloadingActions.length) {
+                    UI.clear();
+                    alert('Profile aligns with target baseline. No execution required.');
+                    return;
+                }
+                
+                UI.showSummary(nonReloadingActions, reloadingActions);
+            },
+            init() {
+                const keyElement = DOM.get(Config.keyId);
+                const sessionState = Session.load();
+
+                if (sessionState && sessionState.fin) {
+                    UI.showCompletion(sessionState.log);
+                } else {
+                    const isValidState = sessionState && keyElement && sessionState.kV === keyElement.value;
+                    
+                    if (isValidState) {
+                        if (sessionState.D && sessionState.D.length) {
+                            const nextAction = sessionState.D.shift();
+                            sessionState.log.push(nextAction);
+                            
+                            Session.save({
+                                D: sessionState.D,
+                                kV: sessionState.kV,
+                                log: sessionState.log,
+                                fin: sessionState.D.length === 0
+                            });
+                            
+                            UI.showCountdown(sessionState.D.length + 1);
+                            Executor.wait(nextAction, () => Executor.runAction(nextAction));
+                        }
+                    } else {
+                        UI.clear();
+                        
+                        const allSingleOption = Config.presets.groups.length > 0 && Config.presets.groups.every(group => Object.keys(group.data).length === 1);
+                        
+                        if (allSingleOption) {
+                            const combinedData = {};
+                            Config.presets.groups.forEach(group => {
+                                const presetName = Object.keys(group.data)[0];
+                                Object.assign(combinedData, group.data[presetName]);
+                            });
+                            this.process(combinedData);
+                        } else {
+                            UI.showSelection().then(selectedData => this.process(selectedData));
+                        }
+                    }
+                }
+            }
+        };
+
+        App.init();
+    `,
+
+    BUILDER_TOOL: { 
+        getMinifiedScript() { 
+            return this.BUILDER_LOGIC.replace(/\s+/g, ' ').trim(); 
+        }, 
+        BUILDER_LOGIC: `
+            (function() {
+                if (document.getElementById('mUI')) return;
+                
+                const BuilderState = {
+                    mappings: [],
+                    keyField: null,
+                    mappingMode: null,
+                    lastHighlighted: null
+                };
+
+                function getElementId(element) {
+                    return element.id || element.name;
+                }
+
+                function findTargetElement(id) {
+                    return document.getElementById(id) || (document.querySelector('select[name="' + id + '"],input[name="' + id + '"],textarea[name="' + id + '"]'));
+                }
+
+                function analyzeFormat(options) {
+                    if (!options || !options.length) return 'text';
+                    const cleanOptions = options.filter(p => !/Enter one|Select one|Almost every/.test(p));
+                    if (cleanOptions.length === 0) return 'text';
+                    if (cleanOptions.filter(p => /^\\d+:/.test(p.trim())).length / cleanOptions.length > 0.7) return 'code:description';
+                    return 'text';
+                }
+
+                function addMapping(sourceId, sourceOptions, format, destId, destType) {
+                    if (BuilderState.mappings.find(m => m.destinations[0].id === destId)) return false;
+                    BuilderState.mappings.push({
+                        sourceId: sourceId,
+                        sourceOptions: sourceOptions,
+                        format: format,
+                        destinations: [{ id: destId, type: destType }]
+                    });
+                    return true;
+                }
+
+                function setMappingMode(mode) {
+                    BuilderState.mappingMode = mode;
+                    document.body.style.cursor = mode ? 'crosshair' : 'default';
+                    updateUI();
+                }
+
+                function autoScanDuallists() {
+                    let mappedCount = 0;
+                    document.querySelectorAll('select[name$=".Options"]').forEach(sourceSelect => {
+                        const container = sourceSelect.closest('td,div');
+                        if (!container) return;
+                        const destSelect = container.parentElement?.querySelector('select:not([name$=".Options"])');
+                        if (!destSelect) return;
+                        
+                        const sourceId = getElementId(sourceSelect);
+                        const destId = getElementId(destSelect);
+                        const sourceOptions = Array.from(sourceSelect.options).map(o => o.text.trim()).filter(Boolean);
+                        const format = analyzeFormat(sourceOptions);
+                        
+                        if (addMapping(sourceId, sourceOptions, format, destId, 'duallist')) {
+                            mappedCount++;
+                        }
+                    });
+                    alert('Found and mapped ' + mappedCount + ' new duallist fields.');
+                    updateUI();
+                }
+
+                function handleMouseOver(event) {
+                    if (!BuilderState.mappingMode) return;
+                    const target = event.target.closest('input,select,textarea,img');
+                    if (!target) return;
+                    BuilderState.lastHighlighted = target;
+                    target.style.outline = '2px solid red';
+                }
+
+                function handleMouseOut(event) {
+                    if (BuilderState.lastHighlighted) BuilderState.lastHighlighted.style.outline = '';
+                }
+
+                function applyStyling() {
+                    document.querySelectorAll('[data-caim-mapped]').forEach(element => {
+                        element.style.backgroundColor = '';
+                        element.style.border = '';
+                        element.removeAttribute('data-caim-mapped');
+                    });
+                    
+                    if (BuilderState.keyField && findTargetElement(BuilderState.keyField)) {
+                        findTargetElement(BuilderState.keyField).style.border = '2px solid #dd6b20';
+                    }
+                    
+                    BuilderState.mappings.forEach(mapping => {
+                        const destElement = findTargetElement(mapping.destinations[0].id);
+                        if (destElement) {
+                            destElement.style.backgroundColor = '#e6fffa';
+                            destElement.style.border = '2px solid #38a169';
+                            destElement.setAttribute('data-caim-mapped', 'true');
+                        }
+                    });
+                }
+
+                function handleClick(event) {
+                    if (!BuilderState.mappingMode) return;
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    if (BuilderState.lastHighlighted) BuilderState.lastHighlighted.style.outline = '';
+                    const target = event.target.closest('input,select,textarea,img');
+                    if (!target) return;
+                    
+                    const elementId = getElementId(target);
+                    if (!elementId) return alert('Element has no ID or name.');
+                    
+                    if (BuilderState.mappingMode === 'simple') {
+                        const elementType = target.tagName === 'SELECT' ? 'select' : 'text';
+                        if (!addMapping(elementId, [], 'text', elementId, elementType)) {
+                            alert('Field already mapped.');
+                        }
+                    } else if (BuilderState.mappingMode === 'constant') {
+                        BuilderState.keyField = elementId;
+                        alert('Set ' + elementId + ' as the key field.');
+                    } else if (BuilderState.mappingMode === 'duallist') {
+                        const container = target.closest('td, div');
+                        if (!container) return alert('Could not find duallist parent.');
+                        
+                        const sourceSelect = container.parentElement?.querySelector('select[name$=".Options"]');
+                        const destSelect = container.parentElement?.querySelector('select:not([name$=".Options"])');
+                        if (!sourceSelect || !destSelect) return alert('Could not find source/destination pair.');
+                        
+                        const sourceId = getElementId(sourceSelect);
+                        const destId = getElementId(destSelect);
+                        const sourceOptions = Array.from(sourceSelect.options).map(o => o.text.trim()).filter(Boolean);
+                        const format = analyzeFormat(sourceOptions);
+                        
+                        if (!addMapping(sourceId, sourceOptions, format, destId, 'duallist')) {
+                            alert('Field already mapped.');
+                        }
+                    }
+                    
+                    updateUI();
+                    setMappingMode(null);
+                }
+
+                function updateUI() {
+                    const container = document.getElementById('mUI');
+                    if (!container) return;
+                    
+                    const mappingsHTML = BuilderState.mappings.map((mapping, index) => 
+                        '<div style="padding:4px;border-bottom:1px solid #eee;display:flex;justify-content:space-between;align-items:center;">' +
+                            '<span><b>' + (mapping.sourceId === mapping.destinations[0].id ? mapping.sourceId : mapping.sourceId + ' &rarr; ' + mapping.destinations[0].id) + '</b></span>' +
+                            '<button onclick="window._m.rM(' + index + ')" style="border:none;background:transparent;color:#ef4444;cursor:pointer;">&times;</button>' +
+                        '</div>'
+                    ).join('') || '<p style="color:#999;text-align:center;padding:10px 0;">No mappings.</p>';
+                    
+                    container.innerHTML = 
+                        '<div style="background:#0f172a;color:white;padding:12px;font-weight:bold;display:flex;justify-content:space-between;">' +
+                            '<span>IM Mapper</span><span style="font-size:10px;opacity:0.7">v10</span>' +
+                        '</div>' +
+                        '<div style="padding:16px;">' +
+                            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:12px;">' +
+                                '<button onclick="window._m.setM(\\'simple\\')" class="m-btn ' + (BuilderState.mappingMode === 'simple' ? 'act' : '') + '">Standard</button>' +
+                                '<button onclick="window._m.setM(\\'duallist\\')" class="m-btn ' + (BuilderState.mappingMode === 'duallist' ? 'act' : '') + '">Duallist</button>' +
+                                '<button onclick="window._m.setM(\\'constant\\')" class="m-btn ' + (BuilderState.mappingMode === 'constant' ? 'act' : '') + '" style="background:#fef08a;border-color:#fde047;color:#854d0e;">Key Field</button>' +
+                            '</div>' +
+                            '<button onclick="window._m.scanDuallists()" class="m-btn" style="width:100%;margin-bottom:12px;background:#10b981;color:white;border-color:#059669;">Auto-Scan Duallists</button>' +
+                            '<div style="margin-top:12px;border-top:1px solid #e2e8f0;padding-top:12px;font-size:13px;">' +
+                                '<b style="color:#475569;">Session Key:</b> <span style="font-family:monospace;background:#f1f5f9;padding:2px 4px;border-radius:4px;">' + (BuilderState.keyField || 'Unassigned') + '</span>' +
+                            '</div>' +
+                            '<div style="margin-top:12px;font-size:13px;">' +
+                                '<b style="color:#475569;">Endpoints (' + BuilderState.mappings.length + ')</b>' +
+                                '<div style="max-height:200px;overflow-y:auto;border:1px solid #cbd5e1;border-radius:4px;background:white;margin-top:6px;">' + mappingsHTML + '</div>' +
+                            '</div>' +
+                        '</div>' +
+                        '<div style="padding:16px;background:#f8fafc;border-top:1px solid #e2e8f0;">' +
+                            '<button onclick="window._m.gJ()" class="m-btn" style="background:#0f172a;color:white;width:100%;font-weight:bold;margin-bottom:8px;">Copy Schema JSON</button>' +
+                            '<button onclick="window._m.destroy()" style="background:none;border:1px solid #cbd5e1;color:#475569;cursor:pointer;width:100%;padding:6px;border-radius:4px;font-weight:500;">Terminate Tool</button>' +
+                        '</div>' +
+                        '<style>' +
+                            '.m-btn{padding:8px;border:1px solid #cbd5e1;background:white;border-radius:4px;cursor:pointer;width:100%;font-size:13px;font-weight:500;transition:all 0.15s;}' +
+                            '.m-btn:hover{background:#f1f5f9;}' +
+                            '.m-btn.act{background:#3b82f6;color:white;border-color:#2563eb;}' +
+                        '</style>';
+                    
+                    applyStyling();
+                }
+
+                function generateAndCopyJSON() {
+                    const jsonPayload = JSON.stringify({ keyField: BuilderState.keyField, mappings: BuilderState.mappings }, null, 2);
+                    navigator.clipboard.writeText(jsonPayload).then(
+                        () => alert('Schema Copied to Clipboard'),
+                        () => alert('Clipboard Access Denied')
+                    );
+                }
+
+                function removeMapping(index) {
+                    BuilderState.mappings.splice(index, 1);
+                    updateUI();
+                }
+
+                function terminateTool() {
+                    if (BuilderState.lastHighlighted) BuilderState.lastHighlighted.style.outline = '';
+                    document.querySelectorAll('[data-caim-mapped]').forEach(element => {
+                        element.style.backgroundColor = '';
+                        element.style.border = '';
+                        element.removeAttribute('data-caim-mapped');
+                    });
+                    if (BuilderState.keyField && findTargetElement(BuilderState.keyField)) {
+                        findTargetElement(BuilderState.keyField).style.border = '';
+                    }
+                    document.removeEventListener('mouseover', handleMouseOver);
+                    document.removeEventListener('mouseout', handleMouseOut);
+                    document.removeEventListener('click', handleClick, true);
+                    document.getElementById('mUI').remove();
+                }
+
+                const container = document.createElement('div');
+                container.id = 'mUI';
+                container.style.cssText = 'position:fixed;top:20px;right:20px;z-index:100000;width:340px;background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 20px 25px -5px rgba(0,0,0,0.1),0 8px 10px -6px rgba(0,0,0,0.1);font-family:sans-serif;overflow:hidden;';
+                document.body.appendChild(container);
+                
+                updateUI();
+                
+                document.addEventListener('mouseover', handleMouseOver);
+                document.addEventListener('mouseout', handleMouseOut);
+                document.addEventListener('click', handleClick, true);
+                
+                window._m = {
+                    setM: setMappingMode,
+                    scanDuallists: autoScanDuallists,
+                    gJ: generateAndCopyJSON,
+                    rM: removeMapping,
+                    destroy: terminateTool
+                };
+            })();
+        `
+    }
 };
 
 document.addEventListener('DOMContentLoaded', () => { window.app = app; app.init(); });

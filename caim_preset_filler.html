@@ -283,8 +283,11 @@ const app = {
         if (this.loadState() && this.state.mappings) {
             this.ui.mappingsJson.value = JSON.stringify({ keyField: this.state.keyField, mappings: this.state.mappings }, null, 2);
             this.safely(() => this._applyMappings(this.state.mappings, this.state.keyField), "Apply Loaded Mappings");
+            this.showStep(2);
+        } else {
+            this.showStep(1);
         }
-        this.showStep(1); this.addDragDropListeners();
+        this.addDragDropListeners();
     },
 
     showStep(n) { this.ui.steps.forEach((s, i) => s.classList.toggle('active', i + 1 === n)); },
@@ -313,7 +316,9 @@ const app = {
 
                 this.state = importedState;
                 this.saveState();
-                location.reload(); 
+                this.ui.mappingsJson.value = JSON.stringify({ keyField: this.state.keyField, mappings: this.state.mappings }, null, 2);
+                this._applyMappings(this.state.mappings, this.state.keyField);
+                this.showStep(2);
             } catch (err) {
                 this.showError("Failed to read workspace file: " + err.message);
             }
@@ -366,7 +371,7 @@ const app = {
     loadState() {
         try { const r = localStorage.getItem(this.STORAGE_KEY); if(r) { Object.assign(this.state, JSON.parse(r)); return true; } } catch(e) {} return false;
     },
-    async clearState() { if (await this.confirmAction('Clear entire workspace? Cannot be undone.', 'Clear Data')) { localStorage.removeItem(this.STORAGE_KEY); location.reload(); } },
+    async clearState() { if (await this.confirmAction('Clear entire workspace? Cannot be undone.', 'Clear Data')) { localStorage.removeItem(this.STORAGE_KEY); this.state = { mappings: null, keyField: null, mappingsByField: null, presets: { groups: [] }, fieldConfigs: {} }; this.ui.mappingsJson.value = ''; this.resetSchema(); this.ui.presetsConfigSection.style.display = 'none'; this.ui.presetGroupsContainer.innerHTML = ''; this.ui.fieldConfigsContainer.innerHTML = ''; this.showStep(1); } },
     
     async showModal(c) {
         return new Promise(res => {

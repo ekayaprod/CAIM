@@ -757,7 +757,8 @@ const app = {
             showCompletion(actionLog) {
                 if (!actionLog || !actionLog.length) return;
                 
-                let clipboardText = "Target Profile: " + (DOM.get(Config.keyId)?.value || "Unknown") + "\\n\\nParameter Injections (" + actionLog.length + "):\\n";
+                const targetProfile = DOM.get(Config.keyId)?.value || "Unknown";
+                let clipboardText = "Changes made to " + targetProfile + " account\\n\\n";
                 let bodyHtml = '';
 
                 actionLog.forEach(action => {
@@ -840,7 +841,7 @@ const app = {
                         } else {
                             const currentValuesArray = currentValue ? currentValue.split(',').map(s => s.trim()) : [];
                             
-                            // Empty target interception
+                            /* Empty target interception */
                             if (presetValue === "") {
                                 if (currentValuesArray.length > 0) {
                                     reloadingActions.push({ i: fieldId, c: 'clear', cv: currentValue });
@@ -963,6 +964,7 @@ const app = {
                     actionLog.push(nextAction);
                     const keyValue = keyElement ? keyElement.value : null;
                     
+                    UI.showCountdown(reloadingActions.length + 1);
                     Session.save({
                         D: reloadingActions,
                         kV: keyValue,
@@ -970,7 +972,6 @@ const app = {
                         fin: reloadingActions.length === 0
                     });
                     
-                    UI.showCountdown(reloadingActions.length + 1);
                     this.wait(nextAction, () => this.runAction(nextAction));
                 } else {
                     UI.showCompletion(actionLog);
@@ -1006,6 +1007,7 @@ const app = {
                             const nextAction = sessionState.D.shift();
                             sessionState.log.push(nextAction);
                             
+                            UI.showCountdown(sessionState.D.length + 1);
                             Session.save({
                                 D: sessionState.D,
                                 kV: sessionState.kV,
@@ -1013,7 +1015,6 @@ const app = {
                                 fin: sessionState.D.length === 0
                             });
                             
-                            UI.showCountdown(sessionState.D.length + 1);
                             Executor.wait(nextAction, () => Executor.runAction(nextAction));
                         }
                     } else {

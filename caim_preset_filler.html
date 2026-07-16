@@ -133,9 +133,9 @@
                 <div id="presets-config-section" style="display: none; animation: fadeIn 0.4s ease-out;">
                     
                     <section id="field-configs-section" class="mb-10 pt-6 border-t border-slate-100">
-                        <h3 class="text-base font-semibold text-slate-800 mb-2">B. Define Duallist Execution Rules</h3>
-                        <p class="text-sm text-slate-500 mb-4">Identify arrays where the payload should select "Add All" based on a single boolean trigger in the spreadsheet.</p>
-                        <div id="field-configs-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"></div>
+                        <h3 class="text-base font-semibold text-slate-800 mb-2">B. Configure Field Behaviors</h3>
+                        <p class="text-sm text-slate-500 mb-4">Toggle <strong>Add All</strong> for arrays that should mass-select, or <strong>Silent</strong> to hide specific fields (like Status codes) from your final clipboard telemetry.</p>
+                        <div id="field-configs-container" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
                     </section>
 
                     <section class="mb-10 pt-6 border-t border-slate-100">
@@ -200,7 +200,7 @@
                     <h4>Phase 2: Configuration & Generation</h4>
                     <ol>
                         <li><strong>Load Mappings:</strong> Paste the JSON from the mapper tool.</li>
-                        <li><strong>Configure Behaviors:</strong> Mark any `duallist` field as "Add All". When the final bookmarklet runs, if your Excel preset has *any* value for this field (e.g., "Yes"), it will add all available options instead of searching for a specific one.</li>
+                        <li><strong>Configure Behaviors:</strong> Mark any `duallist` field as "Add All". When the final bookmarklet runs, if your Excel preset has *any* value for this field (e.g., "Yes"), it will add all available options instead of searching for a specific one. You can also mark fields as "Silent" to exclude them from the clipboard telemetry generated at the end of the script.</li>
                         <li><strong>Import Preset Groups:</strong> Import Excel files. You can now check a box to **"Clear any fields not specified in this file"**, which is useful for presets that only set a few values while clearing all others.</li>
                         <li><strong>Set Hierarchy:</strong> Drag and drop the imported groups to set their merge priority.</li>
                         <li><strong>Generate Bookmarklet:</strong> Create the final "Form Filler" bookmarklet.</li>
@@ -262,7 +262,7 @@ class StateCorruptionError extends Error { constructor(m, r, c) { super(m); this
 
 const app = {
     state: { mappings: null, keyField: null, mappingsByField: null, presets: { groups: [] }, fieldConfigs: {} },
-    ui: {}, modalResolve: null, draggedItem: null, STORAGE_KEY: 'caimPresetFillerState_v11',
+    ui: {}, modalResolve: null, draggedItem: null, STORAGE_KEY: 'caimPresetFillerState_v14',
     CSS: { BTN_PRIMARY: 'bg-slate-800 text-white hover:bg-slate-900 shadow-sm border-transparent', INPUT: 'w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500' },
 
     init() {
@@ -524,15 +524,30 @@ const app = {
     },
 
     renderFieldConfigsUI() {
-        const dl = this.state.mappings.filter(m => m.destinations[0].type === 'duallist');
-        if (!dl.length) { document.getElementById('field-configs-section').style.display = 'none'; return; }
+        if (!this.state.mappings || !this.state.mappings.length) { document.getElementById('field-configs-section').style.display = 'none'; return; }
         
-        const c = this.ui.fieldConfigsContainer; c.innerHTML = '';
-        dl.forEach(m => {
-            const id = this._fieldId(m); const chk = this.state.fieldConfigs[id]?.isAddAll || false;
-            c.insertAdjacentHTML('beforeend', `<div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg shadow-sm"><span class="text-sm font-medium text-slate-700 truncate mr-2" title="${id}">${id}</span><label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" class="sr-only peer" ${chk ? 'checked' : ''} onchange="app.updateFieldConfig('${id}', 'isAddAll', this.checked)"><div class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div><span class="ml-2 text-xs font-medium text-slate-500">Add All</span></label></div>`);
+        const c = this.ui.fieldConfigsContainer; 
+        let html = '';
+        
+        this.state.mappings.forEach(m => {
+            const id = this._fieldId(m);
+            const isAddAll = this.state.fieldConfigs[id]?.isAddAll || false;
+            const isSilent = this.state.fieldConfigs[id]?.isSilent || false;
+            const isDl = m.destinations[0].type === 'duallist';
+            
+            let toggles = '';
+            if (isDl) {
+                toggles += `<label class="relative inline-flex items-center cursor-pointer mr-4"><input type="checkbox" class="sr-only peer" ${isAddAll ? 'checked' : ''} onchange="app.updateFieldConfig('${id}', 'isAddAll', this.checked)"><div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-blue-600"></div><span class="ml-2 text-xs font-medium text-slate-500">Add All</span></label>`;
+            }
+            toggles += `<label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" class="sr-only peer" ${isSilent ? 'checked' : ''} onchange="app.updateFieldConfig('${id}', 'isSilent', this.checked)"><div class="w-8 h-4 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-3 after:w-3 after:transition-all peer-checked:bg-slate-800"></div><span class="ml-2 text-xs font-medium text-slate-500">Silent</span></label>`;
+
+            html += `<div class="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg shadow-sm"><span class="text-sm font-medium text-slate-700 truncate mr-2" title="${id}">${id}</span><div class="flex items-center">${toggles}</div></div>`;
         });
+        
+        c.innerHTML = html;
+        document.getElementById('field-configs-section').style.display = 'block';
     },
+    
     updateFieldConfig(id, k, v) { if (!this.state.fieldConfigs[id]) this.state.fieldConfigs[id] = {}; this.state.fieldConfigs[id][k] = v; this.saveState(); },
 
     async generateFinalBookmarklet() {
@@ -540,8 +555,10 @@ const app = {
             if (!this.state.mappings || !this.state.keyField) return this.showError('Valid schema and Key Field required.');
             const fieldMeta = {}, lookup = {};
             this.state.mappings.forEach(m => {
-                const id = this._fieldId(m), isAll = this.state.fieldConfigs[id]?.isAddAll || false;
-                fieldMeta[id] = { t: m.destinations[0].type, f: m.format || 'text', s: m.sourceId, a: isAll };
+                const id = this._fieldId(m);
+                const isAll = this.state.fieldConfigs[id]?.isAddAll || false;
+                const isSilent = this.state.fieldConfigs[id]?.isSilent || false;
+                fieldMeta[id] = { t: m.destinations[0].type, f: m.format || 'text', s: m.sourceId, a: isAll, silent: isSilent };
                 if (!isAll && m.format === 'code:description' && m.sourceOptions?.length) {
                     lookup[id] = {}; m.sourceOptions.forEach(o => { const [c] = o.split(':'); if (c?.trim()) lookup[id][c.trim()] = o; });
                 }
@@ -729,13 +746,17 @@ const app = {
                 const allActions = [...nonReloadingActions, ...reloadingActions];
                 let bodyHtml = '';
                 allActions.forEach(action => {
+                    const meta = Config.meta[action.i];
+                    const isSilent = meta.silent === true;
+                    const silentBadge = isSilent ? \`<span style="margin-left:8px;padding:2px 6px;background:#f1f5f9;color:#64748b;border-radius:4px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;">Silent</span>\` : '';
+                    
                     const currentVal = action.cv || "Empty";
                     const newVal = action.c === "clear" ? "Empty" : (action.v === "__ADDALL__" ? "All Options" : Formatter.render(action.i, action.v));
                     const rowClass = action.c === "clear" ? "_caim_row_err" : "_caim_row_ok";
                     
                     bodyHtml += \`
-                        <div class="_caim_row \${rowClass}">
-                            <strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--t);">\${action.i}</strong>
+                        <div class="_caim_row \${rowClass}" \${isSilent ? 'style="opacity:0.6"' : ''}>
+                            <strong style="display:flex;align-items:center;margin-bottom:6px;font-size:14px;color:var(--t);">\${action.i} \${silentBadge}</strong>
                             <div style="display:flex;gap:12px;align-items:center;color:var(--ct);">
                                 <span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${currentVal.replace(/"/g,'&quot;')}">\${currentVal}</span>
                                 <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
@@ -761,14 +782,21 @@ const app = {
                 let clipboardText = "Changes made to " + targetProfile + " account\\n\\n";
                 let bodyHtml = '';
 
+                const added = [];
+                const removed = [];
+                const changed = [];
+
                 actionLog.forEach(action => {
+                    const meta = Config.meta[action.i];
+                    const isSilent = meta.silent === true;
+                    const silentBadge = isSilent ? \`<span style="margin-left:8px;padding:2px 6px;background:#f1f5f9;color:#64748b;border-radius:4px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;">Silent</span>\` : '';
+                    
                     const currentVal = action.cv || "Empty";
                     const newVal = action.c === "clear" ? "Empty" : (action.v === "__ADDALL__" ? "All Options" : Formatter.render(action.i, action.v));
-                    clipboardText += \`- \${action.i}: \${currentVal} -> \${newVal}\\n\`;
                     
                     bodyHtml += \`
-                        <div class="_caim_row _caim_row_ok">
-                            <strong style="display:block;margin-bottom:6px;font-size:14px;color:var(--t);">\${action.i}</strong>
+                        <div class="_caim_row _caim_row_ok" \${isSilent ? 'style="opacity:0.6"' : ''}>
+                            <strong style="display:flex;align-items:center;margin-bottom:6px;font-size:14px;color:var(--t);">\${action.i} \${silentBadge}</strong>
                             <div style="display:flex;gap:12px;align-items:center;color:var(--ct);">
                                 <span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${currentVal}</span>
                                 <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
@@ -776,7 +804,23 @@ const app = {
                             </div>
                         </div>
                     \`;
+
+                    if (isSilent) return;
+
+                    if (currentVal === "Empty" && newVal !== "Empty") {
+                        added.push(\`\${action.i}: \${newVal}\`);
+                    } else if (currentVal !== "Empty" && newVal === "Empty") {
+                        removed.push(\`\${action.i}: \${currentVal}\`);
+                    } else if (currentVal !== newVal) {
+                        changed.push(\`\${action.i}: \${currentVal} to \${newVal}\`);
+                    }
                 });
+
+                if (added.length) clipboardText += "Added\\n" + added.join("\\n") + "\\n\\n";
+                if (removed.length) clipboardText += "Removed\\n" + removed.join("\\n") + "\\n\\n";
+                if (changed.length) clipboardText += "Changed\\n" + changed.join("\\n") + "\\n\\n";
+                
+                clipboardText = clipboardText.trim();
 
                 const copyIcon = \`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>\`;
                 const checkIcon = \`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>\`;

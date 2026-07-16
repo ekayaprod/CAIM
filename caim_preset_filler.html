@@ -548,15 +548,16 @@ const app = {
             });
             
             const rawLogic = this.BOOKMARKLET_UTILITIES + this.FILLER_LOGIC
-                .replace('__LOOKUP_DATA__', JSON.stringify(lookup))
-                .replace('__FIELDMETA_DATA__', JSON.stringify(fieldMeta))
-                .replace('__PRESETS_DATA__', JSON.stringify(this.state.presets))
-                .replace('__KEY_FIELD_ID__', JSON.stringify(this.state.keyField));
+                .replace('__LOOKUP_DATA__', () => JSON.stringify(lookup))
+                .replace('__FIELDMETA_DATA__', () => JSON.stringify(fieldMeta))
+                .replace('__PRESETS_DATA__', () => JSON.stringify(this.state.presets))
+                .replace('__KEY_FIELD_ID__', () => JSON.stringify(this.state.keyField));
                 
             const name = document.getElementById('final-bookmarklet-name').value.trim() || 'IM Tool';
-            const script = 'javascript:' + encodeURIComponent('(function(){' + rawLogic.replace(/[\n\r\t]/g, '').replace(/\s{2,}/g, ' ').trim() + '})()');
+            const minifiedLogic = rawLogic.replace(/\s+/g, ' ').trim();
+            const script = 'javascript:' + encodeURIComponent('(function(){' + minifiedLogic + '})()');
             
-            document.getElementById('final-bookmarklet-link-container').innerHTML = `<a href="${script.replace(/"/g, '&quot;')}" class="inline-flex items-center px-8 py-3 bg-slate-900 text-white font-semibold rounded-lg shadow-lg hover:bg-black hover:shadow-xl transition-all"><svg class="w-5 h-5 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> ${this.escapeHtml(name)}</a>`;
+            document.getElementById('final-bookmarklet-link-container').innerHTML = `<a href="${script}" class="inline-flex items-center px-8 py-3 bg-slate-900 text-white font-semibold rounded-lg shadow-lg hover:bg-black hover:shadow-xl transition-all"><svg class="w-5 h-5 mr-2 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg> ${this.escapeHtml(name)}</a>`;
             document.getElementById('final-output').style.display = 'block';
         });
     },
@@ -838,6 +839,15 @@ const app = {
                             reloadingActions.push({ i: fieldId, c: 'set', v: '__ADDALL__', cv: currentValue });
                         } else {
                             const currentValuesArray = currentValue ? currentValue.split(',').map(s => s.trim()) : [];
+                            
+                            // Empty target interception
+                            if (presetValue === "") {
+                                if (currentValuesArray.length > 0) {
+                                    reloadingActions.push({ i: fieldId, c: 'clear', cv: currentValue });
+                                }
+                                continue;
+                            }
+                            
                             const presetNameOnly = Formatter.render(fieldId, presetValue).split(':')[0].trim();
                             
                             if (!currentValuesArray.some(val => val === presetNameOnly || val.startsWith(presetNameOnly + ':'))) {

@@ -29,11 +29,10 @@
         .group-item {
             background-color: white; border: 1px solid #e2e8f0; padding: 1rem 1.25rem;
             margin-bottom: 0.75rem; border-radius: 0.75rem; display: flex;
-            justify-content: space-between; align-items: center; cursor: grab;
+            justify-content: space-between; align-items: center;
             box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); transition: box-shadow 0.2s;
         }
         .group-item:hover { box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
-        .group-item.dragging { opacity: 0.5; background: #f1f5f9; box-shadow: none; }
         
         .toggle-checkbox:checked { right: 0; border-color: #3b82f6; }
         .toggle-checkbox:checked + .toggle-label { background-color: #3b82f6; }
@@ -134,7 +133,7 @@
                     
                     <section id="field-configs-section" class="mb-10 pt-6 border-t border-slate-100">
                         <h3 class="text-base font-semibold text-slate-800 mb-2">B. Configure Field Behaviors</h3>
-                        <p class="text-sm text-slate-500 mb-4">Toggle <strong>Add All</strong> for arrays that should mass-select, or <strong>Silent</strong> to hide specific fields (like Status codes) from your final clipboard telemetry.</p>
+                        <p class="text-sm text-slate-500 mb-4">Toggle <strong>Add All</strong> for arrays that should mass-select, or <strong>Silent</strong> to hide specific fields from final clipboard telemetry.</p>
                         <div id="field-configs-container" class="grid grid-cols-1 lg:grid-cols-2 gap-3"></div>
                     </section>
 
@@ -162,7 +161,6 @@
                         <div id="presets-ui-container" class="mt-6">
                             <div class="flex items-center justify-between mb-3">
                                 <h4 class="text-sm font-semibold text-slate-700">Active Payload Groups</h4>
-                                <span class="text-xs text-slate-400">Drag to establish execution priority (bottom overrides top)</span>
                             </div>
                             <div id="preset-groups-container" class="min-h-[4rem] space-y-2"></div>
                         </div>
@@ -188,26 +186,6 @@
                     </section>
                 </div>
             </div>
-
-            <div id="step3" class="step">
-                <h2 class="text-2xl font-semibold text-slate-800 mb-6 border-b pb-4">Help & Documentation</h2>
-                <div class="prose max-w-none text-slate-700">
-                    <h4>Overview</h4>
-                    <p>This tool creates a single, powerful "Form Filler" bookmarklet to automate complex forms using hierarchical "Preset Groups".</p>
-                    <h4>Phase 1: Field Mapping</h4>
-                     <p>Use the "Field Mapper Tool" on your target form. As you map fields, they will be highlighted in green on the page for easy tracking.</p>
-                     <p>The updated mapper tool now includes a **"Scan Duallists"** button to automatically map all duallist fields, and a **"Map Key Field"** button to identify the constant field (like a username) used for session validation.</p>
-                    <h4>Phase 2: Configuration & Generation</h4>
-                    <ol>
-                        <li><strong>Load Mappings:</strong> Paste the JSON from the mapper tool.</li>
-                        <li><strong>Configure Behaviors:</strong> Mark any `duallist` field as "Add All". When the final bookmarklet runs, if your Excel preset has *any* value for this field (e.g., "Yes"), it will add all available options instead of searching for a specific one. You can also mark fields as "Silent" to exclude them from the clipboard telemetry generated at the end of the script.</li>
-                        <li><strong>Import Preset Groups:</strong> Import Excel files. You can now check a box to **"Clear any fields not specified in this file"**, which is useful for presets that only set a few values while clearing all others.</li>
-                        <li><strong>Set Hierarchy:</strong> Drag and drop the imported groups to set their merge priority.</li>
-                        <li><strong>Generate Bookmarklet:</strong> Create the final "Form Filler" bookmarklet.</li>
-                    </ol>
-                </div>
-                <div class="mt-8"><button onclick="app.showStep(1)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 text-sm font-medium">← Back to Start</button></div>
-            </div>
         </main>
     </div>
     
@@ -221,11 +199,8 @@
     </div>
 
     <template id="preset-group-template">
-        <div class="group-item" draggable="true">
+        <div class="group-item">
             <div class="flex items-center gap-4 flex-grow">
-                <div class="cursor-move text-slate-300 hover:text-slate-500">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8h16M4 16h16"></path></svg>
-                </div>
                 <div>
                     <strong data-name class="block text-slate-800 text-sm font-semibold"></strong>
                     <span data-count class="text-xs text-slate-500"></span>
@@ -243,7 +218,6 @@
                 </label>
                 
                 <div class="flex items-center gap-3 border-l border-slate-200 pl-4">
-                    <button data-action="view" class="text-sm font-medium text-blue-600 hover:text-blue-800 transition-colors">Inspect</button>
                     <button data-action="delete" class="text-sm font-medium text-red-600 hover:text-red-800 transition-colors p-1 rounded hover:bg-red-50" title="Remove Group">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
                     </button>
@@ -262,12 +236,12 @@ class StateCorruptionError extends Error { constructor(m, r, c) { super(m); this
 
 const app = {
     state: { mappings: null, keyField: null, mappingsByField: null, presets: { groups: [] }, fieldConfigs: {} },
-    ui: {}, modalResolve: null, draggedItem: null, STORAGE_KEY: 'caimPresetFillerState_v14',
+    ui: {}, modalResolve: null, STORAGE_KEY: 'caimPresetFillerState_v15',
     CSS: { BTN_PRIMARY: 'bg-slate-800 text-white hover:bg-slate-900 shadow-sm border-transparent', INPUT: 'w-full px-3 py-2 bg-slate-50 border border-slate-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500' },
 
     init() {
         this.ui = {
-            steps: Array.from({length: 3}, (_, i) => document.getElementById(`step${i+1}`)),
+            steps: Array.from({length: 2}, (_, i) => document.getElementById(`step${i+1}`)),
             mappingsJson: document.getElementById('mappings-json'),
             presetsConfigSection: document.getElementById('presets-config-section'),
             presetGroupsContainer: document.getElementById('preset-groups-container'),
@@ -287,7 +261,6 @@ const app = {
         } else {
             this.showStep(1);
         }
-        this.addDragDropListeners();
     },
 
     showStep(n) { this.ui.steps.forEach((s, i) => s.classList.toggle('active', i + 1 === n)); },
@@ -486,42 +459,12 @@ const app = {
                 this.saveState();
             };
 
-            el.querySelector('[data-action="view"]').onclick = () => this.viewGroupPresets(i);
             el.querySelector('[data-action="delete"]').onclick = () => this.deleteGroup(i);
             c.appendChild(el);
         });
     },
 
-    async viewGroupPresets(i) {
-        const g = this.state.presets.groups[i]; if (!g) return;
-        let h = `<div class="max-h-96 overflow-y-auto pr-2">`;
-        Object.entries(g.data).forEach(([pName, vals]) => {
-            h += `<div class="bg-slate-50 border border-slate-200 rounded p-3 mb-3"><strong class="block text-slate-800 text-sm mb-2 border-b border-slate-200 pb-1">${this.escapeHtml(pName)}</strong><div class="grid grid-cols-2 gap-2 text-xs font-mono">`;
-            Object.entries(vals).forEach(([f, v]) => {
-                if (f === '__clearUnspecified') return;
-                h += `<div class="truncate" title="${this.escapeHtml(f)}: ${this.escapeHtml(v)}"><span class="text-slate-500">${this.escapeHtml(f)}:</span> <span class="text-slate-900">${this.escapeHtml(v === '' ? '[CLEAR]' : v)}</span></div>`;
-            });
-            h += `</div></div>`;
-        });
-        await this.showModal({ title: `Payload: ${g.name}`, message: h + `</div>` });
-    },
     async deleteGroup(i) { if (await this.confirmAction(`Remove the "${this.state.presets.groups[i]?.name}" dataset?`, 'Remove')) { this.state.presets.groups.splice(i, 1); this.rerenderGroupsUI(); this.saveState(); } },
-    
-    addDragDropListeners() {
-        const c = this.ui.presetGroupsContainer;
-        c.addEventListener('dragstart', e => { if(e.target.classList.contains('group-item')) { this.draggedItem = e.target; setTimeout(() => e.target.classList.add('dragging'), 0); } });
-        c.addEventListener('dragend', () => { if (this.draggedItem) { this.draggedItem.classList.remove('dragging'); this.draggedItem = null; } });
-        c.addEventListener('dragover', e => {
-            e.preventDefault(); const after = [...c.querySelectorAll('.group-item:not(.dragging)')].reduce((closest, child) => { const box = child.getBoundingClientRect(); const offset = e.clientY - box.top - box.height / 2; return (offset < 0 && offset > closest.offset) ? { offset, element: child } : closest; }, { offset: Number.NEGATIVE_INFINITY }).element;
-            const current = document.querySelector('.dragging'); if (!current) return;
-            after == null ? c.appendChild(current) : c.insertBefore(current, after);
-        });
-        c.addEventListener('drop', () => {
-            if (!this.draggedItem) return;
-            this.state.presets.groups = Array.from(c.querySelectorAll('.group-item')).map(el => this.state.presets.groups[parseInt(el.dataset.originalIndex, 10)]);
-            this.rerenderGroupsUI(); this.saveState();
-        });
-    },
 
     renderFieldConfigsUI() {
         if (!this.state.mappings || !this.state.mappings.length) { document.getElementById('field-configs-section').style.display = 'none'; return; }
@@ -591,13 +534,19 @@ const app = {
             uiId: "_caim_fill_o",
             cssId: "_caim_fill_y"
         };
+        
+        const SVG = {
+            arr: '<svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>',
+            cp: '<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>',
+            chk: '<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+        };
 
         const DOM = {
             get(id) {
                 return document.getElementById(id) || document.querySelector(\`select[name="\${id}"],input[name="\${id}"],textarea[name="\${id}"],div[name="\${id}"]\`);
             },
-            trigger(el, eventType) {
-                if (el) el.dispatchEvent(new Event(eventType, { bubbles: true }));
+            fire(el) {
+                if(el) { el.dispatchEvent(new Event("input", {bubbles:true})); el.dispatchEvent(new Event("change", {bubbles:true})); }
             },
             getValue(el, meta) {
                 if (!el) return "";
@@ -619,15 +568,9 @@ const app = {
         };
 
         const Session = {
-            load() {
-                return JSON.parse(sessionStorage.getItem(Config.storeKey) || "null");
-            },
-            save(data) {
-                sessionStorage.setItem(Config.storeKey, JSON.stringify(data));
-            },
-            clear() {
-                sessionStorage.removeItem(Config.storeKey);
-            }
+            load() { return JSON.parse(sessionStorage.getItem(Config.storeKey) || "null"); },
+            save(data) { sessionStorage.setItem(Config.storeKey, JSON.stringify(data)); },
+            clear() { sessionStorage.removeItem(Config.storeKey); }
         };
 
         const Formatter = {
@@ -671,6 +614,20 @@ const app = {
                 if (overlay) overlay.remove();
                 const fs = document.getElementById(Config.uiId + "_fs");
                 if (fs) fs.remove();
+            },
+            row(id, cv, nv, isSilent, errMode) {
+                const sB = isSilent ? \`<span style="margin-left:8px;padding:2px 6px;background:#f1f5f9;color:#64748b;border-radius:4px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;">Silent</span>\` : '';
+                const rC = errMode ? "_caim_row_err" : "_caim_row_ok";
+                return \`
+                    <div class="_caim_row \${rC}" \${isSilent ? 'style="opacity:0.6"' : ''}>
+                        <strong style="display:flex;align-items:center;margin-bottom:6px;font-size:14px;color:var(--t);">\${id} \${sB}</strong>
+                        <div style="display:flex;gap:12px;align-items:center;color:var(--ct);">
+                            <span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${cv.replace(/"/g,'&quot;')}">\${cv}</span>
+                            \${SVG.arr}
+                            <span style="color:var(--t);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${nv.replace(/"/g,'&quot;')}">\${nv}</span>
+                        </div>
+                    </div>
+                \`;
             },
             buildModal(opts) {
                 this.clear();
@@ -747,23 +704,9 @@ const app = {
                 let bodyHtml = '';
                 allActions.forEach(action => {
                     const meta = Config.meta[action.i];
-                    const isSilent = meta.silent === true;
-                    const silentBadge = isSilent ? \`<span style="margin-left:8px;padding:2px 6px;background:#f1f5f9;color:#64748b;border-radius:4px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;">Silent</span>\` : '';
-                    
-                    const currentVal = action.cv || "Empty";
-                    const newVal = action.c === "clear" ? "Empty" : (action.v === "__ADDALL__" ? "All Options" : Formatter.render(action.i, action.v));
-                    const rowClass = action.c === "clear" ? "_caim_row_err" : "_caim_row_ok";
-                    
-                    bodyHtml += \`
-                        <div class="_caim_row \${rowClass}" \${isSilent ? 'style="opacity:0.6"' : ''}>
-                            <strong style="display:flex;align-items:center;margin-bottom:6px;font-size:14px;color:var(--t);">\${action.i} \${silentBadge}</strong>
-                            <div style="display:flex;gap:12px;align-items:center;color:var(--ct);">
-                                <span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${currentVal.replace(/"/g,'&quot;')}">\${currentVal}</span>
-                                <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                                <span style="color:var(--t);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="\${newVal.replace(/"/g,'&quot;')}">\${newVal}</span>
-                            </div>
-                        </div>
-                    \`;
+                    const cv = action.cv || "Empty";
+                    const nv = action.c === "clear" ? "Empty" : (action.v === "__ADDALL__" ? "All Options" : Formatter.render(action.i, action.v));
+                    bodyHtml += UI.row(action.i, cv, nv, meta.silent === true, action.c === "clear");
                 });
 
                 this.buildModal({
@@ -789,30 +732,19 @@ const app = {
                 actionLog.forEach(action => {
                     const meta = Config.meta[action.i];
                     const isSilent = meta.silent === true;
-                    const silentBadge = isSilent ? \`<span style="margin-left:8px;padding:2px 6px;background:#f1f5f9;color:#64748b;border-radius:4px;font-size:10px;text-transform:uppercase;letter-spacing:0.5px;">Silent</span>\` : '';
+                    const cv = action.cv || "Empty";
+                    const nv = action.c === "clear" ? "Empty" : (action.v === "__ADDALL__" ? "All Options" : Formatter.render(action.i, action.v));
                     
-                    const currentVal = action.cv || "Empty";
-                    const newVal = action.c === "clear" ? "Empty" : (action.v === "__ADDALL__" ? "All Options" : Formatter.render(action.i, action.v));
-                    
-                    bodyHtml += \`
-                        <div class="_caim_row _caim_row_ok" \${isSilent ? 'style="opacity:0.6"' : ''}>
-                            <strong style="display:flex;align-items:center;margin-bottom:6px;font-size:14px;color:var(--t);">\${action.i} \${silentBadge}</strong>
-                            <div style="display:flex;gap:12px;align-items:center;color:var(--ct);">
-                                <span style="text-decoration:line-through;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${currentVal}</span>
-                                <svg style="width:14px;height:14px;flex-shrink:0;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>
-                                <span style="color:var(--t);font-weight:600;max-width:42%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">\${newVal}</span>
-                            </div>
-                        </div>
-                    \`;
+                    bodyHtml += UI.row(action.i, cv, nv, isSilent, false);
 
                     if (isSilent) return;
 
-                    if (currentVal === "Empty" && newVal !== "Empty") {
-                        added.push(\`\${action.i}: \${newVal}\`);
-                    } else if (currentVal !== "Empty" && newVal === "Empty") {
-                        removed.push(\`\${action.i}: \${currentVal}\`);
-                    } else if (currentVal !== newVal) {
-                        changed.push(\`\${action.i}: \${currentVal} to \${newVal}\`);
+                    if (cv === "Empty" && nv !== "Empty") {
+                        added.push(\`\${action.i}: \${nv}\`);
+                    } else if (cv !== "Empty" && nv === "Empty") {
+                        removed.push(\`\${action.i}: \${cv}\`);
+                    } else if (cv !== nv) {
+                        changed.push(\`\${action.i}: \${cv} to \${nv}\`);
                     }
                 });
 
@@ -822,15 +754,12 @@ const app = {
                 
                 clipboardText = clipboardText.trim();
 
-                const copyIcon = \`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>\`;
-                const checkIcon = \`<svg style="width:16px;height:16px;margin-right:8px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>\`;
-
                 this.buildModal({
                     title: "Execution Finalized",
                     icon: \`<svg style="width:20px;height:20px;margin-right:8px;color:var(--ok);" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>\`,
                     body: bodyHtml,
                     buttons: [
-                        { text: "Copy Telemetry", primary: true, icon: copyIcon, color: "var(--link)", onClick: function(e) {
+                        { text: "Copy Telemetry", primary: true, icon: SVG.cp, color: "var(--link)", onClick: function(e) {
                             const btn = e.currentTarget;
                             const textArea = document.createElement("textarea");
                             textArea.value = clipboardText;
@@ -839,10 +768,10 @@ const app = {
                             document.body.appendChild(textArea);
                             textArea.select();
                             if (document.execCommand("copy")) {
-                                btn.innerHTML = checkIcon + " Copied";
+                                btn.innerHTML = SVG.chk + " Copied";
                                 btn.style.background = "var(--ok)";
                                 setTimeout(() => {
-                                    btn.innerHTML = copyIcon + " Copy Telemetry";
+                                    btn.innerHTML = SVG.cp + " Copy Telemetry";
                                     btn.style.background = "var(--link)";
                                 }, 2000);
                             }
@@ -941,8 +870,7 @@ const app = {
                         }
                     } else {
                         el.value = "";
-                        DOM.trigger(el, "input");
-                        DOM.trigger(el, "change");
+                        DOM.fire(el);
                     }
                 } else if (action.c === "set") {
                     if (meta.t === "duallist") {
@@ -974,8 +902,7 @@ const app = {
                         DOM.trigger(el, "change");
                     } else {
                         el.value = Formatter.render(action.i, action.v);
-                        DOM.trigger(el, "input");
-                        DOM.trigger(el, "change");
+                        DOM.fire(el);
                     }
                 }
             },
@@ -1165,12 +1092,20 @@ const app = {
                     if (BuilderState.lastHighlighted) BuilderState.lastHighlighted.style.outline = '';
                 }
 
-                function applyStyling() {
+                function clearHL() {
+                    if (BuilderState.lastHighlighted) BuilderState.lastHighlighted.style.outline = '';
                     document.querySelectorAll('[data-caim-mapped]').forEach(element => {
                         element.style.backgroundColor = '';
                         element.style.border = '';
                         element.removeAttribute('data-caim-mapped');
                     });
+                    if (BuilderState.keyField && findTargetElement(BuilderState.keyField)) {
+                        findTargetElement(BuilderState.keyField).style.border = '';
+                    }
+                }
+
+                function applyStyling() {
+                    clearHL();
                     
                     if (BuilderState.keyField && findTargetElement(BuilderState.keyField)) {
                         findTargetElement(BuilderState.keyField).style.border = '2px solid #dd6b20';
@@ -1285,15 +1220,7 @@ const app = {
                 }
 
                 function terminateTool() {
-                    if (BuilderState.lastHighlighted) BuilderState.lastHighlighted.style.outline = '';
-                    document.querySelectorAll('[data-caim-mapped]').forEach(element => {
-                        element.style.backgroundColor = '';
-                        element.style.border = '';
-                        element.removeAttribute('data-caim-mapped');
-                    });
-                    if (BuilderState.keyField && findTargetElement(BuilderState.keyField)) {
-                        findTargetElement(BuilderState.keyField).style.border = '';
-                    }
+                    clearHL();
                     document.removeEventListener('mouseover', handleMouseOver);
                     document.removeEventListener('mouseout', handleMouseOut);
                     document.removeEventListener('click', handleClick, true);

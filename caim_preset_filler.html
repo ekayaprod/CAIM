@@ -671,12 +671,16 @@ const app = {
             showSelection() {
                 return new Promise(resolve => {
                     let bodyHtml = '';
+                    let lastSelections = {};
+                    try { lastSelections = JSON.parse(localStorage.getItem('_caim_last_selection')) || {}; } catch(e) {}
                     Config.presets.groups.forEach((group, index) => {
                         bodyHtml += \`<div><label class="_caim_lbl">\${group.name}</label><select id="_g\${index}" class="_caim_sel"><option value="">-- Unchanged --</option>\`;
                         const presetNames = Object.keys(group.data);
                         const isSingle = presetNames.length === 1;
+                        const lastValue = lastSelections[group.name];
                         presetNames.forEach(name => {
-                            bodyHtml += \`<option\${isSingle ? ' selected' : ''}>\${name}</option>\`;
+                            const isSelected = isSingle || (lastValue === name);
+                            bodyHtml += \`<option\${isSelected ? ' selected' : ''}>\${name}</option>\`;
                         });
                         bodyHtml += \`</select></div>\`;
                     });
@@ -688,10 +692,15 @@ const app = {
                             { text: "Abort", onClick: () => this.clear() },
                             { text: "Initialize Automation", primary: true, onClick: () => {
                                 const selectedData = {};
+                                const selectionsToSave = {};
                                 Config.presets.groups.forEach((group, index) => {
                                     const val = document.getElementById(\`_g\${index}\`).value;
-                                    if (val && group.data[val]) Object.assign(selectedData, group.data[val]);
+                                    if (val) {
+                                        selectionsToSave[group.name] = val;
+                                        if (group.data[val]) Object.assign(selectedData, group.data[val]);
+                                    }
                                 });
+                                try { localStorage.setItem('_caim_last_selection', JSON.stringify(selectionsToSave)); } catch(e) {}
                                 resolve(selectedData);
                                 this.clear();
                             }}
@@ -958,7 +967,6 @@ const app = {
                 
                 if (!nonReloadingActions.length && !reloadingActions.length) {
                     UI.clear();
-                    alert('Profile aligns with target baseline. No execution required.');
                     return;
                 }
                 
@@ -1131,23 +1139,22 @@ const app = {
                     if (!target) return;
                     
                     const elementId = getElementId(target);
-                    if (!elementId) return alert('Element has no ID or name.');
+                    if (!elementId) return console.log('Element has no ID or name.');
                     
                     if (BuilderState.mappingMode === 'simple') {
                         const elementType = target.tagName === 'SELECT' ? 'select' : 'text';
                         if (!addMapping(elementId, [], 'text', elementId, elementType)) {
-                            alert('Field already mapped.');
+                            console.log('Field already mapped.');
                         }
                     } else if (BuilderState.mappingMode === 'constant') {
                         BuilderState.keyField = elementId;
-                        alert('Set ' + elementId + ' as the key field.');
                     } else if (BuilderState.mappingMode === 'duallist') {
                         const container = target.closest('td, div');
-                        if (!container) return alert('Could not find duallist parent.');
+                        if (!container) return console.log('Could not find duallist parent.');
                         
                         const sourceSelect = container.parentElement?.querySelector('select[name$=".Options"]');
                         const destSelect = container.parentElement?.querySelector('select:not([name$=".Options"])');
-                        if (!sourceSelect || !destSelect) return alert('Could not find source/destination pair.');
+                        if (!sourceSelect || !destSelect) return console.log('Could not find source/destination pair.');
                         
                         const sourceId = getElementId(sourceSelect);
                         const destId = getElementId(destSelect);
@@ -1155,12 +1162,14 @@ const app = {
                         const format = analyzeFormat(sourceOptions);
                         
                         if (!addMapping(sourceId, sourceOptions, format, destId, 'duallist')) {
-                            alert('Field already mapped.');
+                            console.log('Field already mapped.');
                         }
                     }
                     
                     updateUI();
-                    setMappingMode(null);
+                    if (BuilderState.mappingMode === 'constant') {
+                        setMappingMode(null);
+                    }
                 }
 
                 function updateUI() {

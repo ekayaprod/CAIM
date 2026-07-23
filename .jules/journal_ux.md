@@ -7,3 +7,8 @@
     - Modified `app.importProject()` to utilize direct `app.state` JSON parsing and DOM mutation mapping injection followed by a fast-track UI step transition (`this.showStep(2)`), entirely stripping out the sluggish `location.reload()` page wipe.
     - Modified `app.clearState()` to bypass hard document reloads by resetting local object state bounds, erasing cache buckets, and aggressively un-rendering child schema visual components through localized DOM reflows (`display: none`, `innerHTML = ''`) before instantly navigating back to Step 1.
     - Result: Complete eradication of full-page cold reloads, radically enhancing the UI's instantaneous feedback cycle.
+- **Concentrated Workflows**
+    - Target: `caim_preset_filler.html`
+    - Modified `showSelection` to cache selections via `localStorage` to prevent amnesiac loops.
+    - Modified `handleClick` to retain `setMappingMode` for multi-selection without re-toggling modes.
+    - Modified `App.process` to remove blocking alerts when the profile aligns with the baseline.

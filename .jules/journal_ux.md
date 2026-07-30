@@ -12,3 +12,9 @@
     - Modified `showSelection` to cache selections via `localStorage` to prevent amnesiac loops.
     - Modified `handleClick` to retain `setMappingMode` for multi-selection without re-toggling modes.
     - Modified `App.process` to remove blocking alerts when the profile aligns with the baseline.
+- **Flattened Amnesiac State Loops in Bookmarklets**
+    - Target: `caim_bookmarklets.html`
+    - Modified User Search Helper (`userSearchBookmarklet-src`) to inject state persistence: `localStorage.setItem('caim_user_search')` saves context, bypassing cold inputs across reloads. Added auto-restore and execution logic on load.
+    - Modified Bulk Action Form (`bulkActionBookmarklet-src`) to cache `caim_bulk_users` and `caim_bulk_action` lists in localStorage. Values auto-hydrate on panel spawn, flattening setup drift.
+    - Modified Form Auto-Filler (`formFillerBookmarklet-src`) to store `caim_fill_user` and `caim_fill_action`. Panel initialization instantly loads active cache context.
+    - Result: Instantaneous continuation for all three embedded utilities by curing amnesiac variables between repetitive DOM reloads, matching Espresso mandates.

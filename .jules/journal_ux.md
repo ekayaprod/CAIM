@@ -12,3 +12,17 @@
     - Modified `showSelection` to cache selections via `localStorage` to prevent amnesiac loops.
     - Modified `handleClick` to retain `setMappingMode` for multi-selection without re-toggling modes.
     - Modified `App.process` to remove blocking alerts when the profile aligns with the baseline.
+## UX Adjustments Log
+- **caim_bookmarklets.html**
+  - Added `.focus()` autofocus for:
+    - User Search Helper input
+    - Bulk Action Form input
+    - Form Auto-Filler input
+- **caim_preset_filler.html**
+  - Modified **Wipe Profile (Clear Engine)**:
+    - Removed `window.location.reload()` which forced manual reloading after dismissing.
+    - Simplified action buttons from "Dismiss and Reload" to "Dismiss".
+  - Modified **Populate Profile (Fill Engine)**:
+    - Removed `UI.showSummary()` intercepting modal, directly calling `Executor.run(...)` to execute pipelines instantly.
+    - Removed `window.location.reload()` behavior on success modals to avoid losing user state post-fill.
+    - Updated success modal texts, replacing "Dismiss & Reload" with "Dismiss".

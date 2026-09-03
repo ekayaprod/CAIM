@@ -12,3 +12,4 @@
     - Modified `showSelection` to cache selections via `localStorage` to prevent amnesiac loops.
     - Modified `handleClick` to retain `setMappingMode` for multi-selection without re-toggling modes.
     - Modified `App.process` to remove blocking alerts when the profile aligns with the baseline.
+    - Modified `caim_preset_filler.html` to eliminate state amnesia by decoding the `javascript:` bookmarklet payloads (Fill Profile Engine and Wipe Profile), replacing occurrences of `window.location.reload()` with `UI.showHome()`, and re-encoding them. This allows the UI to return instantly to the root state without a sluggish full-page reload, improving high-velocity workflow.

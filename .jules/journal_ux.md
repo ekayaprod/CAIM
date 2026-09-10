@@ -1,14 +1,11 @@
-## Espresso Journal
+# Espresso UX Optimization Log
 
-### The UX Shift Ledger
-- **Flattened Amnesiac State Loops in UI Routing**
-    - Target: `caim_preset_filler.html`
-    - Modified `app.init()` to parse cached initialization state and automatically bypass the generic Step 1 instruction UI when mapping schema is actively persisted, hoisting the user directly into the active Step 2 zone.
-    - Modified `app.importProject()` to utilize direct `app.state` JSON parsing and DOM mutation mapping injection followed by a fast-track UI step transition (`this.showStep(2)`), entirely stripping out the sluggish `location.reload()` page wipe.
-    - Modified `app.clearState()` to bypass hard document reloads by resetting local object state bounds, erasing cache buckets, and aggressively un-rendering child schema visual components through localized DOM reflows (`display: none`, `innerHTML = ''`) before instantly navigating back to Step 1.
-    - Result: Complete eradication of full-page cold reloads, radically enhancing the UI's instantaneous feedback cycle.
-- **Concentrated Workflows**
-    - Target: `caim_preset_filler.html`
-    - Modified `showSelection` to cache selections via `localStorage` to prevent amnesiac loops.
-    - Modified `handleClick` to retain `setMappingMode` for multi-selection without re-toggling modes.
-    - Modified `App.process` to remove blocking alerts when the profile aligns with the baseline.
+## Implemented
+- Tool 2 (Clear Engine) and Tool 3 (Fill Engine) in `caim_preset_filler.html` updated.
+- Eliminated the amnesiac full-page reload on pipeline completion.
+- Concentrated the state-loop by injecting the `_caim_frame` contentDocument's body directly into the active viewport's body.
+- Re-executed active scripts via DOM injection to preserve listener binding.
+- Updated UI copy ("Dismiss & Reload" -> "Dismiss & Apply") to align user expectations with the newly flattened interaction tunnel.
+
+## Unhandled Targets
+- N/A

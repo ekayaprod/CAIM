@@ -9,3 +9,9 @@
 
 ## Unhandled Targets
 - N/A
+
+## Implemented (Bookmarklets UX Refactoring)
+- Concentrated the execution loops of all 6 Bookmarklet Tools in `caim_bookmarklets.html`.
+- Implemented "Double-Shot Override": Mapped `Enter` and `Ctrl+Enter` listener events to immediately execute main workflow paths (Search, Fill Form, Generate Bulk List) directly from prompt focus.
+- Implemented "Operational Escape Hatches": Added hardware-aligned `Escape` key event listeners to efficiently teardown dynamic modal payloads and securely remove global handlers (zero prompt dismiss).
+- Eliminated interaction tunnel latency by injecting immediate autofocus logic into primary inputs natively across all dynamic script payloads (`userSearchInput`, `bulkUsers`, `fillUsername`).
